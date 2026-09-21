@@ -1,0 +1,30 @@
+.viewer { min-width: 0; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; background: #111827; }
+.viewer:fullscreen { border-radius: 0; height: 100vh; overflow: auto; }
+.toolbar { position: sticky; top: 0; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px; background: #172033; color: #e2e8f0; border-bottom: 1px solid #334155; }
+.toolbar button:disabled { opacity: .4; }
+.toolbar input { width: 48px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; padding: 4px; text-align: center; }
+.documentActions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; border-inline-end: 1px solid #334155; padding-inline-end: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 10px 18px; font-size: 12px; background: #172033; color: #cbd5e1; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.scroll { display: grid; place-items: start center; height: min(82vh, 980px); min-height: 420px; overflow: auto; padding: 0; }
+.previewScroll { display: grid; place-items: start center; min-height: 0; flex: 1; overflow: auto; padding: 0; background: #0f172a; }
+.page { position: relative; margin: 0 auto 28px; background: white; box-shadow: 0 10px 32px #0005; color: #000; overflow: hidden; flex-shrink: 0; }
+.page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.textLayer { position: absolute; inset: 0; overflow: clip; opacity: 1; line-height: 1; text-align: initial; transform-origin: 0 0; text-size-adjust: none; forced-color-adjust: none; z-index: 2; }
+.textLayer :global(span), .textLayer :global(br) { position: absolute; white-space: pre; color: transparent; cursor: text; transform-origin: 0% 0%; }
+.textLayer { --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); }
+.textLayer > :global(:not(.markedContent)), .textLayer :global(.markedContent span:not(.markedContent)) { z-index: 1; --font-height: 0; --scale-x: 1; --rotate: 0deg; font-size: calc(var(--text-scale-factor) * var(--font-height)); transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+.textLayer :global(.markedContent) { display: contents; }
+.textLayer :global(::selection) { background: #6366f14d; }
+.textLayer :global(span[data-finding]) { cursor: pointer; border-radius: 2px; outline-offset: 2px; }
+.textLayer :global(span[data-tone="good"]) { background: #10b98129; box-shadow: 0 2px 0 #059669; }
+.textLayer :global(span[data-tone="bad"]) { background: #f59e0b33; box-shadow: 0 2px 0 #d97706; }
+.textLayer :global(span[data-tone="high"]) { background: #ef44442b; box-shadow: 0 2px 0 #dc2626; }
+.textLayer :global(span[data-finding]:hover), .textLayer :global(span[data-finding]:focus-visible) { outline: 2px solid #6366f1; background: #818cf84d; }
+.coach { position: fixed; bottom: 18px; inset-inline-end: 24px; z-index: 70; display: flex; align-items: flex-end; width: min(650px, calc(100vw - 28px)); pointer-events: none; }
+.character { width: 230px; flex-shrink: 0; }
+.bubble { position: relative; pointer-events: auto; border: 1px solid #64748b; background: #172033; color: #f1f5f9; padding: 22px; border-radius: 22px 22px 22px 4px; box-shadow: 0 16px 55px #0005; max-height: 58vh; overflow: auto; flex: 1; }
+.bubble:before { content: ''; position: absolute; bottom: 25px; inset-inline-start: -8px; width: 14px; height: 14px; background: #172033; transform: rotate(45deg); }
+.bubble p { font-size: 14px; line-height: 1.65; margin-top: 10px; color: #cbd5e1; }
+.bubble blockquote { font-size: 12px; margin-top: 12px; padding-inline-start: 10px; border-inline-start: 2px solid #a5b4fc; max-height: 100px; overflow: auto; }
+@media (max-width: 640px) { .scroll { height: calc(100svh - 215px); min-height: 300px; } .toolbar { padding: 8px; } .documentActions { order: 3; width: 100%; border-inline-end: 0; border-top: 1px solid #334155; padding-top: 6px; } .coach { bottom: 10px; inset-inline-end: 10px; } .character { width: 105px; } .bubble { padding: 16px; } }

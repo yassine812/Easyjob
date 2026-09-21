@@ -1,0 +1,79 @@
+/* One shared canvas: career connections frame the content, never cover it. */
+body { isolation: isolate; }
+.career-canvas, .workspace-shell { background: transparent; }
+.career-background {
+  --network-color: #7773da;
+  --network-tile: #ffffff;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  background: linear-gradient(125deg, #f4f3ff 0%, #fcfcff 43%, #f0faf9 100%);
+}
+.career-background__glow {
+  position: absolute;
+  width: min(85vw, 1000px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  animation: career-glow-drift 24s ease-in-out infinite alternate;
+}
+.career-background__glow--indigo {
+  top: -48%; left: -18%;
+  background: radial-gradient(circle, #a5a0ff55, #b7afff16 48%, transparent 70%);
+}
+.career-background__glow--teal {
+  bottom: -58%; right: -15%;
+  background: radial-gradient(circle, #6edbcd4a, #8de2dc18 48%, transparent 70%);
+  animation-delay: -12s;
+  animation-direction: alternate-reverse;
+}
+.career-background__grid {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(#7b7cae26 .8px, transparent .8px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(90deg, #000, transparent 40%, transparent 60%, #000);
+}
+.career-background__network { position: absolute; width: 100%; height: 100%; color: var(--network-color); }
+.career-background__links { stroke: currentColor; stroke-width: 1.2; opacity: .2; }
+.career-background__signals {
+  stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+  stroke-dasharray: 9 340; opacity: .45;
+  animation: career-connection-flow 24s linear infinite;
+}
+.career-background__dots { fill: currentColor; opacity: .3; }
+.career-background__tile {
+  fill: var(--network-tile); fill-opacity: .6;
+  stroke: currentColor; stroke-opacity: .18; stroke-width: 1.2;
+  transform-box: fill-box; transform-origin: center;
+  animation: career-tile-float 13s ease-in-out infinite alternate;
+}
+.career-background__icon { fill: none; stroke: currentColor; stroke-opacity: .45; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.career-background__tile--job { animation-delay: -5s; }
+.career-background__tile--match { animation-delay: -9s; color: #279e9b; }
+.career-background__tile--spark { animation-delay: -3s; }
+.dark .career-background {
+  --network-color: #a5a8ff;
+  --network-tile: #1a2440;
+  background: linear-gradient(125deg, #11172b, #0f1625 50%, #10232a);
+}
+.dark .career-background__glow--indigo { opacity: .5; }
+.dark .career-background__glow--teal { opacity: .35; }
+/* Workspace data stays visually quiet; cards and navigation keep solid surfaces. */
+body:has(.workspace-shell) .career-background__network { opacity: .4; }
+body:has(.workspace-shell) .career-background__grid { opacity: .45; }
+@keyframes career-glow-drift { to { transform: translate3d(6%, 9%, 0) scale(1.08); } }
+@keyframes career-tile-float { from { transform: translateY(-7px) rotate(-3deg); } to { transform: translateY(9px) rotate(3deg); } }
+@keyframes career-connection-flow { to { stroke-dashoffset: -1047; } }
+@media (max-width: 767px) {
+  .career-background__network { width: 165%; left: -32.5%; opacity: .65; }
+  .career-background__grid { background-size: 26px 26px; }
+  .career-background__glow { width: 130vw; }
+  .career-background__glow--indigo { top: -25%; }
+  .career-background__glow--teal { bottom: -28%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .career-background *, .career-background *::before, .career-background *::after { animation: none !important; }
+}
+@media print { .career-background { display: none; } }

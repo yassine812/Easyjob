@@ -1,0 +1,44 @@
+# Caddy reverse proxy for Startup Starter staging.
+# One public domain fronts the Next.js app, the NestJS API and Socket.IO.
+#
+#   {STAGING_DOMAIN}                -> web:3000  (Next.js)
+#   {STAGING_DOMAIN}/api/v1/*       -> api:3000  (NestJS REST)
+#   {STAGING_DOMAIN}/socket.io/*    -> api:3000  (realtime, WebSocket upgrade)
+#   {STAGING_DOMAIN}/docs*          -> api:3000  (Swagger)
+#
+# TLS: set CADDY_TLS=internal for a local self-signed simulation; for a public
+# domain leave it unset so Caddy provisions Let's Encrypt certificates
+# automatically (requires the domain's A record to point at the server).
+
+{$STAGING_DOMAIN} {
+	# tls internal  -> local self-signed (simulation)
+	# tls (default) -> automatic Let's Encrypt for public domains
+	tls {$CADDY_TLS:internal}
+
+	encode gzip
+
+	# Socket.IO — must be proxied with WebSocket upgrade enabled.
+	handle /socket.io/* {
+		reverse_proxy api:3000
+	}
+
+	# NestJS REST API + Swagger.
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+	handle /docs* {
+		reverse_proxy api:3000
+	}
+	# Next.js frontend.
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+dist/
+coverage/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.*.example
+
+# Local storage (dev file provider)
+storage/
+uploads/
+
+# Logs
+*.log
+logs/
+.runtime/
+npm-debug.log*
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Prisma
+prisma/*.db
+
+# Test artifacts
+test-results/
+
+# Python (AI service)
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+ai-service/.env
+.env.staging

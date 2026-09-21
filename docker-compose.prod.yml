@@ -1,0 +1,250 @@
+# Production deployment stack for Startup Starter.
+#
+# Architecture: ONE public domain terminates HTTPS in Caddy, which proxies the
+# frontend, API and Socket.IO. PostgreSQL, Redis, the worker and the AI service
+# are internal-only and never published to the internet.
+#
+#   app-staging.example.com  ->  web:3000   (Next.js)
+#   app-staging.example.com/api/v1/*  ->  api:3000   (NestJS)
+#   app-staging.example.com/socket.io/*  ->  api:3000 (realtime)
+#
+# Deploy on a VPS with a public domain (Caddy issues Let's Encrypt certs
+# automatically):
+#
+#   cp .env.staging.example .env.staging          # fill in real secrets
+#   docker compose -f docker-compose.prod.yml --env-file .env.staging up -d --build
+#
+# For local simulation without a domain, set STAGING_DOMAIN=app-staging.local
+# (Caddy uses its internal CA — verify with curl -k).
+#
+# Nothing sensitive is hardcoded: every secret comes from the environment.
+name: startup-starter-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-startup_starter}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/main.js"]
+    environment: &api_environment
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-startup_starter}?schema=public
+      REDIS_URL: redis://redis:6379
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-s3}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage}
+      STORAGE_SIGNING_SECRET: ${STORAGE_SIGNING_SECRET:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PRESIGN_EXPIRES_SEC: ${S3_PRESIGN_EXPIRES_SEC:-900}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      EMAIL_FROM: ${EMAIL_FROM:-Startup Starter <no-reply@startupstarter.app>}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_TIMEOUT_MS: ${AI_SERVICE_TIMEOUT_MS:-30000}
+      AI_API_KEY: ${AI_API_KEY:-}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-stripe}
+      KONNECT_MODE: ${KONNECT_MODE:-sandbox}
+      KONNECT_API_KEY: ${KONNECT_API_KEY:-}
+      KONNECT_RECEIVER_WALLET_ID: ${KONNECT_RECEIVER_WALLET_ID:-}
+      KONNECT_WEBHOOK_URL: ${KONNECT_WEBHOOK_URL:-}
+      KONNECT_WEBHOOK_SECRET: ${KONNECT_WEBHOOK_SECRET:-}
+      DEV_WEBHOOK_SECRET: ${DEV_WEBHOOK_SECRET:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_MAP_CANDIDATE_PRO_MONTHLY: ${STRIPE_PRICE_MAP_CANDIDATE_PRO_MONTHLY:-}
+      STRIPE_PRICE_MAP_CANDIDATE_PRO_YEARLY: ${STRIPE_PRICE_MAP_CANDIDATE_PRO_YEARLY:-}
+      STRIPE_PRICE_MAP_CANDIDATE_CAREER_AI_MONTHLY: ${STRIPE_PRICE_MAP_CANDIDATE_CAREER_AI_MONTHLY:-}
+      STRIPE_PRICE_MAP_CANDIDATE_CAREER_AI_YEARLY: ${STRIPE_PRICE_MAP_CANDIDATE_CAREER_AI_YEARLY:-}
+      STRIPE_PRICE_MAP_COMPANY_BUSINESS_MONTHLY: ${STRIPE_PRICE_MAP_COMPANY_BUSINESS_MONTHLY:-}
+      STRIPE_PRICE_MAP_COMPANY_BUSINESS_YEARLY: ${STRIPE_PRICE_MAP_COMPANY_BUSINESS_YEARLY:-}
+      STRIPE_PRICE_MAP_COMPANY_PRO_MONTHLY: ${STRIPE_PRICE_MAP_COMPANY_PRO_MONTHLY:-}
+      STRIPE_PRICE_MAP_COMPANY_PRO_YEARLY: ${STRIPE_PRICE_MAP_COMPANY_PRO_YEARLY:-}
+      STRIPE_PRICE_MAP_COMPANY_ENTERPRISE_MONTHLY: ${STRIPE_PRICE_MAP_COMPANY_ENTERPRISE_MONTHLY:-}
+      STRIPE_PRICE_MAP_COMPANY_ENTERPRISE_YEARLY: ${STRIPE_PRICE_MAP_COMPANY_ENTERPRISE_YEARLY:-}
+      BIOMETRIC_ENABLED: ${BIOMETRIC_ENABLED:-false}
+      BIOMETRIC_ENCRYPTION_KEY: ${BIOMETRIC_ENCRYPTION_KEY:-}
+      FACE_MATCH_THRESHOLD: ${FACE_MATCH_THRESHOLD:-0.5}
+      FACE_LIVENESS_ENABLED: ${FACE_LIVENESS_ENABLED:-true}
+      FACE_MAX_ATTEMPTS: ${FACE_MAX_ATTEMPTS:-5}
+      FACE_ATTEMPT_WINDOW_MS: ${FACE_ATTEMPT_WINDOW_MS:-600000}
+      FACE_BLOCK_MS: ${FACE_BLOCK_MS:-600000}
+      FACE_CHALLENGE_TTL_SECONDS: ${FACE_CHALLENGE_TTL_SECONDS:-120}
+      FACE_MAX_IMAGE_BYTES: ${FACE_MAX_IMAGE_BYTES:-5242880}
+      AI_FACE_SERVICE_URL: ${AI_FACE_SERVICE_URL:-http://ai:8000}
+      RUN_WORKERS: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/app/storage
+    # Local debugging only — remove on a locked-down VPS or firewall these.
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/worker-main.js"]
+    environment:
+      <<: *api_environment
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-startup_starter}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-s3}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage}
+      STORAGE_SIGNING_SECRET: ${STORAGE_SIGNING_SECRET:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      EMAIL_FROM: ${EMAIL_FROM:-Startup Starter <no-reply@startupstarter.app>}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_TIMEOUT_MS: ${AI_SERVICE_TIMEOUT_MS:-30000}
+      AI_API_KEY: ${AI_API_KEY:-}
+      BIOMETRIC_ENABLED: ${BIOMETRIC_ENABLED:-false}
+      BIOMETRIC_ENCRYPTION_KEY: ${BIOMETRIC_ENCRYPTION_KEY:-}
+      FACE_MATCH_THRESHOLD: ${FACE_MATCH_THRESHOLD:-0.5}
+      FACE_LIVENESS_ENABLED: ${FACE_LIVENESS_ENABLED:-true}
+      FACE_MAX_ATTEMPTS: ${FACE_MAX_ATTEMPTS:-5}
+      FACE_ATTEMPT_WINDOW_MS: ${FACE_ATTEMPT_WINDOW_MS:-600000}
+      FACE_BLOCK_MS: ${FACE_BLOCK_MS:-600000}
+      FACE_CHALLENGE_TTL_SECONDS: ${FACE_CHALLENGE_TTL_SECONDS:-120}
+      FACE_MAX_IMAGE_BYTES: ${FACE_MAX_IMAGE_BYTES:-5242880}
+      AI_FACE_SERVICE_URL: ${AI_FACE_SERVICE_URL:-http://ai:8000}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-stripe}
+      DEV_WEBHOOK_SECRET: ${DEV_WEBHOOK_SECRET:-}
+      RUN_WORKERS: "true"
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  ai:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      AI_PROVIDER: ${AI_PROVIDER:-rule_based}
+      AI_API_KEY: ${AI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    # No ports published — only reachable by api/worker on the internal network.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-${NEXT_PUBLIC_API_URL:-}}
+        NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL:-${NEXT_PUBLIC_API_URL:-}}
+    restart: unless-stopped
+    depends_on:
+      - api
+    # Local debugging only — remove on a locked-down VPS or firewall these.
+    ports:
+      - "127.0.0.1:3001:3000"
+
+  # Local staging email catcher (SMTP 1025 / UI 8025). In a real deployment
+  # replace EMAIL_PROVIDER=dev-smtp with a production SMTP provider and remove
+  # this service.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?STAGING_DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Local simulation (self-signed, tls internal) by default; switch to
+      # deploy/Caddyfile.prod (automatic Let's Encrypt) for a public domain.
+      - ${CADDY_CONFIG:-./deploy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  storage_data:
+  caddy_data:
+  caddy_config:

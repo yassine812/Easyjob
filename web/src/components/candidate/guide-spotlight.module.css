@@ -1,0 +1,8 @@
+.spotlight { position: fixed; z-index: 60; pointer-events: none; border: 2px solid #a5b4fc; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(3 7 18 / 66%), 0 0 24px rgb(129 140 248 / 45%); }
+.guide { position: fixed; z-index: 61; width: min(680px, calc(100vw - 24px)); display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.character { width: 320px; flex: 0 0 320px; filter: drop-shadow(0 8px 14px rgb(0 0 0 / 25%)); }
+.bubble { pointer-events: auto; position: relative; min-width: 0; flex: 1; border-radius: 22px 22px 22px 4px; border: 1px solid var(--border); background: var(--card); color: var(--card-foreground); box-shadow: 0 12px 45px rgb(0 0 0 / 25%); }
+.bubbleContent { padding: 18px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.bubble::before { content: ''; position: absolute; left: -14px; top: 40%; border-top: 13px solid transparent; border-bottom: 13px solid transparent; border-right: 15px solid var(--card); }
+@media (max-width: 640px) { .character { width: 150px; flex-basis: 150px; } .bubbleContent { padding: 14px; } .guide { gap: 0; } }
+@media (max-width: 420px) { .guide { flex-direction: column-reverse; align-items: flex-end; } .character { width: 180px; flex-basis: auto; margin-top: 6px; } .bubble { width: 100%; } .bubble::before { top: auto; bottom: -14px; left: auto; right: 70px; border: 0; border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 15px solid var(--card); } }

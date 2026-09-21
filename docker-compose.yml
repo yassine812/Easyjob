@@ -1,0 +1,130 @@
+name: startup-starter
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: startup-starter-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: startup_starter
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./.docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: startup-starter-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: startup-starter-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # Dev email catcher: http://localhost:8026 (UI), host SMTP on 2525
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: startup-starter-mailpit
+    ports:
+      - "2525:1025"
+      - "8026:8025"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: startup-starter-api
+    command: ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"]
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/startup_starter?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: docker-access-secret-0123456789abcdef0123456789abcdef
+      JWT_REFRESH_SECRET: docker-refresh-secret-0123456789abcdef0123456789abcdef
+      STORAGE_PROVIDER: local
+      EMAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      AI_SERVICE_URL: http://ai:8000
+      PAYMENT_PROVIDER: dev
+      DEV_WEBHOOK_SECRET: dev-webhook-secret-change-me
+      FRONTEND_URL: http://localhost:5173
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      RUN_WORKERS: "false"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: startup-starter-worker
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/worker-main.js"]
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/startup_starter?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: docker-access-secret-0123456789abcdef0123456789abcdef
+      JWT_REFRESH_SECRET: docker-refresh-secret-0123456789abcdef0123456789abcdef
+      STORAGE_PROVIDER: local
+      EMAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      AI_SERVICE_URL: http://ai:8000
+      PAYMENT_PROVIDER: dev
+      DEV_WEBHOOK_SECRET: dev-webhook-secret-change-me
+      RUN_WORKERS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  ai:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: startup-starter-ai
+    environment:
+      AI_PROVIDER: rule_based
+      # OPENAI_API_KEY: sk-...
+      # OPENAI_BASE_URL: https://api.openai.com/v1
+      # OPENAI_MODEL: gpt-4o-mini
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
+  minio_data:

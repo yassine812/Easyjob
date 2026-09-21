@@ -1,0 +1,5 @@
+ALTER TABLE "CareerSettings"
+  ADD COLUMN "employmentTypes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  ADD COLUMN "excludedJobs" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  ADD COLUMN "minimumSalary" INTEGER,
+  ADD COLUMN "salaryCurrency" TEXT NOT NULL DEFAULT 'USD';
