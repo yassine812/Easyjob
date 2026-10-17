@@ -43,21 +43,6 @@ venv/
 ai-service/.env
 .env.staging
 
-# Local generated/demo artifacts and model weights
-.pitch-build/
-tmp-face-crop.jpg
+# Keep all EasyJob project assets and local demo files in the repository.
+# The separate permis-tn project is intentionally excluded.
 permis-tn/
-livraison-pitch/models/
-livraison-pitch/.venv/
-livraison-pitch/__pycache__/
-livraison-pitch/renders/
-livraison-pitch/research/
-livraison-pitch/runtime/
-livraison-pitch/runtime/SadTalker-local/
-livraison-pitch/runtime/dml-split-128/
-livraison-pitch/runtime/*.onnx
-livraison-pitch/runtime/*.pth
-livraison-pitch/runtime/*.safetensors
-livraison-pitch/runtime/*.tar
-livraison-pitch/*.mp4
-livraison-pitch/*.wav
