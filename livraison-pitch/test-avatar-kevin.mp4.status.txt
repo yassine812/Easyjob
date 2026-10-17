@@ -1,1 +1,0 @@
-StatusUpdate(code=<Status.IN_QUEUE: 'IN_QUEUE'>, rank=60, queue_size=61, eta=562025.0864754915, success=None, time=datetime.datetime(2026, 10, 11, 10, 4, 14, 404619), progress_data=None, log=None, type='status')
