@@ -1,36 +1,33 @@
-# ---------- deps ----------
+# ---- deps ----
 FROM node:24-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
-# ---------- build ----------
-FROM node:24-alpine AS build
+# ---- build ----
+FROM node:24-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache openssl
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate \
-  && npm run build \
-  # The seed imports src constants, so compile it into dist/prisma/prisma/seed.js
-  && npx tsc prisma/seed.ts prisma/seed-system.ts --outDir dist/prisma --rootDir . --module commonjs --target ES2021 --moduleResolution node --esModuleInterop --skipLibCheck --resolveJsonModule \
-  && npm prune --omit=dev
+# Build-time public env (values must be provided at build for static prerender).
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ARG NEXT_PUBLIC_FRONTEND_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL \
+    NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL
+RUN npm run build
 
-# ---------- run ----------
-FROM node:24-alpine AS run
+# ---- runner ----
+FROM node:24-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-ENV RUN_WORKERS=false
-ENV NODE_USE_SYSTEM_CA=1
-# Prisma's query engine needs OpenSSL at runtime.
-RUN apk add --no-cache openssl
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/scripts/bootstrap-admin.cjs ./scripts/bootstrap-admin.cjs
-RUN mkdir -p /app/storage && chown -R node:node /app/storage /app/prisma
-USER node
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+USER nextjs
 EXPOSE 3000
-# Runs migrations (needs prisma CLI — kept via prisma in dependencies in production image)
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/main.js"]
+ENV PORT=3000 HOSTNAME=0.0.0.0
+CMD ["node", "server.js"]

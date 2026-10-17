@@ -2,6 +2,8 @@
 node_modules/
 dist/
 coverage/
+public/pdfjs/
+public/vendor/
 
 # Environment & secrets
 .env

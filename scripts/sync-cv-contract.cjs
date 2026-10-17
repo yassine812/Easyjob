@@ -5,7 +5,11 @@ const path = require('node:path');
 const target = path.join(__dirname, '../src/lib/cv-contract');
 fs.mkdirSync(target, { recursive: true });
 for (const name of ['cv-document.ts', 'cv-document-render.ts', 'cv-template-catalog.ts']) {
-  const source = path.join(__dirname, '../../src/career', name);
+  const sourceCandidates = [
+    path.join(__dirname, '../backend/src/career', name),
+    path.join(__dirname, '../../src/career', name),
+  ];
+  const source = sourceCandidates.find(candidate => fs.existsSync(candidate)) ?? sourceCandidates[0];
   const destination = path.join(target, name);
   if (!fs.existsSync(source)) {
     if (!fs.existsSync(destination)) throw new Error(`Missing generated CV contract: ${name}`);
