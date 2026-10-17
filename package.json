@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prebuild": "node scripts/sync-cv-contract.cjs && node scripts/vendor-face-api.cjs && node scripts/vendor-pdfjs.cjs",
-    "predev": "node scripts/sync-cv-contract.cjs && node scripts/vendor-pdfjs.cjs && node backend/scripts/local-services.cjs"
+    "predev": "node scripts/sync-cv-contract.cjs && node scripts/vendor-pdfjs.cjs"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.21",

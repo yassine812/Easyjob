@@ -23,7 +23,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ### EasyJob local ports
 
 - Development frontend: `http://localhost:3000`.
-- Development API (started by `predev`): `http://127.0.0.1:3002`.
+- The Bolt preview runs the frontend independently; configure `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to connect a deployed API.
 - Docker staging API diagnostic port: `http://127.0.0.1:3003` (internal container port remains 3000).
 - Docker staging web diagnostic port: `http://127.0.0.1:3001`.
 
