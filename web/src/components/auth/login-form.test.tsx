@@ -44,6 +44,37 @@ beforeEach(() => {
 });
 
 describe('LoginForm', () => {
+  it.each([
+    [0, 'Network error', 'Sign-in is temporarily unavailable. Please try again shortly.'],
+    [503, 'Unavailable', 'Sign-in is temporarily unavailable. Please try again shortly.'],
+    [429, 'Throttled', 'Too many attempts. Please wait before trying again.'],
+    [401, 'Temporary password expired. Use forgot password.', 'Your temporary password has expired. Use Forgot password to choose a new one.'],
+    [401, 'Account is suspended', 'This account is suspended. Please contact support.'],
+  ])('explains login failure %s without blaming the credentials', async (status, detail, expected) => {
+    const { ApiError } = await import('@/lib/api/client');
+    loginMock.mockRejectedValue(new ApiError(status, detail));
+    renderForm();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Email/i), 'c@test.dev');
+    await user.type(screen.getByLabelText('Password'), 'Password123');
+    await user.click(screen.getByRole('button', { name: /^continue$|^log in$/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(expected);
+    expect(meMock).not.toHaveBeenCalled();
+  });
+
+  it('does not blame an accepted password when loading the profile fails', async () => {
+    const { ApiError } = await import('@/lib/api/client');
+    loginMock.mockResolvedValue({ accessToken: 'tok' });
+    meMock.mockRejectedValue(new ApiError(401, 'Unauthorized'));
+    renderForm();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/Email/i), 'c@test.dev');
+    await user.type(screen.getByLabelText('Password'), 'Password123');
+    await user.click(screen.getByRole('button', { name: /^continue$|^log in$/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign-in is temporarily unavailable. Please try again shortly.');
+    expect(replace).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBeNull();
+  });
   it('does not redirect to a dashboard when recovery is chosen during a pending login', async () => {
     let resolveLogin!: (value: { accessToken: string }) => void;
     loginMock.mockImplementation(() => new Promise(resolve => { resolveLogin = resolve; }));
@@ -209,7 +240,7 @@ describe('LoginForm', () => {
     await user.type(screen.getByLabelText(/Email/i), candidate.email);
     await user.type(screen.getByLabelText('Password'), 'Password123!');
     await user.click(screen.getByRole('button', { name: /^continue$/i }));
-    expect(await screen.findByText(/Unable to sign in/)).toBeInTheDocument();
+    expect(await screen.findByText(/Sign-in is temporarily unavailable/)).toBeInTheDocument();
     expect(useAuthStore.getState().status).toBe('unauthenticated');
     expect(replace).not.toHaveBeenCalled();
   });

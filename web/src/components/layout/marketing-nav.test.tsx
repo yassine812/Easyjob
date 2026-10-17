@@ -8,7 +8,7 @@ import { MarketingNav } from './marketing-nav';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
 vi.mock('@/components/ui/theme-toggle', () => ({ ThemeToggle: () => null }));
-vi.mock('@/components/layout/logo', () => ({ Logo: () => <a href="/">EasyJob</a> }));
+vi.mock('@/components/layout/logo', () => ({ Logo: () => <span>EasyJob</span> }));
 
 beforeEach(() => {
   useAuthStore.getState().clearSession();

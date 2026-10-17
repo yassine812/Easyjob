@@ -7,9 +7,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CONFIG, type AppConfig } from '../config/configuration';
 import { AuditService } from '../audit/audit.service';
 import { sealCredentials } from '../queues/email/credential-envelope';
+import { emailTemplates } from '../queues/email/templates';
+import { generateToken, hashToken } from '../common/utils/tokens';
 import { ProvisionCompanyDto } from './provision-company.dto';
-
-const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 @Injectable()
 export class CompanyProvisioningService {
@@ -20,24 +20,28 @@ export class CompanyProvisioningService {
     const email = dto.ownerEmail.trim().toLowerCase();
     if (!dto.ownerName.trim() || !dto.commercialName.trim() || !dto.legalName.trim()) throw new BadRequestException('Names cannot be blank');
     if (await this.prisma.user.findUnique({ where: { email } })) throw new ConflictException('This email already has an account. Use a separate professional email.');
-    const password = `Ej9!${randomBytes(18).toString('base64url')}`;
-    const passwordHash = await bcrypt.hash(password, this.config.bcryptRounds);
+    const passwordHash = await bcrypt.hash(`invite-${randomBytes(32).toString('hex')}`, this.config.bcryptRounds);
+    const resetToken = generateToken();
     const expiresAt = new Date(Date.now() + 24 * 3600_000);
-    const url = `${this.config.frontendUrl}/login`;
-    const html = `<h1>Votre espace EasyJob est prêt</h1><p>Bonjour ${escapeHtml(dto.ownerName)},</p><p>L’administrateur a créé votre espace ${escapeHtml(dto.commercialName)}.</p><p>Identifiant : ${escapeHtml(email)}<br>Mot de passe temporaire : <strong>${escapeHtml(password)}</strong></p><p><a href="${escapeHtml(url)}">Se connecter à EasyJob</a></p><p>Choisissez votre propre mot de passe à la première connexion. Cet accès temporaire expire dans 24 heures. Ensuite, utilisez « Mot de passe oublié ».</p>`;
+    const url = `${this.config.frontendUrl}/reset-password?token=${resetToken}`;
+    const rendered = emailTemplates.companyOwnerInvitation(url, dto.commercialName, dto.ownerName);
     try {
       const company = await this.prisma.$transaction(async tx => {
         const role = await tx.role.findUniqueOrThrow({ where: { name: 'COMPANY_ADMIN' } });
         const owner = await tx.user.create({ data: { name: dto.ownerName.trim(), email, passwordHash,
-          mustChangePassword: true, temporaryPasswordExpiresAt: expiresAt, emailVerifiedAt: new Date(),
+          mustChangePassword: true, temporaryPasswordExpiresAt: expiresAt, emailVerifiedAt: null,
           roles: { create: { roleId: role.id } } } });
-        const { ownerName: _name, ownerEmail: _email, ...fields } = dto;
+        const { ownerName: _name, ownerEmail: _email, planName: requestedPlan, ...fields } = dto;
+        const plan = await tx.plan.findFirst({ where: { type: 'COMPANY', name: (requestedPlan ?? 'TRIAL').trim().toUpperCase(), active: true } });
+        if (!plan) throw new BadRequestException('Unknown or inactive company plan');
         const created = await tx.company.create({ data: { ...fields, legalName: dto.legalName.trim(), commercialName: dto.commercialName.trim(),
           professionalEmail: email, slug: `${slugify(dto.commercialName, { lower: true, strict: true }) || 'company'}-${randomBytes(4).toString('hex')}`, status: 'ACTIVE',
           members: { create: { userId: owner.id, role: 'COMPANY_ADMIN', isOwner: true, status: 'ACTIVE' } },
           verification: { create: { status: 'VERIFIED', reviewedById: adminId, reviewedAt: new Date(), notes: 'Provisioned by platform administrator' } } } });
+        await tx.subscription.create({ data: { ownerType: 'COMPANY', companyId: created.id, planId: plan.id, provider: 'platform_admin', status: plan.name === 'TRIAL' ? 'TRIALING' : 'ACTIVE', currentPeriodStart: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 24 * 3600_000) } });
+        await tx.passwordResetToken.create({ data: { userId: owner.id, tokenHash: hashToken(resetToken), expiresAt } });
         await tx.companyAccessDelivery.create({ data: { companyId: created.id, userId: owner.id, email,
-          companyName: created.commercialName, expiresAt, encryptedBody: sealCredentials(html, this.config.jwt.refreshSecret) } });
+          companyName: created.commercialName, expiresAt, encryptedBody: sealCredentials(rendered.html, this.config.jwt.refreshSecret) } });
         return created;
       });
       await this.audit.log({ actorId: adminId, action: 'admin.company_provisioned', entityType: 'Company', entityId: company.id });

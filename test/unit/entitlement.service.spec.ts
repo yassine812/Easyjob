@@ -46,6 +46,18 @@ describe('EntitlementService', () => {
     );
   });
 
+  it('rejects direct premium feature requests for Start and Boost while allowing Max', async () => {
+    const { service, prisma } = makeService();
+    for (const [name, feature] of [['FREE', 'advanced_ats'], ['FREE', 'cv_tailoring'], ['FREE', 'interview_preparation'], ['PRO', 'auto_apply'], ['PRO', 'coding_interview'], ['PRO', 'adaptive_interview']] as const) {
+      prisma.subscription.findFirst.mockResolvedValue({ planId: `plan-${name}`, plan: { name, type: 'CANDIDATE', features: {} } });
+      await expect(service.assertCan({ ownerType: 'CANDIDATE', ownerId: 'direct-bypass' }, feature)).rejects.toThrow(ForbiddenException);
+    }
+    prisma.subscription.findFirst.mockResolvedValue({ planId: 'plan-max', plan: { name: 'PREMIUM', type: 'CANDIDATE', features: {} } });
+    for (const feature of ['advanced_ats', 'cv_tailoring', 'detailed_matching', 'interview_preparation', 'coding_interview', 'adaptive_interview', 'advanced_analytics', 'email_alerts', 'auto_apply']) {
+      await expect(service.assertCan({ ownerType: 'CANDIDATE', ownerId: 'max' }, feature)).resolves.toBeUndefined();
+    }
+  });
+
   it('enforces numeric limits using the provided count', async () => {
     const { service, prisma } = makeService();
     prisma.subscription.findFirst.mockResolvedValue(null);
@@ -65,5 +77,16 @@ describe('EntitlementService', () => {
     await expect(
       service.getActivePlan({ ownerType: 'COMPANY', ownerId: 'c1' }),
     ).resolves.toMatchObject({ name: 'FREE' });
+  });
+
+  it('gates recruiter intelligence behind the company entitlement', async () => {
+    const { service, prisma } = makeService();
+    prisma.subscription.findFirst.mockResolvedValue({ planId: 'plan-pro', plan: { name: 'PRO', type: 'COMPANY', features: { recruitment_intelligence: false } } });
+    await expect(service.hasRecruitmentIntelligence('company-basic')).resolves.toBe(false);
+    await expect(service.assertRecruitmentIntelligence('company-basic')).rejects.toThrow(ForbiddenException);
+
+    prisma.subscription.findFirst.mockResolvedValue({ planId: 'plan-enterprise', plan: { name: 'ENTERPRISE', type: 'COMPANY', features: { recruitment_intelligence: true } } });
+    await expect(service.hasRecruitmentIntelligence('company-enterprise')).resolves.toBe(true);
+    await expect(service.assertRecruitmentIntelligence('company-enterprise')).resolves.toBeUndefined();
   });
 });

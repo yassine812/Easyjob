@@ -4,7 +4,7 @@ import { UserStatus } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { ROLES } from '../common/constants/roles';
+import { PLATFORM_ADMIN_ROLES } from '../common/constants/roles';
 import { UsersService } from './users.service';
 import { AdminUpdateUserDto, AssignRolesDto, UpdateProfileDto } from './dto/user.dto';
 import type { AuthRequest } from '../common/types/auth';
@@ -52,23 +52,23 @@ export class UsersController {
 
   // ---------------- admin ----------------
 
-  @Get('admin/users')
-  @Roles(ROLES.PLATFORM_ADMIN)
+  @Get(['admin/users', 'platform-admin/users'])
+  @Roles(...PLATFORM_ADMIN_ROLES)
   @Permissions('admin.users')
   async adminList(@Query() query: ListUsersQuery) {
     return this.usersService.adminList(query);
   }
 
-  @Get('admin/users/:id')
-  @Roles(ROLES.PLATFORM_ADMIN)
+  @Get(['admin/users/:id', 'platform-admin/users/:id'])
+  @Roles(...PLATFORM_ADMIN_ROLES)
   @Permissions('admin.users')
   async adminGet(@Param('id') id: string) {
     return this.usersService.adminGet(id);
   }
 
-  @Patch('admin/users/:id')
-  @Roles(ROLES.PLATFORM_ADMIN)
-  @Permissions('admin.users')
+  @Patch(['admin/users/:id', 'platform-admin/users/:id'])
+  @Roles(...PLATFORM_ADMIN_ROLES)
+  @Permissions('admin.user_manage')
   async adminUpdate(
     @CurrentUser('userId') adminId: string,
     @Param('id') id: string,
@@ -78,9 +78,9 @@ export class UsersController {
     return this.usersService.adminUpdate(adminId, id, dto, requestMeta(req));
   }
 
-  @Patch('admin/users/:id/roles')
-  @Roles(ROLES.PLATFORM_ADMIN)
-  @Permissions('admin.users')
+  @Patch(['admin/users/:id/roles', 'platform-admin/users/:id/roles'])
+  @Roles(...PLATFORM_ADMIN_ROLES)
+  @Permissions('admin.user_manage')
   async adminAssignRoles(
     @CurrentUser('userId') adminId: string,
     @Param('id') id: string,

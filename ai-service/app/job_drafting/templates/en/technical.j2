@@ -1,0 +1,6 @@
+{% import family_template as family with context %}{% import 'en/_seniority.j2' as level with context %}
+As {{ indefinite_title }}{% if company %} at {{ company }}{% endif %}, you will work on {{ family.scope() }}, including {{ task_focus }}.
+
+Your work will draw on {{ skill_list }}. Deliverables should be verifiable, documented and designed for ongoing maintenance and review.
+
+{{ level.expectations() }}

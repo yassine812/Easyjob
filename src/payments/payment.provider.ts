@@ -10,6 +10,10 @@ export interface CheckoutRequest {
     type: 'CANDIDATE' | 'COMPANY';
     priceCents: number;
     currency: string;
+    /** Reference price, always stored in hundredths of TND. */
+    basePriceTndCents?: number;
+    /** Provider amount in its own minor unit. */
+    providerAmountMinor?: number;
     billingInterval: 'MONTHLY' | 'YEARLY';
   };
   ownerType: 'CANDIDATE' | 'COMPANY';
@@ -31,6 +35,9 @@ export interface PaymentRouting {
   currency: 'TND' | 'EUR' | 'USD';
   amountCents: number;
   billingCountry: string;
+  baseAmountTndCents?: number;
+  providerAmountMinor?: number;
+  exchangeRate?: number;
 }
 
 export interface WebhookEvent {
@@ -41,7 +48,10 @@ export interface WebhookEvent {
   providerPaymentId?: string;
   customerEmail?: string;
   amountCents?: number;
+  paymentAmountMinor?: number;
   currency?: string;
+  providerExchangeRate?: number;
+  providerConvertedAmount?: number;
   invoiceUrl?: string;
   periodStart?: string;
   periodEnd?: string;

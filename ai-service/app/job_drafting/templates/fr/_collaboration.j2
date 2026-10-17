@@ -1,0 +1,4 @@
+{% macro collaboration() -%}
+{% if collaboration_choice == 0 %}Vous travaillerez avec {{ family.collaboration() }} pour clarifier les besoins, préparer les intégrations et suivre les résultats des réalisations.
+{% else %}En lien avec {{ family.collaboration() }}, vous partagerez les contraintes, documenterez les décisions et suivrez la qualité des livrables.{% endif %}
+{%- endmacro %}

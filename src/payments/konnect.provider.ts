@@ -2,28 +2,35 @@ import { Inject, Injectable, Logger, BadRequestException, ServiceUnavailableExce
 import { CONFIG, type AppConfig } from '../config/configuration';
 import { generateToken, safeEqual } from '../common/utils/tokens';
 import { PaymentProvider, type CheckoutRequest, type CheckoutResult, type WebhookEvent } from './payment.provider';
+import { candidatePlanDisplayName } from '../subscriptions/plan-catalog';
+import { toProviderMinorUnits, type PaymentCurrency } from './currency-conversion.service';
 
 @Injectable()
 export class KonnectPaymentProvider extends PaymentProvider {
   private readonly logger = new Logger(KonnectPaymentProvider.name);
   constructor(@Inject(CONFIG) private readonly config: AppConfig) { super(); }
   private get baseUrl(): string {
+    if (this.config.payment.konnect?.apiBaseUrl) return this.config.payment.konnect.apiBaseUrl.replace(/\/$/, '');
     return this.config.payment.konnect?.mode === 'live'
-      ? 'https://api.konnect.network/api/v2' : 'https://api.preprod.konnect.network/api/v2';
+      ? 'https://api.konnect.network/api/v2' : 'https://api.sandbox.konnect.network/api/v2';
   }
   async createCheckout(req: CheckoutRequest): Promise<CheckoutResult> {
-    const { apiKey, receiverWalletId } = this.config.payment.konnect ?? {};
+    const { apiKey, receiverWalletId, enabled } = this.config.payment.konnect ?? {};
+    if (enabled === false) throw new ServiceUnavailableException('Online subscription payment is temporarily unavailable');
     if (!apiKey || !receiverWalletId) throw new ServiceUnavailableException('Konnect is not configured');
     if (!this.config.payment.konnect?.webhookUrl) throw new ServiceUnavailableException('KONNECT_WEBHOOK_URL is required');
-    // The public *Cents contract uses hundredths of a dinar; Konnect uses millimes.
-    if (req.plan.currency !== 'TND' || !Number.isSafeInteger(req.plan.priceCents) || req.plan.priceCents <= 0 ||
-      !Number.isSafeInteger(req.plan.priceCents * 10)) throw new BadRequestException('Invalid Tunisian payment amount');
+    const currency = req.plan.currency.toUpperCase() as PaymentCurrency;
+    if (!['TND', 'EUR', 'USD'].includes(currency) || !Number.isSafeInteger(req.plan.priceCents) || req.plan.priceCents <= 0) {
+      throw new BadRequestException('Invalid payment amount or currency');
+    }
+    const providerAmountMinor = req.plan.providerAmountMinor ?? toProviderMinorUnits(req.plan.priceCents, currency);
+    if (!Number.isSafeInteger(providerAmountMinor) || providerAmountMinor <= 0) throw new BadRequestException('Invalid provider payment amount');
     const response = await fetch(`${this.baseUrl}/payments/init-payment`, {
       method: 'POST', signal: AbortSignal.timeout(15000),
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({
-        receiverWalletId, token: 'TND', amount: req.plan.priceCents * 10,
-        type: 'immediate', description: `EasyJob ${req.plan.name}`,
+        receiverWalletId, token: currency, amount: providerAmountMinor,
+        type: 'immediate', description: candidatePlanDisplayName(req.plan.name),
         acceptedPaymentMethods: ['bank_card', 'e-DINAR'], lifespan: 60,
         email: req.email, orderId: req.orderId || generateToken(12),
         webhook: this.config.payment.konnect.webhookUrl,
@@ -50,18 +57,23 @@ export class KonnectPaymentProvider extends PaymentProvider {
     });
     if (!response.ok) throw new ServiceUnavailableException('Could not verify Konnect payment');
     const { payment } = await response.json() as { payment?: {
-      status: string; amount: number; reachedAmount?: number; token: string; orderId?: string;
+      status: string; amount: number; reachedAmount?: number; token: string; orderId?: string; convertedAmount?: number; exchangeRate?: number;
     } };
     if (!payment) throw new ServiceUnavailableException('Missing verified payment details');
     if (payment.status !== 'completed') return [];
-    if (payment.token !== 'TND' || !Number.isFinite(payment.amount) || payment.amount <= 0 ||
-      payment.amount % 10 !== 0 || (payment.reachedAmount !== undefined && payment.reachedAmount < payment.amount)) {
+    const currency = payment.token.toUpperCase() as PaymentCurrency;
+    if (!['TND', 'EUR', 'USD'].includes(currency) || !Number.isFinite(payment.amount) || payment.amount <= 0 ||
+      (currency === 'TND' && payment.amount % 10 !== 0) || (payment.reachedAmount !== undefined && payment.reachedAmount < payment.amount)) {
       throw new BadRequestException('Payment amount is incomplete or invalid');
     }
     return [{
       id: `konnect_${ref}_completed`, type: 'checkout.session.completed',
       providerPaymentId: ref, providerSubscriptionId: payment.orderId || ref,
-      amountCents: payment.amount / 10, currency: 'TND',
+      amountCents: currency === 'TND' ? payment.amount / 10 : payment.amount,
+      paymentAmountMinor: payment.amount,
+      currency,
+      providerExchangeRate: typeof payment.exchangeRate === 'number' ? payment.exchangeRate : undefined,
+      providerConvertedAmount: typeof payment.convertedAmount === 'number' ? payment.convertedAmount : undefined,
     }];
   }
   async cancelSubscription(providerSubscriptionId: string): Promise<void> {

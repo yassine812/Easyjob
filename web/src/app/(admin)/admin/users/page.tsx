@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 import { usersApi } from '@/lib/api/users';
 import { ApiError } from '@/lib/api/client';
 import { PageHeader, ErrorState, PaginationControls, SkeletonRows } from '@/components/shared';
@@ -27,10 +28,16 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MEMBER_ROLE_LABELS } from '@/lib/constants';
+import { ADMIN_ROLE_LABELS, adminStatusLabel } from '@/lib/admin-labels';
 import { formatDate, initials } from '@/lib/format';
 
 const ALL_ROLES = [
   'PLATFORM_ADMIN',
+  'SUPER_ADMIN',
+  'OPERATIONS_ADMIN',
+  'BILLING_ADMIN',
+  'SUPPORT_ADMIN',
+  'READ_ONLY_ADMIN',
   'COMPANY_ADMIN',
   'HR',
   'RECRUITER',
@@ -65,7 +72,7 @@ export default function AdminUsersPage() {
       toast.success('User status updated');
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not update user'),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Impossible de modifier l’utilisateur'),
   });
 
   const assignRoles = useMutation({
@@ -75,17 +82,17 @@ export default function AdminUsersPage() {
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not update roles'),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Impossible de modifier les rôles'),
   });
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Users" description="Manage platform users and roles.">
+      <PageHeader title="Utilisateurs" description="Gérer les utilisateurs et les rôles de la plateforme.">
         <div className="flex gap-2">
           <div className="relative">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search name or email"
+              placeholder="Rechercher un nom ou un e-mail"
               className="w-56 pl-9"
               value={search}
               onChange={(e) => {
@@ -105,9 +112,9 @@ export default function AdminUsersPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="SUSPENDED">Suspended</SelectItem>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="ACTIVE">Actif</SelectItem>
+              <SelectItem value="SUSPENDED">Suspendu</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -117,18 +124,19 @@ export default function AdminUsersPage() {
         {users.isPending ? (
           <SkeletonRows rows={8} cols={5} />
         ) : users.isError ? (
-          <ErrorState message="Could not load users." retry={() => users.refetch()} />
+          <ErrorState message="Impossible de charger les utilisateurs." retry={() => users.refetch()} />
         ) : users.data && users.data.items.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">User</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Roles</th>
-                    <th className="px-4 py-3">Joined</th>
+                    <th className="px-4 py-3">Utilisateur</th>
+                    <th className="px-4 py-3">E-mail</th>
+                    <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3">Rôles</th>
+                    <th className="px-4 py-3">Plan / expiration</th>
+                    <th className="px-4 py-3">Inscription</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -142,24 +150,25 @@ export default function AdminUsersPage() {
                               {initials(u.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{u.name}</span>
+                          <Link href={`/platform-admin/users/${u.id}`} className="font-medium hover:text-primary">{u.name}</Link>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                       <td className="px-4 py-3">
                         <Badge variant={u.status === 'ACTIVE' ? 'success' : 'destructive'}>
-                          {u.status}
+                          {adminStatusLabel(u.status)}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {(u.roles ?? []).map((r) => (
                             <Badge key={r} variant="outline" className="text-[10px]">
-                              {r}
+                              {ADMIN_ROLE_LABELS[r] ?? adminStatusLabel(r)}
                             </Badge>
                           ))}
                         </div>
                       </td>
+                      <td className="px-4 py-3"><p>{u.subscription?.plan.name ?? '—'}</p>{u.subscription?.remainingDays != null && <Badge variant={u.subscription.remainingDays <= 7 ? 'warning' : 'success'}>{u.subscription.remainingDays === 0 ? 'Expiré' : `${u.subscription.remainingDays} j restants`}</Badge>}</td>
                       <td className="px-4 py-3 text-muted-foreground">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
@@ -171,7 +180,7 @@ export default function AdminUsersPage() {
                               setSelectedRoles(u.roles ?? []);
                             }}
                           >
-                            Roles
+                            Rôles
                           </Button>
                           <Button
                             variant="outline"
@@ -188,7 +197,7 @@ export default function AdminUsersPage() {
                               })
                             }
                           >
-                            {u.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                            {u.status === 'ACTIVE' ? 'Suspendre' : 'Activer'}
                           </Button>
                         </div>
                       </td>
@@ -205,15 +214,15 @@ export default function AdminUsersPage() {
             />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No users found.</p>
+          <p className="text-sm text-muted-foreground">Aucun utilisateur trouvé.</p>
         )}
       </div>
 
       <Dialog open={!!editingId} onOpenChange={(o) => !o && setEditingId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign roles</DialogTitle>
-            <DialogDescription>Replace the full set of platform roles for this user.</DialogDescription>
+            <DialogTitle>Attribuer les rôles</DialogTitle>
+            <DialogDescription>Remplacer l’ensemble des rôles plateforme de cet utilisateur.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-2">
             {ALL_ROLES.map((r) => {
@@ -229,17 +238,17 @@ export default function AdminUsersPage() {
                     )
                   }
                 >
-                  {MEMBER_ROLE_LABELS[r] ?? r}
+                  {ADMIN_ROLE_LABELS[r] ?? MEMBER_ROLE_LABELS[r] ?? r}
                 </Button>
               );
             })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingId(null)}>
-              Cancel
+              Annuler
             </Button>
             <Button onClick={() => assignRoles.mutate()} disabled={assignRoles.isPending}>
-              {assignRoles.isPending ? 'Saving…' : 'Save roles'}
+              {assignRoles.isPending ? 'Enregistrement…' : 'Enregistrer les rôles'}
             </Button>
           </DialogFooter>
         </DialogContent>

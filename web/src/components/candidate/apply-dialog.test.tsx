@@ -1,0 +1,71 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ApplyDialog } from './apply-dialog';
+import { careerCopy } from '@/lib/i18n/career';
+import type { CareerJob } from '@/lib/api/career';
+
+const state = vi.hoisted(() => ({ ready: true, uploaded: false, apply: vi.fn().mockResolvedValue({ id: 'application' }), push: vi.fn(), generate: vi.fn().mockResolvedValue({ coverLetter: 'A letter from the chosen CV.' }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: state.push }) }));
+vi.mock('@/lib/i18n', () => ({ useI18n: () => ({ locale: 'en' }) }));
+vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { name: 'Test Candidate', email: 'candidate@example.test' } }) }));
+vi.mock('@/hooks/use-entitlement', () => ({ useEntitlement: () => ({ feature: () => true }) }));
+vi.mock('@/lib/api/career', () => ({ careerApi: { profile: async () => ({ sections: {} }), generateJobCoverLetter: state.generate, qualityCheck: async () => ({ ready: state.ready, readiness: state.ready ? 100 : 50, checks: state.ready ? [] : [{ key: 'cv', status: 'BLOCK', message: 'Le document doit être un PDF valide.', evidence: [] }], fieldErrors: {} }) } }));
+vi.mock('./cv-pdf-viewer', () => ({ CvPdfViewer: () => <div data-testid="cv-preview" /> }));
+vi.mock('@/lib/api/resumes', () => ({ resumesApi: { upload: async () => { state.uploaded = true; return { id: 'attached-pdf' }; }, list: async () => [...(state.uploaded ? [{ id: 'attached-pdf', filename: 'Attached CV.pdf', mimeType: 'application/pdf', processingStatus: 'COMPLETED' }] : []), { id: 'original-pdf', filename: 'Original CV.pdf', mimeType: 'application/pdf', isPrimary: true, processingStatus: 'COMPLETED' }] } }));
+vi.mock('@/lib/api/applications', () => ({ applicationsApi: { apply: state.apply } }));
+afterEach(() => { cleanup(); vi.clearAllMocks(); state.ready = true; state.uploaded = false; });
+
+describe('native candidate application review', () => {
+  it('uploads and selects a new CV file in the application flow', async () => {
+    const job = { id: 'native-job', title: 'Engineer', applicationFields: [] } as unknown as CareerJob;
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ApplyDialog jobId={job.id} jobTitle={job.title} job={job} autoOpen /></QueryClientProvider>);
+    await waitFor(() => expect(screen.getByRole('button', { name: careerCopy.continue[0] })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    fireEvent.change(screen.getByLabelText('Attach a CV file'), { target: { files: [new File(['%PDF CV'], 'Attached CV.pdf', { type: 'application/pdf' })] } });
+    await screen.findByText('Attached CV.pdf');
+    expect(screen.getByRole('radio', { name: /Attached CV/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(screen.getByRole('button', { name: careerCopy.submitApplication[0] })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.submitApplication[0] }));
+    await waitFor(() => expect(state.apply).toHaveBeenCalledWith('native-job', expect.objectContaining({ resumeId: 'attached-pdf' })));
+  });
+  it('keeps submission blocked when server preflight fails, even with candidate consent', async () => {
+    state.ready = false;
+    const job = { id: 'native-job', title: 'Engineer', applicationFields: [] } as unknown as CareerJob;
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ApplyDialog jobId={job.id} jobTitle={job.title} job={job} autoOpen /></QueryClientProvider>);
+    await waitFor(() => expect(screen.getByRole('button', { name: careerCopy.continue[0] })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    await screen.findByText('Original CV.pdf', { exact: false });
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    await screen.findByText('Le document doit être un PDF valide.');
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByRole('button', { name: careerCopy.submitApplication[0] })).toBeDisabled();
+    expect(state.apply).not.toHaveBeenCalled();
+  });
+  it('requires answers and consent and submits the exact chosen CV identifier', async () => {
+    const job = { id: 'native-job', title: 'Engineer', applicationFields: [{ id: 'eligibility', label: 'Eligible to work?', type: 'boolean', required: true }] } as CareerJob;
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ApplyDialog jobId={job.id} jobTitle={job.title} job={job} autoOpen /></QueryClientProvider>);
+    await waitFor(() => expect(screen.getByRole('button', { name: careerCopy.continue[0] })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    expect(await screen.findByText('Original CV.pdf', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByTestId('cv-preview')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'false' } });
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.generateWithAi[0] }));
+    await waitFor(() => expect(state.generate).toHaveBeenCalledWith('native-job', 'original-pdf', 'en', 'standard'));
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('A letter from the chosen CV.'));
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.continue[0] }));
+    expect(screen.getByRole('button', { name: careerCopy.submitApplication[0] })).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(screen.getByRole('button', { name: careerCopy.submitApplication[0] })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: careerCopy.submitApplication[0] }));
+    await waitFor(() => expect(state.apply).toHaveBeenCalledWith('native-job', expect.objectContaining({ resumeId: 'original-pdf', consent: true, answers: { eligibility: false } })));
+  });
+});

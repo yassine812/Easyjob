@@ -71,6 +71,8 @@ export class UsersService {
           lastLoginAt: true,
           createdAt: true,
           roles: { include: { role: true } },
+          candidateProfile: { select: { subscriptions: { where: { status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] } }, orderBy: { createdAt: 'desc' }, take: 1, select: { status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { name: true, type: true } } } } } },
+          companyMemberships: { where: { status: 'ACTIVE' }, take: 1, select: { company: { select: { commercialName: true, subscriptions: { where: { status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] } }, orderBy: { createdAt: 'desc' }, take: 1, select: { status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { name: true, type: true } } } } } } } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -78,7 +80,11 @@ export class UsersService {
       }),
       this.prisma.user.count({ where }),
     ]);
-    return paginate(items, total, page, limit);
+    const now = Date.now();
+    return paginate(items.map((user) => {
+      const subscription = user.candidateProfile?.subscriptions[0] ?? user.companyMemberships[0]?.company.subscriptions[0] ?? null;
+      return { ...user, subscription: subscription ? { ...subscription, remainingDays: subscription.currentPeriodEnd ? Math.max(0, Math.ceil((subscription.currentPeriodEnd.getTime() - now) / 86400000)) : null, organization: user.companyMemberships[0]?.company.commercialName ?? null } : null };
+    }), total, page, limit);
   }
 
   async adminGet(userId: string) {
@@ -94,13 +100,17 @@ export class UsersService {
         lastLoginAt: true,
         createdAt: true,
         roles: { include: { role: true } },
+        candidateProfile: { select: { subscriptions: { orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, status: true, currentPeriodStart: true, currentPeriodEnd: true, canceledAt: true, provider: true, plan: { select: { id: true, name: true, type: true, priceCents: true, currency: true, billingInterval: true } }, payments: { orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, providerPaymentId: true, amountCents: true, currency: true, status: true, createdAt: true, paidAt: true, invoiceUrl: true } } } } } },
         companyMemberships: {
-          include: { company: { select: { id: true, commercialName: true, status: true } } },
+          include: { company: { select: { id: true, commercialName: true, status: true, subscriptions: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, status: true, currentPeriodStart: true, currentPeriodEnd: true, canceledAt: true, provider: true, plan: { select: { id: true, name: true, type: true, priceCents: true, currency: true, billingInterval: true } }, payments: { orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, providerPaymentId: true, amountCents: true, currency: true, status: true, createdAt: true, paidAt: true, invoiceUrl: true } } } } } } },
         },
       },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    const candidateSubscription = user.candidateProfile?.subscriptions[0] ?? null;
+    const companySubscription = user.companyMemberships[0]?.company.subscriptions[0] ?? null;
+    const subscription = candidateSubscription ?? companySubscription;
+    return { ...user, candidateProfile: undefined, subscription: subscription ? { ...subscription, remainingDays: subscription.currentPeriodEnd ? Math.max(0, Math.ceil((subscription.currentPeriodEnd.getTime() - Date.now()) / 86400000)) : null, organization: user.companyMemberships[0]?.company.commercialName ?? null, source: candidateSubscription ? 'CANDIDATE' : 'COMPANY' } : null };
   }
 
   async adminUpdate(adminId: string, userId: string, dto: { status?: UserStatus; email?: string }, meta: RequestMeta) {

@@ -49,11 +49,26 @@ describe('Evidence-based career estimates', () => {
   });
   it('can identify potential without pretending missing skills are present', () => {
     const result = matchCandidate({ skills: [{ name: 'React' }] }, job);
-    expect(result.score).toBe(60);
+    expect(result.score).toBe(50); // One of two equally required skills is documented.
     expect(result.classification).toBe('POTENTIAL');
     expect(result.matchedSkills).toEqual(['React']);
     expect(result.missingSkills).toEqual(['Django']);
     expect(result.dimensions.find(d => d.key === 'experience')?.score).toBeNull();
+  });
+  it('keeps title overlap separate from unknown requirement coverage', () => {
+    const result = matchCandidate({ headline: 'Développeur web junior', location: 'Tunis', skills: [] }, {
+      ...job,
+      title: 'Développeur Web',
+      skills: [],
+      requirements: [],
+      location: 'Tunis',
+      remote: false,
+      workMode: 'ONSITE',
+      experienceLevel: 'JUNIOR',
+    });
+    expect(result.score).toBeNull(); // A matching title is not evidence of unpublished requirements.
+    expect(result.matchedTitleTerms).toEqual(['développeur', 'web']);
+    expect(result.dimensions.find(d => d.key === 'titleMatch')?.score).toBe(100);
   });
   it('penalizes an explicit qualification without evidence', () => {
     const p = { skills: [{ name: 'React' }, { name: 'Django' }] };

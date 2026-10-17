@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  BarChart3,
   Briefcase,
+  Crown,
   CalendarClock,
   ClipboardList,
   CreditCard,
@@ -19,11 +19,13 @@ import { AppShell, type NavItem } from '@/components/layout/app-shell';
 import { useI18n } from '@/lib/i18n';
 import { Building2 } from 'lucide-react';
 import { CompanySearch } from '@/components/company/company-search';
+import { useEntitlement } from '@/hooks/use-entitlement';
 import { useCompanyText } from '@/lib/i18n/company';
 
 export default function CompanyLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ companyId: string }>();
   const companyId = params.companyId;
+  const entitlement = useEntitlement('COMPANY', companyId);
   const user = useAuthStore((s) => s.user);
   const { can } = useRole();
   const { t } = useI18n();
@@ -37,11 +39,8 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
     { href: `/company/${companyId}/dashboard`, label: t.nav.dashboard, icon: LayoutDashboard, show: can(companyId, 'application.view') },
     { group: 'recruitment', href: `/company/${companyId}/jobs`, label: t.nav.jobs, icon: Briefcase, show: can(companyId, 'application.view') },
     { group: 'recruitment', href: `/company/${companyId}/applications`, label: t.nav.applications, activePaths: [`/company/${companyId}/pipeline`], icon: ClipboardList, show: can(companyId, 'application.view') },
-    { group: 'recruitment', href: `/company/${companyId}/candidates`, label: copy('candidates'), icon: Users, show: can(companyId, 'candidate.view') },
     { group: 'recruitment', href: `/company/${companyId}/interviews`, label: t.nav.interviews, icon: CalendarClock, show: can(companyId, 'application.view') },
-    { group: 'recruitment', href: `/company/${companyId}/analytics`, label: t.nav.analytics, icon: BarChart3, show: can(companyId, 'analytics.view') },
     { group: 'organization', href: `/company/${companyId}/team`, label: t.nav.team, icon: Users, show: can(companyId, 'team.view') },
-    { group: 'organization', href: `/company/${companyId}/assessments`, label: t.nav.assessments, icon: ClipboardList, show: can(companyId, 'assessment.manage') },
     { placement: 'bottom', href: `/company/${companyId}/billing`, label: t.nav.billing, icon: CreditCard, show: can(companyId, 'billing.manage') },
     { placement: 'bottom', href: `/company/${companyId}/settings`, label: t.nav.settings, icon: Settings, show: can(companyId, 'team.manage') },
   ];
@@ -58,6 +57,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
         <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
           {copy('workspace')}
         </p>
+        {!entitlement.loading && <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold text-primary">{entitlement.isPaid && <Crown className="size-3 shrink-0" />}<span className="truncate">{entitlement.displayName}</span></span>}
       </div>
     </div>
   );

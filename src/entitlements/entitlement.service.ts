@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PlanType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { candidatePlanDisplayName, mergePlanFeatures } from '../subscriptions/plan-catalog';
 
 export type Entitlements = Record<string, string | number | boolean>;
 
@@ -39,7 +40,7 @@ export class EntitlementService {
       return {
         planId: subscription.planId,
         name: subscription.plan.name,
-        features: (subscription.plan.features as Entitlements) ?? {},
+        features: mergePlanFeatures(subscription.plan.type, subscription.plan.name, subscription.plan.features) as Entitlements,
       };
     }
 
@@ -53,7 +54,7 @@ export class EntitlementService {
     return {
       planId: freePlan.id,
       name: freePlan.name,
-      features: (freePlan.features as Entitlements) ?? {},
+      features: mergePlanFeatures(freePlan.type, freePlan.name, freePlan.features) as Entitlements,
     };
   }
 
@@ -62,10 +63,25 @@ export class EntitlementService {
     return features[feature] === true;
   }
 
+  /**
+   * Premium recruiter intelligence is one product capability.  The catalogue
+   * supplies the feature policy, including for stale persisted plan rows.
+   */
+  async hasRecruitmentIntelligence(companyId: string): Promise<boolean> {
+    const plan = await this.getActivePlan({ ownerType: 'COMPANY', ownerId: companyId });
+    return plan.features.recruitment_intelligence === true;
+  }
+
+  async assertRecruitmentIntelligence(companyId: string): Promise<void> {
+    if (!(await this.hasRecruitmentIntelligence(companyId))) {
+      throw new ForbiddenException({ code: 'PREMIUM_FEATURE_REQUIRED', feature: 'recruitment_intelligence' });
+    }
+  }
+
   async assertCan(owner: OwnerRef, feature: string): Promise<void> {
     const allowed = await this.can(owner, feature);
     if (!allowed) {
-      throw new ForbiddenException(`Your current plan does not include "${feature}"`);
+      throw new ForbiddenException({ code: 'PREMIUM_FEATURE_REQUIRED', feature });
     }
   }
 
@@ -113,13 +129,14 @@ export class EntitlementService {
   }
 
   async assertCandidateLimit(candidateId: string, key: string, countFn?: () => Promise<number>): Promise<void> {
-    const limit = await this.limit({ ownerType: 'CANDIDATE', ownerId: candidateId }, key);
+    const active = await this.getActivePlan({ ownerType: 'CANDIDATE', ownerId: candidateId });
+    const limit = typeof active.features[key] === 'number' ? Number(active.features[key]) : 0;
     const usage = countFn
       ? await countFn()
       : await this.prisma.resume.count({ where: { candidateId } });
     if (usage >= limit) {
       throw new ForbiddenException(
-        `Candidate plan limit reached for "${key}" (${usage}/${limit}). Upgrade to Candidate Pro.`,
+        `Candidate plan limit reached for "${key}" (${usage}/${limit}). Upgrade to ${candidatePlanDisplayName(active.name)} or a higher plan.`,
       );
     }
   }

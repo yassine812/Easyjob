@@ -1,5 +1,9 @@
 'use client';
 
+import { useWorkspace } from '@/hooks/use-workspace';
+import { usePublicJobsText } from '@/lib/i18n/public-jobs';
+import { useI18n } from '@/lib/i18n';
+import { CareerJobDetail } from '@/components/candidate/career-job-detail';
 import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,15 +20,21 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ErrorState, PageLoader } from '@/components/shared';
 import { EMPLOYMENT_TYPE_LABELS, EXPERIENCE_LEVEL_LABELS } from '@/lib/constants';
-import { formatDate, formatSalary } from '@/lib/format';
+import { formatDate, formatJobSalary } from '@/lib/format';
 import { ApiError } from '@/lib/api/client';
+import { publicJobViewMode } from '@/lib/job-display';
 
 export default function JobDetailPage() {
+  const workspace = useWorkspace();
+  return workspace.currentWorkspace === 'career' ? <CareerJobDetail /> : <PublicNativeJobDetail />;
+}
+function PublicNativeJobDetail() {
+  const workspace = useWorkspace(), t = usePublicJobsText(), { locale } = useI18n();
   const params = useParams<{ id: string }>();
   const jobId = params.id;
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const isCandidate = !!user && user.roles.includes('CANDIDATE');
+  const isCandidate = workspace.currentWorkspace === 'career';
 
   const job = useQuery({
     queryKey: ['job', jobId],
@@ -60,16 +70,18 @@ export default function JobDetailPage() {
   });
 
   const data = job.data;
+  const isCompanyOwner = !!user && !!data && user.memberships.some((membership) => membership.companyId === data.companyId);
+  const viewMode = publicJobViewMode(workspace.currentWorkspace === 'recruiter', isCandidate);
 
   const content = useMemo(() => {
     if (!data) return null;
     return (
       <div>
-        <h2 className="text-lg font-semibold">About the role</h2>
+        <h2 className="text-lg font-semibold">{t('aboutRole')}</h2>
         <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{data.description}</p>
         {data.responsibilities.length > 0 ? (
           <>
-            <h2 className="mt-6 text-lg font-semibold">Responsibilities</h2>
+            <h2 className="mt-6 text-lg font-semibold">{t('responsibilities')}</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
               {data.responsibilities.map((r, i) => (
                 <li key={i}>{r}</li>
@@ -79,7 +91,7 @@ export default function JobDetailPage() {
         ) : null}
         {data.requirements.length > 0 ? (
           <>
-            <h2 className="mt-6 text-lg font-semibold">Requirements</h2>
+            <h2 className="mt-6 text-lg font-semibold">{t('requirements')}</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
               {data.requirements.map((r, i) => (
                 <li key={i}>{r}</li>
@@ -89,20 +101,20 @@ export default function JobDetailPage() {
         ) : null}
       </div>
     );
-  }, [data]);
+  }, [data, locale]);
 
   if (job.isPending) return <PageLoader />;
   if (job.isError || !data) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16">
         <ErrorState
-          title="Job not found"
-          message="This job may have expired or does not exist. Browse all open jobs instead."
+          title={t('notFound')}
+          message={t('notFoundHelp')}
           retry={() => job.refetch()}
         />
         <div className="mt-4 text-center">
           <Button asChild variant="outline">
-            <Link href="/jobs">Browse jobs</Link>
+            <Link href={workspace.jobs}>{t('backJobs')}</Link>
           </Button>
         </div>
       </div>
@@ -112,21 +124,22 @@ export default function JobDetailPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <Button asChild variant="ghost" size="sm" className="mb-6 -ml-2 text-muted-foreground">
-        <Link href="/jobs">← Back to jobs</Link>
+        <Link href={workspace.jobs}>← {t('backJobs')}</Link>
       </Button>
 
+      {viewMode === 'recruiter-preview' && <p className="mb-4 text-sm font-semibold text-primary">{t('preview')}</p>}
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{EMPLOYMENT_TYPE_LABELS[data.employmentType]}</Badge>
-            <Badge variant="outline">{EXPERIENCE_LEVEL_LABELS[data.experienceLevel]}</Badge>
-            {data.remote ? <Badge variant="outline">Remote friendly</Badge> : null}
+            <Badge variant="secondary">{t(data.employmentType)}</Badge>
+            <Badge variant="outline">{t(data.experienceLevel)}</Badge>
+            {data.remote ? <Badge variant="outline">{t('remote')}</Badge> : null}
           </div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">{data.title}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Building2 className="size-4" />
-              {data.company?.commercialName ?? 'Company'}
+              {data.company?.commercialName ?? t('company')}
             </span>
             {data.location ? (
               <span className="flex items-center gap-1.5">
@@ -135,12 +148,12 @@ export default function JobDetailPage() {
             ) : null}
             {data.remote ? (
               <span className="flex items-center gap-1.5">
-                <Wifi className="size-4" /> Remote
+                <Wifi className="size-4" /> {t('remote')}
               </span>
             ) : null}
             {data.expiresAt ? (
               <span className="flex items-center gap-1.5">
-                <Clock className="size-4" /> Expires {formatDate(data.expiresAt)}
+                <Clock className="size-4" /> {t('expires')} {new Date(data.expiresAt).toLocaleDateString(locale)}
               </span>
             ) : null}
           </div>
@@ -150,7 +163,7 @@ export default function JobDetailPage() {
               {data.skills.map((s) => (
                 <Badge key={s.skill.id} variant="secondary">
                   {s.skill.name}
-                  {s.required ? ' · required' : ''}
+                  {s.required ? ` · ${t('required')}` : ''}
                 </Badge>
               ))}
             </div>
@@ -162,41 +175,45 @@ export default function JobDetailPage() {
 
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-xl border bg-card p-5 shadow-sm">
-            <p className="text-sm text-muted-foreground">Salary</p>
+            <p className="text-sm text-muted-foreground">{t('salary')}</p>
             <p className="mt-1 flex items-center gap-2 font-semibold">
               <Wallet className="size-4 text-muted-foreground" />
-              {formatSalary(data.salaryMin, data.salaryMax, data.currency ?? 'USD')}
+              {formatJobSalary(data.salaryMin, data.salaryMax, data.currency ?? 'TND', locale)}
             </p>
-            <Separator className="my-4" />
-            <div className="mt-5 flex flex-col gap-2">
-              {isCandidate ? (
-                <ApplyDialog
-                  jobId={data.id}
-                  jobTitle={data.title}
-                  alreadyApplied={alreadyApplied}
-                />
-              ) : (
-                <Button asChild size="lg">
-                  <Link href="/login">Log in to apply</Link>
-                </Button>
-              )}
-              {isCandidate ? (
-                <Button
-                  variant="outline"
-                  onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending}
-                >
-                  <Bookmark className={`mr-2 size-4 ${isSaved ? 'fill-current' : ''}`} />
-                  {isSaved ? 'Saved' : 'Save job'}
-                </Button>
-              ) : null}
-            </div>
+            {viewMode !== 'recruiter-preview' ? (
+              <>
+                <Separator className="my-4" />
+                <div className="mt-5 flex flex-col gap-2">
+                  {viewMode === 'candidate' ? (
+                    <ApplyDialog
+                      jobId={data.id}
+                      jobTitle={data.title}
+                      alreadyApplied={alreadyApplied}
+                    />
+                  ) : (
+                    <Button asChild size="lg">
+                      <Link href="/login">{t('loginApply')}</Link>
+                    </Button>
+                  )}
+                  {viewMode === 'candidate' ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => saveMutation.mutate()}
+                      disabled={saveMutation.isPending}
+                    >
+                      <Bookmark className={`mr-2 size-4 ${isSaved ? 'fill-current' : ''}`} />
+                      {t(isSaved ? 'saved' : 'save')}
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </div>
 
           <div className="rounded-xl border bg-muted/40 p-5 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">About {data.company?.commercialName}</p>
+            <p className="font-medium text-foreground">{t('about')} · {data.company?.commercialName}</p>
             <p className="mt-1">
-              This job is posted by {data.company?.commercialName} on EasyJob.
+              {t('postedBy')} {data.company?.commercialName}.
             </p>
           </div>
         </div>

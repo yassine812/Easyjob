@@ -39,7 +39,7 @@ describe('Company recruitment access', () => {
   });
   it('removes private interview notes and AI evaluations from the candidate response', async () => {
     const prisma = { interview: { findUnique: jest.fn().mockResolvedValue({ id: 'interview', notes: 'Private hiring discussion', aiReport: { technical: 30 }, startAt: 'today', application: { candidate: { userId: 'candidate' }, job: { companyId: 'company' } } }) } };
-    const service = new InterviewsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new InterviewsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     const result = await service.getById('interview', 'candidate');
     expect(result).not.toHaveProperty('notes'); expect(result).not.toHaveProperty('aiReport'); expect(result).toHaveProperty('startAt', 'today');
   });

@@ -1,0 +1,135 @@
+{
+  "title": "Développeur Backend Python/Django confirmé",
+  "description": "Rejoignez Example en tant que développeur Backend Python/Django confirmé pour développer des services backend fiables et maintenables.\n\nVotre périmètre couvrira la conception des API, la modélisation des données et la qualité des intégrations. Vous prendrez en charge des réalisations de bout en bout, participerez à leur conception et contribuerez aux décisions de l’équipe. Vous veillerez à la qualité des livrables et à la clarté de leur documentation.\n\nEn lien avec les équipes produit et frontend, vous partagerez les contraintes, documenterez les décisions et suivrez la qualité des livrables.",
+  "descriptions": [
+    {
+      "id": "professional",
+      "text": "Rejoignez Example en tant que développeur Backend Python/Django confirmé pour développer des services backend fiables et maintenables.\n\nVotre périmètre couvrira la conception des API, la modélisation des données et la qualité des intégrations. Vous prendrez en charge des réalisations de bout en bout, participerez à leur conception et contribuerez aux décisions de l’équipe. Vous veillerez à la qualité des livrables et à la clarté de leur documentation.\n\nEn lien avec les équipes produit et frontend, vous partagerez les contraintes, documenterez les décisions et suivrez la qualité des livrables."
+    },
+    {
+      "id": "concise",
+      "text": "Rejoignez Example comme développeur Backend Python/Django confirmé pour développer des services backend fiables et maintenables. Vous interviendrez sur la conception des API, la modélisation des données et la qualité des intégrations, en lien avec les équipes produit et frontend. Vous prendrez en charge vos réalisations et contribuerez aux décisions de l’équipe."
+    },
+    {
+      "id": "technical",
+      "text": "En tant que développeur Backend Python/Django confirmé chez Example, vous interviendrez sur la conception des API, la modélisation des données et la qualité des intégrations. Le travail portera notamment sur la conception et la maintenance des services backend avec Django, le développement et la documentation des API REST et la modélisation et l’intégration des données relationnelles.\n\nLes compétences mobilisées comprendront Python, Django, API REST, SQL et Git. Les réalisations devront être vérifiables, documentées et conçues pour faciliter leur maintenance. Vous prendrez en charge des réalisations de bout en bout, participerez à leur conception et contribuerez aux décisions de l’équipe. Vous veillerez à la qualité des livrables et à la clarté de leur documentation."
+    }
+  ],
+  "summary": "Rejoignez Example en tant que développeur Backend Python/Django confirmé pour développer des services backend fiables et maintenables.",
+  "responsibilities": [
+    "Contribuer à la conception et à la maintenance des services backend avec Django ; documenter les décisions associées.",
+    "Assurer le développement et la documentation des API REST en coordination avec l’équipe.",
+    "Prendre en charge la modélisation et l’intégration des données relationnelles.",
+    "Contribuer à l’écriture de tests et aux revues de code ; documenter les décisions associées.",
+    "Assurer l’amélioration des performances et de la sécurité des services en coordination avec l’équipe.",
+    "Prendre en charge la coordination des intégrations avec les équipes produit et frontend."
+  ],
+  "skills": [
+    {
+      "name": "Python",
+      "required": true,
+      "level": "INTERMEDIATE",
+      "source": "knowledge_base"
+    },
+    {
+      "name": "Django",
+      "required": true,
+      "level": "INTERMEDIATE",
+      "source": "knowledge_base"
+    },
+    {
+      "name": "REST API",
+      "required": true,
+      "level": "INTERMEDIATE",
+      "source": "knowledge_base"
+    },
+    {
+      "name": "SQL",
+      "required": true,
+      "level": "INTERMEDIATE",
+      "source": "knowledge_base"
+    },
+    {
+      "name": "Git",
+      "required": true,
+      "level": "INTERMEDIATE",
+      "source": "knowledge_base"
+    }
+  ],
+  "preferredSkills": [
+    "Django REST Framework",
+    "PostgreSQL",
+    "Docker",
+    "Redis",
+    "Celery",
+    "CI/CD"
+  ],
+  "skillLabels": {
+    "Python": "Python",
+    "Django": "Django",
+    "REST API": "API REST",
+    "SQL": "SQL",
+    "Git": "Git",
+    "Django REST Framework": "Django REST Framework",
+    "PostgreSQL": "PostgreSQL",
+    "Docker": "Docker",
+    "Redis": "Redis",
+    "Celery": "Celery",
+    "CI/CD": "CI/CD"
+  },
+  "requirements": [],
+  "profileRequirements": [
+    "Vous prendrez en charge vos réalisations et contribuerez aux décisions de l’équipe."
+  ],
+  "workingConditions": {
+    "location": "",
+    "workMode": "Hybride",
+    "employmentType": "Temps plein",
+    "contractType": "",
+    "industry": ""
+  },
+  "recruitmentContext": {
+    "companyName": "Example"
+  },
+  "experienceLevel": "MID",
+  "minimumYearsExperience": 2,
+  "employmentType": "FULL_TIME",
+  "workMode": "HYBRID",
+  "remote": false,
+  "location": "",
+  "currency": "TND",
+  "educationRequirement": "",
+  "provenance": {
+    "engine": "easyjob-deterministic-v2",
+    "dataset": "O*NET 31.0 + EasyJob editorial adaptations",
+    "sourceCodes": [
+      "15-1252.00"
+    ],
+    "sourceTaskIds": [
+      "21662",
+      "21669",
+      "21664",
+      "21670",
+      "21673",
+      "21661",
+      "21676",
+      "21667",
+      "21668",
+      "21665",
+      "21663",
+      "21671",
+      "21666",
+      "21678",
+      "21677",
+      "21672",
+      "21679"
+    ],
+    "knowledgeAreas": [
+      "Computers and Electronics",
+      "Customer and Personal Service",
+      "English Language",
+      "Mathematics"
+    ],
+    "seed": "ce051bafd792643a"
+  }
+}

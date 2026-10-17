@@ -1,7 +1,10 @@
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EmploymentType, ExperienceLevel, SkillLevel } from '@prisma/client';
 import {
   IsArray,
+  ArrayUnique,
+  ValidateNested,
   ArrayMaxSize,
   IsBoolean,
   IsDateString,
@@ -16,6 +19,14 @@ import {
   Max,
   MinLength,
 } from 'class-validator';
+
+export class JobApplicationFieldDto {
+  @IsString() @IsNotEmpty() @MaxLength(100) id!: string;
+  @IsString() @IsNotEmpty() @MaxLength(500) label!: string;
+  @IsIn(['text', 'textarea', 'email', 'phone', 'url', 'number', 'date', 'boolean', 'select', 'multiselect', 'file']) type!: 'text' | 'textarea' | 'email' | 'phone' | 'url' | 'number' | 'date' | 'boolean' | 'select' | 'multiselect' | 'file';
+  @IsBoolean() required!: boolean;
+  @IsOptional() @IsArray() @ArrayMaxSize(100) @IsString({ each: true }) @MaxLength(500, { each: true }) options?: string[];
+}
 
 export class JobSkillDto {
   @ApiProperty({ example: 'TypeScript' })
@@ -36,6 +47,7 @@ export class JobSkillDto {
 }
 
 export class JobDetailsDto {
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() salaryVisible?: boolean;
   @IsOptional() @IsString() @MaxLength(150) department?: string;
   @IsOptional() @IsArray() @ArrayMaxSize(30) @IsString({ each: true }) @MaxLength(500, { each: true }) benefits?: string[];
   @IsOptional() @IsString() @MaxLength(300) preferredEducation?: string;
@@ -72,6 +84,10 @@ export class CreateJobDto extends JobDetailsDto {
   @IsString({ each: true })
   requirements?: string[];
 
+  @IsOptional() @IsArray() @ArrayMaxSize(40) @ArrayUnique((field: JobApplicationFieldDto) => field.id)
+  @ValidateNested({ each: true }) @Type(() => JobApplicationFieldDto)
+  applicationFields?: JobApplicationFieldDto[];
+
   @ApiPropertyOptional({ example: 'Tunis' })
   @IsOptional()
   @IsString()
@@ -89,7 +105,7 @@ export class CreateJobDto extends JobDetailsDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200)
   educationRequirement?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0)
-  minimumYearsExperience?: number;
+  minimumYearsExperience?: number | null;
 
   @ApiProperty({ enum: EmploymentType })
   @IsEnum(EmploymentType)
@@ -103,24 +119,23 @@ export class CreateJobDto extends JobDetailsDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  salaryMin?: number;
+  salaryMin?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
   @Min(0)
-  salaryMax?: number;
+  salaryMax?: number | null;
 
-  @ApiPropertyOptional({ example: 'USD' })
+  @ApiPropertyOptional({ enum: ['TND', 'EUR', 'USD'], default: 'TND' })
   @IsOptional()
-  @IsString()
-  @MaxLength(10)
+  @IsIn(['TND', 'EUR', 'USD'])
   currency?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
-  expiresAt?: string;
+  expiresAt?: string | null;
 
   @ApiPropertyOptional({ type: [JobSkillDto] })
   @IsOptional()
@@ -157,6 +172,10 @@ export class UpdateJobDto extends JobDetailsDto {
   @IsString({ each: true })
   requirements?: string[];
 
+  @IsOptional() @IsArray() @ArrayMaxSize(40) @ArrayUnique((field: JobApplicationFieldDto) => field.id)
+  @ValidateNested({ each: true }) @Type(() => JobApplicationFieldDto)
+  applicationFields?: JobApplicationFieldDto[];
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -174,7 +193,7 @@ export class UpdateJobDto extends JobDetailsDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200)
   educationRequirement?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0)
-  minimumYearsExperience?: number;
+  minimumYearsExperience?: number | null;
 
   @ApiPropertyOptional({ enum: EmploymentType })
   @IsOptional()
@@ -190,24 +209,23 @@ export class UpdateJobDto extends JobDetailsDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  salaryMin?: number;
+  salaryMin?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
   @Min(0)
-  salaryMax?: number;
+  salaryMax?: number | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['TND', 'EUR', 'USD'] })
   @IsOptional()
-  @IsString()
-  @MaxLength(10)
+  @IsIn(['TND', 'EUR', 'USD'])
   currency?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
-  expiresAt?: string;
+  expiresAt?: string | null;
 
   @ApiPropertyOptional({ type: [JobSkillDto] })
   @IsOptional()

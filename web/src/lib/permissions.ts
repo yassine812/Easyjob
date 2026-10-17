@@ -89,6 +89,21 @@ export const PLATFORM_PERMISSIONS: Permission[] = [
   'admin.analytics',
   'admin.subscriptions',
   'admin.audit',
+  'admin.billing',
+  'admin.plans',
+  'admin.support',
+  'admin.system',
+  'admin.platform_admins',
+  'admin.company_manage',
+  'admin.user_manage',
+  'admin.job_moderate',
+  'admin.support_manage',
+  'admin.billing_manage',
+  'admin.plan_manage',
+];
+
+export const PLATFORM_ADMIN_ROLES: Role[] = [
+  'PLATFORM_ADMIN', 'SUPER_ADMIN', 'OPERATIONS_ADMIN', 'BILLING_ADMIN', 'SUPPORT_ADMIN', 'READ_ONLY_ADMIN',
 ];
 
 export type AccountType = 'candidate' | 'company' | 'admin';
@@ -103,7 +118,7 @@ export const COMPANY_ROLES: Role[] = [
 
 export function resolveAccountType(user: MeUser | null | undefined): AccountType {
   if (!user) return 'candidate';
-  if (user.roles.includes('PLATFORM_ADMIN')) {
+  if (user.roles.some((role) => PLATFORM_ADMIN_ROLES.includes(role))) {
     return 'admin';
   }
   if (
@@ -124,13 +139,15 @@ export function isCompanyUser(user: MeUser | null | undefined): boolean {
 }
 
 export function isPlatformAdmin(user: MeUser | null | undefined): boolean {
-  return !!user && user.roles.includes('PLATFORM_ADMIN');
+  return !!user && user.roles.some((role) => PLATFORM_ADMIN_ROLES.includes(role));
 }
 
 export function getDashboardRoute(user: MeUser | null | undefined): string {
   if (user?.mustChangePassword) return '/change-password';
   const accountType = resolveAccountType(user);
   if (accountType === 'admin') {
+    // Keep the canonical entry point used by the auth flow and legacy links.
+    // `/platform-admin` remains available as an alias for direct navigation.
     return '/admin/dashboard';
   }
   if (accountType === 'company') {

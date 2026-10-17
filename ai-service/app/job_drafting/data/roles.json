@@ -1,0 +1,982 @@
+[
+  {
+    "id": "backend_developer",
+    "canonical_title": "Backend Developer",
+    "localized_titles": {
+      "fr": "Développeur Backend",
+      "en": "Backend Developer",
+      "ar": "مطوّر خدمات خلفية"
+    },
+    "aliases": [
+      "back dev",
+      "backend dev",
+      "back end developer",
+      "backend engineer",
+      "developpeur backend",
+      "développeur back",
+      "developpeur bakend",
+      "python backend"
+    ],
+    "family": "software.backend",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "REST API",
+      "SQL",
+      "Git",
+      "Automated testing"
+    ],
+    "optional_skills": [
+      "Python",
+      "Django",
+      "Node.js",
+      "PostgreSQL",
+      "Docker"
+    ],
+    "related_roles": [
+      "django_backend_developer"
+    ],
+    "source_codes": [
+      "15-1252.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "django_backend_developer",
+    "canonical_title": "Django Backend Developer",
+    "localized_titles": {
+      "fr": "Développeur Backend Python/Django",
+      "en": "Django Backend Developer",
+      "ar": "مطوّر خدمات خلفية Python/Django"
+    },
+    "aliases": [
+      "django dev",
+      "django developer",
+      "django backend",
+      "developpeur django"
+    ],
+    "family": "software.backend",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Python",
+      "Django",
+      "REST API",
+      "SQL",
+      "Git"
+    ],
+    "optional_skills": [
+      "Django REST Framework",
+      "PostgreSQL",
+      "Docker",
+      "Redis",
+      "Celery",
+      "CI/CD"
+    ],
+    "related_roles": [
+      "backend_developer"
+    ],
+    "source_codes": [
+      "15-1252.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "Django",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "frontend_developer",
+    "canonical_title": "Frontend Developer",
+    "localized_titles": {
+      "fr": "Développeur Frontend",
+      "en": "Frontend Developer",
+      "ar": "مطوّر واجهات أمامية"
+    },
+    "aliases": [
+      "frontend dev",
+      "front end developer",
+      "react developer",
+      "developpeur frontend",
+      "développeur front"
+    ],
+    "family": "software.frontend",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "HTML",
+      "CSS",
+      "Git"
+    ],
+    "optional_skills": [
+      "Next.js",
+      "Testing Library",
+      "Accessibility"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-1254.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "fullstack_developer",
+    "canonical_title": "Full-Stack Developer",
+    "localized_titles": {
+      "fr": "Développeur Full-Stack",
+      "en": "Full-Stack Developer",
+      "ar": "مطوّر متكامل"
+    },
+    "aliases": [
+      "full stack dev",
+      "full stak dev",
+      "fullstack developer",
+      "full stack developer",
+      "developpeur full stack",
+      "développeur full-stack"
+    ],
+    "family": "software.fullstack",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "TypeScript",
+      "React",
+      "Node.js",
+      "REST API",
+      "SQL",
+      "Git"
+    ],
+    "optional_skills": [
+      "Docker",
+      "Next.js",
+      "CI/CD"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-1252.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "mobile_developer",
+    "canonical_title": "React Native Developer",
+    "localized_titles": {
+      "fr": "Développeur React Native",
+      "en": "React Native Developer",
+      "ar": "مطوّر React Native"
+    },
+    "aliases": [
+      "mobile dev",
+      "react native dev",
+      "react native developer",
+      "expo developer",
+      "developpeur mobile"
+    ],
+    "family": "software.mobile",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "React Native",
+      "TypeScript",
+      "Mobile UI",
+      "REST API",
+      "Git"
+    ],
+    "optional_skills": [
+      "Expo",
+      "Jest",
+      "App Store release"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-1252.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "devops_engineer",
+    "canonical_title": "DevOps Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur DevOps",
+      "en": "DevOps Engineer",
+      "ar": "مهندس DevOps"
+    },
+    "aliases": [
+      "devops",
+      "dev ops",
+      "ingenieur devops"
+    ],
+    "family": "software.devops",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Linux",
+      "Docker",
+      "CI/CD",
+      "Cloud",
+      "Monitoring"
+    ],
+    "optional_skills": [
+      "Kubernetes",
+      "Terraform",
+      "AWS"
+    ],
+    "related_roles": [
+      "cloud_devops_engineer",
+      "devops_platform_engineer",
+      "platform_engineer",
+      "senior_devops_engineer",
+      "site_reliability_engineer"
+    ],
+    "source_codes": [
+      "15-1244.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "qa_engineer",
+    "canonical_title": "QA Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur QA",
+      "en": "QA Engineer",
+      "ar": "مهندس ضمان الجودة"
+    },
+    "aliases": [
+      "qa tester",
+      "test engineer",
+      "quality assurance",
+      "ingenieur qa",
+      "testeur logiciel"
+    ],
+    "family": "software.qa",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Test plans",
+      "Automated testing",
+      "Regression testing",
+      "Bug tracking",
+      "Git"
+    ],
+    "optional_skills": [
+      "Playwright",
+      "Cypress",
+      "API testing"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-1253.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "data_analyst",
+    "canonical_title": "Data Analyst",
+    "localized_titles": {
+      "fr": "Analyste de données",
+      "en": "Data Analyst",
+      "ar": "محلّل بيانات"
+    },
+    "aliases": [
+      "data analyst",
+      "business analyst data",
+      "analyste donnees"
+    ],
+    "family": "data.analytics",
+    "domains": [
+      "data"
+    ],
+    "core_skills": [
+      "SQL",
+      "Data visualization",
+      "Excel",
+      "Statistics",
+      "Reporting"
+    ],
+    "optional_skills": [
+      "Python",
+      "Power BI",
+      "Tableau"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-2051.01"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "data_engineer",
+    "canonical_title": "Data Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur Data",
+      "en": "Data Engineer",
+      "ar": "مهندس بيانات"
+    },
+    "aliases": [
+      "data engineering",
+      "data platform engineer",
+      "ingenieur data"
+    ],
+    "family": "data.engineering",
+    "domains": [
+      "data"
+    ],
+    "core_skills": [
+      "Python",
+      "SQL",
+      "Data pipelines",
+      "ETL",
+      "Cloud"
+    ],
+    "optional_skills": [
+      "Spark",
+      "Airflow",
+      "dbt"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-1243.01"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "data_scientist",
+    "canonical_title": "Data Scientist",
+    "localized_titles": {
+      "fr": "Data Scientist",
+      "en": "Data Scientist",
+      "ar": "عالم بيانات"
+    },
+    "aliases": [
+      "machine learning engineer",
+      "ml engineer",
+      "scientist data"
+    ],
+    "family": "data.science",
+    "domains": [
+      "data"
+    ],
+    "core_skills": [
+      "Python",
+      "Statistics",
+      "Machine learning",
+      "SQL",
+      "Experimentation"
+    ],
+    "optional_skills": [
+      "scikit-learn",
+      "PyTorch",
+      "MLOps"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-2051.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "product_manager",
+    "canonical_title": "Product Manager",
+    "localized_titles": {
+      "fr": "Product Manager",
+      "en": "Product Manager",
+      "ar": "مدير منتج"
+    },
+    "aliases": [
+      "product owner",
+      "chef de produit",
+      "product manager"
+    ],
+    "family": "product",
+    "domains": [
+      "product"
+    ],
+    "core_skills": [
+      "Product discovery",
+      "Roadmapping",
+      "User research",
+      "Analytics",
+      "Agile"
+    ],
+    "optional_skills": [
+      "Figma",
+      "SQL",
+      "A/B testing"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "11-2021.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "ux_designer",
+    "canonical_title": "UX/UI Designer",
+    "localized_titles": {
+      "fr": "Designer UX/UI",
+      "en": "UX/UI Designer",
+      "ar": "مصمّم تجربة المستخدم"
+    },
+    "aliases": [
+      "ux designer",
+      "ui designer",
+      "product designer",
+      "designer ux"
+    ],
+    "family": "design",
+    "domains": [
+      "design"
+    ],
+    "core_skills": [
+      "Figma",
+      "User research",
+      "Wireframing",
+      "Prototyping",
+      "Design systems"
+    ],
+    "optional_skills": [
+      "Accessibility",
+      "Usability testing",
+      "Design tokens"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "15-1255.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "sales_specialist",
+    "canonical_title": "Sales Specialist",
+    "localized_titles": {
+      "fr": "Chargé de clientèle",
+      "en": "Sales Specialist",
+      "ar": "أخصائي مبيعات"
+    },
+    "aliases": [
+      "sales representative",
+      "business developer",
+      "commercial",
+      "charge de clientele"
+    ],
+    "family": "sales",
+    "domains": [
+      "sales"
+    ],
+    "core_skills": [
+      "Prospection",
+      "CRM",
+      "Negotiation",
+      "Customer discovery",
+      "Reporting"
+    ],
+    "optional_skills": [
+      "HubSpot",
+      "B2B sales",
+      "English"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "41-3091.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "marketing_specialist",
+    "canonical_title": "Marketing Specialist",
+    "localized_titles": {
+      "fr": "Chargé de marketing",
+      "en": "Marketing Specialist",
+      "ar": "أخصائي تسويق"
+    },
+    "aliases": [
+      "digital marketing",
+      "growth marketer",
+      "marketeur",
+      "charge marketing"
+    ],
+    "family": "marketing",
+    "domains": [
+      "marketing"
+    ],
+    "core_skills": [
+      "Content strategy",
+      "Campaigns",
+      "Analytics",
+      "SEO",
+      "Social media"
+    ],
+    "optional_skills": [
+      "Google Ads",
+      "Email marketing",
+      "Figma"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "13-1161.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "hr_recruiter",
+    "canonical_title": "Recruiter",
+    "localized_titles": {
+      "fr": "Responsable recrutement",
+      "en": "Recruiter",
+      "ar": "أخصائي توظيف"
+    },
+    "aliases": [
+      "talent acquisition",
+      "hr recruiter",
+      "recruteur",
+      "ressources humaines"
+    ],
+    "family": "hr",
+    "domains": [
+      "hr"
+    ],
+    "core_skills": [
+      "Sourcing",
+      "Interviewing",
+      "ATS",
+      "Candidate experience",
+      "Employment law"
+    ],
+    "optional_skills": [
+      "LinkedIn Recruiter",
+      "Employer branding",
+      "HR analytics"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "13-1071.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "finance_analyst",
+    "canonical_title": "Financial Analyst",
+    "localized_titles": {
+      "fr": "Analyste financier",
+      "en": "Financial Analyst",
+      "ar": "محلّل مالي"
+    },
+    "aliases": [
+      "finance analyst",
+      "financial controller",
+      "analyste finance"
+    ],
+    "family": "finance",
+    "domains": [
+      "finance"
+    ],
+    "core_skills": [
+      "Financial modelling",
+      "Excel",
+      "Reporting",
+      "Budgeting",
+      "Accounting"
+    ],
+    "optional_skills": [
+      "Power BI",
+      "ERP",
+      "Forecasting"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "13-2051.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "support_specialist",
+    "canonical_title": "Customer Support Specialist",
+    "localized_titles": {
+      "fr": "Chargé de support client",
+      "en": "Customer Support Specialist",
+      "ar": "أخصائي دعم العملاء"
+    },
+    "aliases": [
+      "customer support",
+      "technical support",
+      "support client",
+      "service client"
+    ],
+    "family": "support",
+    "domains": [
+      "support"
+    ],
+    "core_skills": [
+      "Customer service",
+      "Ticketing",
+      "Troubleshooting",
+      "Communication",
+      "Documentation"
+    ],
+    "optional_skills": [
+      "Zendesk",
+      "SQL",
+      "SaaS support"
+    ],
+    "related_roles": [],
+    "source_codes": [
+      "43-4051.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "business",
+      "MID": "business",
+      "SENIOR": "business",
+      "LEAD": "business"
+    }
+  },
+  {
+    "id": "senior_devops_engineer",
+    "canonical_title": "Senior DevOps Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur DevOps Senior",
+      "en": "Senior DevOps Engineer",
+      "ar": "مهندس DevOps خبير"
+    },
+    "aliases": [
+      "senior devops",
+      "devops senior"
+    ],
+    "family": "software.devops",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Linux",
+      "Docker",
+      "CI/CD",
+      "Cloud",
+      "Monitoring"
+    ],
+    "optional_skills": [
+      "Kubernetes",
+      "Terraform",
+      "AWS"
+    ],
+    "related_roles": [
+      "cloud_devops_engineer",
+      "devops_engineer",
+      "devops_platform_engineer",
+      "platform_engineer",
+      "site_reliability_engineer"
+    ],
+    "source_codes": [
+      "15-1244.00"
+    ],
+    "default_seniority": "SENIOR",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "cloud_devops_engineer",
+    "canonical_title": "Cloud DevOps Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur DevOps Cloud",
+      "en": "Cloud DevOps Engineer",
+      "ar": "مهندس DevOps سحابي"
+    },
+    "aliases": [
+      "cloud engineer",
+      "cloud devops"
+    ],
+    "family": "cloud",
+    "domains": [
+      "cloud"
+    ],
+    "core_skills": [
+      "Cloud",
+      "Terraform",
+      "Linux",
+      "CI/CD",
+      "IAM"
+    ],
+    "optional_skills": [
+      "AWS",
+      "Azure",
+      "Kubernetes"
+    ],
+    "related_roles": [
+      "devops_engineer",
+      "devops_platform_engineer",
+      "platform_engineer",
+      "senior_devops_engineer",
+      "site_reliability_engineer"
+    ],
+    "source_codes": [
+      "15-1241.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "devops_platform_engineer",
+    "canonical_title": "DevOps / Platform Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur DevOps / Plateforme",
+      "en": "DevOps / Platform Engineer",
+      "ar": "مهندس منصات وDevOps"
+    },
+    "aliases": [
+      "devops platform"
+    ],
+    "family": "software.platform",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Kubernetes",
+      "Terraform",
+      "CI/CD",
+      "Linux",
+      "Observability"
+    ],
+    "optional_skills": [
+      "AWS"
+    ],
+    "related_roles": [
+      "cloud_devops_engineer",
+      "devops_engineer",
+      "platform_engineer",
+      "senior_devops_engineer",
+      "site_reliability_engineer"
+    ],
+    "source_codes": [
+      "15-1241.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "platform_engineer",
+    "canonical_title": "Platform Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur Plateforme",
+      "en": "Platform Engineer",
+      "ar": "مهندس منصات"
+    },
+    "aliases": [
+      "platform engineering",
+      "ingenieur plateforme"
+    ],
+    "family": "software.platform",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Kubernetes",
+      "Terraform",
+      "CI/CD",
+      "Linux",
+      "Observability"
+    ],
+    "optional_skills": [
+      "AWS"
+    ],
+    "related_roles": [
+      "cloud_devops_engineer",
+      "devops_engineer",
+      "devops_platform_engineer",
+      "senior_devops_engineer",
+      "site_reliability_engineer"
+    ],
+    "source_codes": [
+      "15-1241.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  },
+  {
+    "id": "site_reliability_engineer",
+    "canonical_title": "Site Reliability Engineer",
+    "localized_titles": {
+      "fr": "Ingénieur fiabilité des sites",
+      "en": "Site Reliability Engineer",
+      "ar": "مهندس موثوقية المواقع"
+    },
+    "aliases": [
+      "sre",
+      "site reliability"
+    ],
+    "family": "software.sre",
+    "domains": [
+      "software"
+    ],
+    "core_skills": [
+      "Linux",
+      "Observability",
+      "Incident response",
+      "SLO",
+      "Automation"
+    ],
+    "optional_skills": [
+      "Kubernetes",
+      "Go",
+      "Terraform"
+    ],
+    "related_roles": [
+      "cloud_devops_engineer",
+      "devops_engineer",
+      "devops_platform_engineer",
+      "platform_engineer",
+      "senior_devops_engineer"
+    ],
+    "source_codes": [
+      "15-1244.00"
+    ],
+    "default_seniority": "MID",
+    "framework": "",
+    "seniority_profiles": {
+      "JUNIOR": "technical",
+      "MID": "technical",
+      "SENIOR": "technical",
+      "LEAD": "technical"
+    }
+  }
+]

@@ -5,6 +5,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PlanType, Prisma, SubscriptionStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,6 +25,10 @@ import { EmailService } from '../queues/email/email.service';
 import { CONFIG, type AppConfig } from '../config/configuration';
 import { EntitlementService } from '../entitlements/entitlement.service';
 import { generateToken } from '../common/utils/tokens';
+import { planDefinition, mergePlanFeatures } from './plan-catalog';
+import { CurrencyConversionService, toProviderMinorUnits, type PaymentCurrency } from '../payments/currency-conversion.service';
+import { CompanyBillingService } from './company-billing.service';
+import { InvoiceService } from './invoice.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -40,20 +46,50 @@ export class SubscriptionsService {
     private readonly emailService: EmailService,
     private readonly entitlements: EntitlementService,
     @Inject(CONFIG) private readonly config: AppConfig,
+    @Optional() private readonly currencyConversion: CurrencyConversionService | undefined = undefined,
+    @Optional() private readonly companyBilling: CompanyBillingService | undefined = undefined,
+    @Optional() private readonly invoices: InvoiceService | undefined = undefined,
   ) {}
 
+  /** Commercial price policy is owned by the catalogue; persisted rows are refreshed by seed but never trusted for checkout amounts. */
+  private effectivePlanPricing<T extends { type: PlanType; name: string; priceCents: number; priceTndCents?: number | null; pricesJson?: unknown }>(plan: T): T {
+    const definition = planDefinition(plan.type, plan.name);
+    return definition ? { ...plan, priceCents: definition.priceCents, priceTndCents: definition.priceCents, pricesJson: { TND: definition.priceCents } } : plan;
+  }
+
   async listPlans(type?: PlanType) {
-    return this.prisma.plan.findMany({
+    const plans = await this.prisma.plan.findMany({
       where: { active: true, ...(type ? { type } : {}) },
       orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }],
     });
+    return plans.map((plan) => {
+      const features = mergePlanFeatures(plan.type, plan.name, plan.features);
+      const definition = planDefinition(plan.type, plan.name);
+      const priceCents = definition?.priceCents ?? plan.priceCents;
+      const amountMinor = plan.currency.toUpperCase() === 'TND' ? priceCents * 10 : priceCents;
+      return {
+        ...plan,
+        ...(definition ? { priceCents, priceTndCents: priceCents, pricesJson: { TND: priceCents } } : {}),
+        features,
+        amountMinor,
+        displayAmount: formatPlanAmount(priceCents, plan.currency),
+        displayName: definition?.displayName,
+        positioning: definition?.positioning,
+        highlights: definition?.highlights,
+        billingCountry: plan.type === PlanType.CANDIDATE ? (this.config.billing?.country ?? 'TN') : undefined,
+        billingCurrency: plan.type === PlanType.CANDIDATE ? (this.config.billing?.currency ?? 'TND') : undefined,
+        paymentAvailable: plan.type === PlanType.CANDIDATE ? this.config.payment.konnect?.enabled === true : undefined,
+      };
+    });
   }
 
-  async quote(planId: string, billingCountry?: string) {
+  async quote(planId: string, billingCountry?: string, requestedCurrency?: string) {
     if (!planId) throw new BadRequestException('planId is required');
     const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
     if (!plan?.active) throw new NotFoundException('Plan not found');
-    return this.resolvePaymentRouting(billingCountry, plan);
+    const pricedPlan = this.effectivePlanPricing(plan);
+    const routing = await this.resolveCheckoutRouting(billingCountry, requestedCurrency, pricedPlan);
+    return { ...routing, amountMinor: routing.providerAmountMinor ?? toProviderMinorUnits(routing.amountCents, routing.currency) };
   }
 
   /** Resolves the owner (candidate profile or company) with authorization. */
@@ -78,12 +114,13 @@ export class SubscriptionsService {
     return { ownerType, ownerId: companyId, email: user.email };
   }
 
-  /** Server-side automatic country & provider routing engine */
+  /** Server-side provider routing engine. Reference prices remain TND; currency is resolved on the server. */
   resolvePaymentRouting(
     billingCountry?: string,
     plan?: { priceCents: number; currency?: string; priceTndCents?: number | null; pricesJson?: unknown },
   ): PaymentRouting {
-    const country = (billingCountry || 'TN').toUpperCase().trim();
+    const configuredCountry = this.config.billing?.country ?? 'TN';
+    const country = (billingCountry || configuredCountry).toUpperCase().trim();
     if (!plan) throw new BadRequestException('Plan pricing is required');
     if (this.config.payment.provider === 'dev' && this.config.env === 'test') {
       const currency = (plan.currency ?? 'USD').toUpperCase();
@@ -92,34 +129,34 @@ export class SubscriptionsService {
     }
     if (this.config.payment.provider === 'dev') throw new BadRequestException('Online payments are not configured yet');
 
-    // 1. Tunisian customers -> Konnect (TND)
-    if (country === 'TN' || country === 'TUNISIA') {
-      const amountCents = plan.currency?.toUpperCase() === 'TND' ? plan.priceCents
-        : plan.priceTndCents ?? (plan.pricesJson as Record<string, number> | null)?.TND;
-      if (amountCents == null || !Number.isSafeInteger(amountCents) || amountCents < 0) throw new BadRequestException('TND pricing is not configured for this plan');
-      return {
-        provider: 'KONNECT',
-        currency: 'TND',
-        amountCents,
-        billingCountry: 'TN',
-      };
-    }
+    if (this.config.payment.konnect?.enabled !== true) throw new BadRequestException('Online payment is temporarily unavailable');
+    const amountCents = plan.currency?.toUpperCase() === 'TND' || plan.currency?.toUpperCase() === 'EUR' || plan.currency?.toUpperCase() === 'USD'
+      ? plan.priceCents
+      : plan.priceTndCents ?? (plan.pricesJson as Record<string, number> | null)?.TND;
+    if (amountCents == null || !Number.isSafeInteger(amountCents) || amountCents < 0) throw new BadRequestException('Billing reference pricing is not configured for this plan');
+    const paymentCurrency = (plan.currency?.toUpperCase() ?? 'TND') as PaymentCurrency;
+    return { provider: 'KONNECT', currency: paymentCurrency, amountCents, billingCountry: country };
+  }
 
-    // 2. International customers in Stripe-supported merchant countries -> Stripe (EUR/USD)
-    const stripeCountries = ['FR', 'FRANCE', 'US', 'USA', 'UNITED STATES', 'GB', 'UK', 'UNITED KINGDOM', 'DE', 'GERMANY', 'CA', 'CANADA', 'ES', 'IT', 'BE', 'NL', 'AT', 'AU'];
-    if (stripeCountries.includes(country) && this.config.payment.stripe.secretKey) {
-      const currency = (plan.currency ?? 'USD').toUpperCase();
-      if (currency !== 'USD' && currency !== 'EUR') throw new BadRequestException('Unsupported Stripe plan currency');
-      return {
-        provider: 'STRIPE',
-        currency,
-        amountCents: plan.priceCents,
-        billingCountry: country,
-      };
+  private async resolveCheckoutRouting(
+    billingCountry: string | undefined,
+    requestedCurrency: string | undefined,
+    plan: { priceCents: number; currency?: string; priceTndCents?: number | null; pricesJson?: unknown },
+  ): Promise<PaymentRouting> {
+    const currency = (requestedCurrency ?? plan.currency ?? this.config.billing?.currency ?? 'TND').toUpperCase() as PaymentCurrency;
+    if (!(this.config.billing?.allowedCurrencies ?? ['TND', 'EUR', 'USD']).includes(currency)) throw new BadRequestException('Unsupported payment currency');
+    const baseAmountTndCents = plan.currency?.toUpperCase() === 'TND' || !plan.currency ? plan.priceCents : plan.priceTndCents ?? plan.priceCents;
+    if (currency === 'TND') {
+      return { ...this.resolvePaymentRouting(billingCountry, { ...plan, currency: 'TND', priceCents: baseAmountTndCents }), baseAmountTndCents, providerAmountMinor: toProviderMinorUnits(baseAmountTndCents, 'TND'), exchangeRate: 1 };
     }
-
-    // 3. Fallback / Dev environment routing
-    throw new BadRequestException('Payment is not configured for this billing country');
+    if (this.config.payment.provider === 'dev' && this.config.env === 'test') {
+      const amountCents = plan.currency?.toUpperCase() === currency ? plan.priceCents : baseAmountTndCents;
+      return { provider: 'DEV', currency, amountCents, billingCountry: (billingCountry ?? this.config.billing?.country ?? 'TN').toUpperCase(), baseAmountTndCents, providerAmountMinor: toProviderMinorUnits(amountCents, currency), exchangeRate: amountCents / baseAmountTndCents };
+    }
+    if (!this.currencyConversion) throw new ServiceUnavailableException('Foreign-currency quotes are not configured');
+    const quote = await this.currencyConversion.quote(baseAmountTndCents, currency);
+    const routed = this.resolvePaymentRouting(billingCountry, { ...plan, currency, priceCents: quote.targetAmountCents, priceTndCents: baseAmountTndCents });
+    return { ...routed, baseAmountTndCents, providerAmountMinor: toProviderMinorUnits(quote.targetAmountCents, currency), exchangeRate: quote.exchangeRate };
   }
 
   async getCurrent(userId: string, ownerType: PlanType, companyId?: string) {
@@ -135,19 +172,43 @@ export class SubscriptionsService {
       orderBy: { createdAt: 'desc' },
     });
     if (subscription) {
-      return { ...this.subscriptionDto(subscription), subscription: this.subscriptionDto(subscription), plan: subscription.plan };
+      const currentPlanRecord = this.effectivePlanPricing(subscription.plan);
+      const plan = {
+        ...currentPlanRecord,
+        features: mergePlanFeatures(subscription.plan.type, subscription.plan.name, subscription.plan.features),
+        amountMinor: currentPlanRecord.currency.toUpperCase() === 'TND' ? currentPlanRecord.priceCents * 10 : currentPlanRecord.priceCents,
+        displayAmount: formatPlanAmount(currentPlanRecord.priceCents, currentPlanRecord.currency),
+        positioning: planDefinition(subscription.plan.type, subscription.plan.name)?.positioning,
+        highlights: planDefinition(subscription.plan.type, subscription.plan.name)?.highlights,
+        displayName: planDefinition(subscription.plan.type, subscription.plan.name)?.displayName,
+      };
+      return { ...this.subscriptionDto(subscription), subscription: this.subscriptionDto(subscription), plan };
     }
     const activePlan = await this.entitlements.getActivePlan(owner);
-    return { plan: activePlan, subscription: null };
+    const record = await this.prisma.plan.findUnique({ where: { id: activePlan.planId } });
+    const plan = record ? this.effectivePlanPricing(record) : null;
+    return plan ? {
+      plan: {
+        ...this.effectivePlanPricing(plan),
+        features: activePlan.features,
+        amountMinor: plan.currency.toUpperCase() === 'TND' ? plan.priceCents * 10 : plan.priceCents,
+        displayAmount: formatPlanAmount(plan.priceCents, plan.currency),
+        positioning: planDefinition(plan.type, plan.name)?.positioning,
+        highlights: planDefinition(plan.type, plan.name)?.highlights,
+        displayName: planDefinition(plan.type, plan.name)?.displayName,
+      },
+      subscription: null,
+    } : { plan: activePlan, subscription: null };
   }
 
   async checkout(
     userId: string,
-    dto: { planId: string; ownerType: PlanType; companyId?: string; billingCountry?: string },
+    dto: { planId: string; ownerType: PlanType; companyId?: string; billingCountry?: string; currency?: string },
   ) {
     const plan = await this.prisma.plan.findUnique({ where: { id: dto.planId } });
     if (!plan || !plan.active) throw new NotFoundException('Plan not found');
-    if (plan.priceCents === 0) {
+    const pricedPlan = this.effectivePlanPricing(plan);
+    if (pricedPlan.priceCents === 0) {
       throw new BadRequestException('This plan is free and does not require checkout');
     }
     if (plan.type !== dto.ownerType) {
@@ -155,13 +216,16 @@ export class SubscriptionsService {
     }
 
     const owner = await this.resolveOwner(userId, dto.ownerType, dto.companyId);
+    if (owner.ownerType === 'COMPANY') {
+      await this.companyBilling?.assertFits(owner.ownerId, plan);
+    }
     const renewingStripe = await this.prisma.subscription.findFirst({ where: {
       ownerType: owner.ownerType, ...(owner.ownerType === 'CANDIDATE' ? { candidateId: owner.ownerId } : { companyId: owner.ownerId }),
       provider: 'STRIPE', status: { in: ['ACTIVE', 'TRIALING'] }, canceledAt: null,
       OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date() } }],
     } });
     if (renewingStripe) throw new BadRequestException('Cancel renewal of your current Stripe subscription before purchasing another plan');
-    const routing = this.resolvePaymentRouting(dto.billingCountry, plan);
+    const routing = await this.resolveCheckoutRouting(dto.billingCountry, dto.currency, pricedPlan);
     const orderId = `ord_${generateToken(12)}`;
 
     // Select provider implementation based on routing
@@ -173,11 +237,13 @@ export class SubscriptionsService {
     const checkoutReq = {
       plan: {
         id: plan.id,
-        name: plan.name,
-        type: plan.type,
+        name: pricedPlan.name,
+        type: pricedPlan.type,
         priceCents: routing.amountCents,
         currency: routing.currency,
-        billingInterval: plan.billingInterval,
+        basePriceTndCents: routing.baseAmountTndCents ?? pricedPlan.priceCents,
+        providerAmountMinor: routing.providerAmountMinor,
+        billingInterval: pricedPlan.billingInterval,
       },
       ownerType: owner.ownerType,
       ownerId: owner.ownerId,
@@ -213,6 +279,10 @@ export class SubscriptionsService {
         providerSubscriptionId: orderId,
         orderId,
         amountCents: routing.amountCents,
+        baseAmountTndCents: routing.baseAmountTndCents ?? pricedPlan.priceCents,
+        paymentAmountMinor: routing.providerAmountMinor ?? routing.amountCents,
+        providerExchangeRate: routing.exchangeRate,
+        providerConvertedAmount: routing.providerAmountMinor,
         currency: routing.currency,
         billingCountry: routing.billingCountry,
         status: PaymentStatus.PENDING,
@@ -261,12 +331,16 @@ export class SubscriptionsService {
       id: payment.id,
       status: payment.status,
       amountCents: payment.amountCents,
+      baseAmountTndCents: payment.baseAmountTndCents,
+      paymentAmountMinor: payment.paymentAmountMinor ?? payment.amountCents,
+      providerExchangeRate: payment.providerExchangeRate,
+      providerConvertedAmount: payment.providerConvertedAmount,
       currency: payment.currency,
       provider: payment.provider,
       billingCountry: payment.billingCountry,
       createdAt: payment.createdAt,
       paidAt: payment.paidAt,
-      planName: payment.subscription?.plan?.name || 'Business',
+      planName: payment.subscription?.plan ? planDefinition(payment.subscription.plan.type, payment.subscription.plan.name)?.displayName ?? payment.subscription.plan.name : 'Business',
     };
   }
 
@@ -294,6 +368,7 @@ export class SubscriptionsService {
     const supported = ['checkout.session.completed', 'invoice.paid', 'invoice.payment_failed', 'subscription.canceled'];
     if (!supported.includes(event.type)) return;
     if (!event.providerPaymentId && !event.providerSubscriptionId) throw new BadRequestException('Missing payment reference');
+    let completedInvoiceId: string | undefined;
     try {
       await this.prisma.$transaction(async (tx) => {
         if (event.id) {
@@ -358,13 +433,29 @@ export class SubscriptionsService {
                 ? { providerSubscriptionId: event.providerSubscriptionId } : {}) },
           });
           if (payment) await tx.payment.update({
-            where: { id: payment.id }, data: { status: PaymentStatus.SUCCEEDED, paidAt: now, providerPaymentId: event.providerPaymentId || payment.providerPaymentId },
+            where: { id: payment.id }, data: {
+              status: PaymentStatus.SUCCEEDED,
+              paidAt: now,
+              providerPaymentId: event.providerPaymentId || payment.providerPaymentId,
+              paymentAmountMinor: event.paymentAmountMinor ?? payment.paymentAmountMinor ?? event.amountCents,
+              providerExchangeRate: event.providerExchangeRate,
+              providerConvertedAmount: event.providerConvertedAmount,
+            },
           });
           else await tx.payment.create({
             data: { subscriptionId: subscription.id, provider, providerPaymentId: event.providerPaymentId,
               providerSubscriptionId: event.providerSubscriptionId, amountCents: event.amountCents,
+              baseAmountTndCents: planDefinition(subscription.plan.type, subscription.plan.name)?.priceCents ?? subscription.plan.priceCents,
+              paymentAmountMinor: event.paymentAmountMinor ?? event.amountCents,
+              providerExchangeRate: event.providerExchangeRate,
+              providerConvertedAmount: event.providerConvertedAmount,
               currency: event.currency.toUpperCase(), status: PaymentStatus.SUCCEEDED, paidAt: now },
           });
+          const paidPayment = await tx.payment.findFirst({ where: { subscriptionId: subscription.id, status: PaymentStatus.SUCCEEDED, ...(event.providerPaymentId ? { providerPaymentId: event.providerPaymentId } : {}) }, orderBy: { paidAt: 'desc' }, select: { id: true } });
+          if (paidPayment && subscription.plan.priceCents > 0) {
+            const invoice = await this.invoices?.createForPayment(tx, paidPayment.id, periodStart, periodEnd);
+            completedInvoiceId = invoice?.id;
+          }
           const recipient = subscription.candidateId
             ? (await tx.candidateProfile.findUnique({ where: { id: subscription.candidateId }, select: { userId: true } }))?.userId
             : subscription.companyId ? (await tx.companyMember.findFirst({ where: { companyId: subscription.companyId, role: 'COMPANY_ADMIN', status: 'ACTIVE' }, select: { userId: true } }))?.userId : undefined;
@@ -385,6 +476,7 @@ export class SubscriptionsService {
           await tx.subscription.update({ where: { id: subscription.id }, data: { status: SubscriptionStatus.CANCELED, canceledAt: new Date() } });
         }
       });
+      if (completedInvoiceId) await this.invoices?.finalize(completedInvoiceId);
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002') return;
       throw error;
@@ -412,6 +504,10 @@ export class SubscriptionsService {
       throw new ForbiddenException('You do not own this subscription');
     }
 
+    if (!['ACTIVE', 'TRIALING'].includes(subscription.status)) throw new BadRequestException('Subscription is not active');
+    if (!subscription.currentPeriodEnd) throw new BadRequestException('Contact support to close a subscription without an end date');
+    if (subscription.canceledAt) return { success: true, message: 'Cancellation already scheduled', effectiveAt: subscription.currentPeriodEnd };
+
     if (subscription.providerSubscriptionId) {
       const provider = subscription.provider === 'STRIPE' ? this.stripePaymentProvider : subscription.provider === 'KONNECT' ? this.konnectPaymentProvider : this.devPaymentProvider;
       await provider.cancelSubscription(subscription.providerSubscriptionId);
@@ -426,7 +522,7 @@ export class SubscriptionsService {
       entityType: 'Subscription',
       entityId: subscriptionId,
     });
-    return { success: true, message: 'Subscription will be canceled at the end of the current period' };
+    return { success: true, message: 'Subscription will be canceled at the end of the current period', effectiveAt: subscription.currentPeriodEnd };
   }
 
   private async isCompanyBillingManager(userId: string, companyId: string): Promise<boolean> {
@@ -484,6 +580,11 @@ export class SubscriptionsService {
       payments: subscription.payments ?? [],
     };
   }
+}
+
+function formatPlanAmount(cents: number, currency: string): string {
+  const amount = cents / 100;
+  return `${Number.isInteger(amount) ? amount : amount.toFixed(2)} ${currency}`;
 }
 
 function addMonths(date: Date, months: number): Date {

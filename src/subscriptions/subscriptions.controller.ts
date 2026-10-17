@@ -1,12 +1,14 @@
-import { Body, Controller, Get, Inject, Post, Query, RawBodyRequest, Req } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query, RawBodyRequest, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
 import { PlanType } from '@prisma/client';
 import { Request } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SubscriptionsService } from './subscriptions.service';
 import { CONFIG, type AppConfig } from '../config/configuration';
+import { CompanyBillingService } from './company-billing.service';
+import { WorkspaceQuery } from '../companies/dto/workspace.dto';
 
 class ListPlansQuery {
   @IsOptional()
@@ -28,6 +30,10 @@ class CheckoutDto {
   @IsOptional()
   @IsString()
   billingCountry?: string;
+
+  @IsOptional()
+  @IsIn(['TND', 'EUR', 'USD'])
+  currency?: 'TND' | 'EUR' | 'USD';
 }
 
 class CancelSubscriptionDto {
@@ -41,10 +47,17 @@ export class SubscriptionsController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     @Inject(CONFIG) private readonly config: AppConfig,
+    private readonly companyBilling: CompanyBillingService,
   ) {}
 
+  @Get('companies/:companyId/billing/overview')
+  @ApiBearerAuth()
+  overview(@CurrentUser('userId') userId: string, @Param('companyId') companyId: string, @Query() query: WorkspaceQuery) {
+    return this.companyBilling.overview(userId, companyId, query);
+  }
+
   @Public()
-  @Get('plans')
+  @Get(['plans', 'billing/plans'])
   async plans(@Query() query: ListPlansQuery) {
     return this.subscriptionsService.listPlans(query.type);
   }
@@ -68,15 +81,15 @@ export class SubscriptionsController {
     return this.subscriptionsService.getPaymentStatus(userId, ref);
   }
 
-  @Post('subscriptions/checkout')
+  @Post(['subscriptions/checkout', 'billing/checkout'])
   @ApiBearerAuth()
   async checkout(@CurrentUser('userId') userId: string, @Body() dto: CheckoutDto) {
     return this.subscriptionsService.checkout(userId, dto);
   }
 
   @Get('subscriptions/quote')
-  async quote(@Query('planId') planId: string, @Query('billingCountry') country?: string) {
-    return this.subscriptionsService.quote(planId, country);
+  async quote(@Query('planId') planId: string, @Query('billingCountry') country?: string, @Query('currency') currency?: string) {
+    return this.subscriptionsService.quote(planId, country, currency);
   }
 
   @Post('subscriptions/cancel')
@@ -97,7 +110,7 @@ export class SubscriptionsController {
   }
 
   /**
-   * Konnect Webhook Endpoint for TND payments.
+   * Konnect Webhook Endpoint for TND, EUR and USD payments.
    */
   @Public()
   @Get('payments/webhook/konnect')

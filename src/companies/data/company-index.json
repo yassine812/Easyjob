@@ -1,0 +1,10 @@
+[
+  {"id":"seed:ey","name":"Ernst & Young","aliases":["EY","Ernst and Young"],"countryCode":"TN","countryName":"Tunisia","city":"Tunis","website":"https://www.ey.com","domain":"ey.com"},
+  {"id":"seed:pwc","name":"PricewaterhouseCoopers","aliases":["PwC","PWC"],"countryName":"Global","website":"https://www.pwc.com","domain":"pwc.com"},
+  {"id":"seed:kpmg","name":"KPMG","aliases":[],"countryName":"Global","website":"https://kpmg.com","domain":"kpmg.com"},
+  {"id":"seed:deloitte","name":"Deloitte","aliases":[],"countryName":"Global","website":"https://www.deloitte.com","domain":"deloitte.com"},
+  {"id":"seed:orange","name":"Orange","aliases":["Orange Tunisia"],"countryCode":"TN","countryName":"Tunisia","city":"Tunis","website":"https://www.orange.tn","domain":"orange.tn"},
+  {"id":"seed:vermeg","name":"Vermeg","aliases":["Vermeg S.A.","Vermeg Tunisia"],"countryCode":"TN","countryName":"Tunisia","city":"Tunis","website":"https://www.vermeg.com","domain":"vermeg.com"},
+  {"id":"seed:ab-serve","name":"AB Serve Tunisia","aliases":["AB Serve"],"countryCode":"TN","countryName":"Tunisia","city":"Tunis"},
+  {"id":"seed:sofrec","name":"Sofrecom Tunisia","aliases":["Sofrecom","Sofrec"],"countryCode":"TN","countryName":"Tunisia","city":"Tunis","website":"https://www.sofrecom.com","domain":"sofrecom.com"}
+]

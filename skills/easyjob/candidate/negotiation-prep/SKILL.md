@@ -1,0 +1,1 @@
+# negotiation-prep  ## Purpose Prepare a deterministic salary negotiation checklist from candidate-provided numbers.  ## Safety - Deterministic and self-hosted; no LLM, API key or paid SaaS is required. - Never invent candidate facts or make a hiring decision. - Candidate controls every CV change and every message.

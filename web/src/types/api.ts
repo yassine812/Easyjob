@@ -8,6 +8,11 @@ export type ID = string;
 
 export type Role =
   | 'PLATFORM_ADMIN'
+  | 'SUPER_ADMIN'
+  | 'OPERATIONS_ADMIN'
+  | 'BILLING_ADMIN'
+  | 'SUPPORT_ADMIN'
+  | 'READ_ONLY_ADMIN'
   | 'COMPANY_ADMIN'
   | 'HR'
   | 'RECRUITER'
@@ -15,7 +20,7 @@ export type Role =
   | 'INTERVIEWER'
   | 'CANDIDATE';
 
-export type MemberRole = Exclude<Role, 'PLATFORM_ADMIN' | 'CANDIDATE'>;
+export type MemberRole = Exclude<Role, 'PLATFORM_ADMIN' | 'SUPER_ADMIN' | 'OPERATIONS_ADMIN' | 'BILLING_ADMIN' | 'SUPPORT_ADMIN' | 'READ_ONLY_ADMIN' | 'CANDIDATE'>;
 export type UserStatus = 'ACTIVE' | 'SUSPENDED';
 export type CompanyStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED';
 export type VerificationStatus = 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED';
@@ -42,8 +47,9 @@ export type ApplicationStatus =
   | 'HIRED'
   | 'REJECTED'
   | 'WITHDRAWN';
+export type RecruitmentClassification = 'STRONG_MATCH' | 'PROMISING' | 'REVIEW' | 'LOW_ALIGNMENT';
 export type InterviewType = 'PHONE' | 'VIDEO' | 'ONSITE' | 'TECHNICAL' | 'HR' | 'BEHAVIORAL' | 'MANAGERIAL' | 'AI' | 'FINAL';
-export type InterviewStatus = 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+export type InterviewStatus = 'IN_PROGRESS' | 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 export type SkillLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 export type PlanType = 'CANDIDATE' | 'COMPANY';
 export type SubscriptionStatus = 'PENDING' | 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
@@ -102,6 +108,8 @@ export interface MeUser {
   createdAt: string;
   roles: Role[];
   candidateProfileId: ID | null;
+  /** Canonical, browser-ready candidate avatar URL from /auth/me. */
+  avatarUrl: string | null;
   memberships: CompanyMembership[];
 }
 
@@ -189,6 +197,12 @@ export interface CandidateSkill {
 export interface Experience {
   id: ID;
   companyName: string;
+  companyId?: string | null;
+  companyLogoUrl?: string | null;
+  companyWebsite?: string | null;
+  companyProvider?: string | null;
+  location?: string | null;
+  countryCode?: string | null;
   title: string;
   description: string | null;
   startDate: string;
@@ -206,11 +220,21 @@ export interface Education {
 }
 
 export interface Resume {
+  updatedAt?: string;
+  analysisSummary?: { score: number | null; pageCount: number | null; status?: string; source?: 'draft' | 'version' };
+  design?: { template: string; fontSize: number; editableContent?: string; logicalCvId?: string; sourceResumeId?: string; targetJobId?: string; targetRole?: string; language?: string; locale?: string; market?: string; variantGroupId?: string; draftId?: string; draftVersion?: number; layout?: string } | null;
   id: ID;
   filename: string;
   mimeType: string;
   fileSize: number;
   version: number;
+  versionCount?: number;
+  logicalCvId?: string;
+  locale?: string;
+  language?: string;
+  variants?: { id: string; locale: string; language: string; version: number; current: boolean }[];
+  workingDraftId?: string | null;
+  workingDraftUpdatedAt?: string | null;
   isPrimary: boolean;
   processingStatus: ProcessingStatus;
   createdAt: string;
@@ -230,6 +254,7 @@ export interface JobPreference {
 }
 
 export interface CandidateProfile {
+  name?: string;
   professionalData?: unknown;
   id: ID;
   userId: ID;
@@ -247,12 +272,13 @@ export interface CandidateProfile {
   educations: Education[];
   resumes: Resume[];
   jobPreference: JobPreference | null;
+  profileCompletion?: { score: number; items: Record<string, boolean>; missingFields: string[] };
+  easyjobAnalysis?: { profileStrength: number; scoreBreakdown: Record<string, number>; skillsCount: number; experienceCount: number; educationCount: number; languagesCount: number };
   user?: { id: ID; name: string; email: string };
 }
 
 export interface SavedJob {
   applied?: boolean;
-  id: ID;
   jobId: ID;
   job?: Job;
   createdAt: string;
@@ -265,6 +291,7 @@ export interface JobSkill {
 }
 
 export interface Job {
+  salaryVisible?: boolean;
   department?: string | null; benefits?: string[]; preferredEducation?: string | null; preferredLanguages?: string[]; positions?: number; interviewProcess?: string | null;
   id: ID;
   companyId: ID;
@@ -298,15 +325,21 @@ export interface Job {
     logoKey: string | null;
   };
   skills?: JobSkill[];
-  _count?: { applications: number };
+  _count?: { applications: number; interviews?: number };
+  applicationMetrics?: { new: number; shortlisted: number };
 }
 
 export interface Application {
+  advancedAnalysisAvailable?: boolean;
+  potentialAssessment?: { applicable: boolean; reason: string | null; score: number | null };
+  submittedCv?: { filename: string; mimeType: string; fileSize: number; version: number; resumeId: string; submittedAt: string } | null;
+  events?: { id: ID; newStatus: ApplicationStatus; createdAt: string }[];
   id: ID;
   jobId: ID;
   candidateId: ID;
   resumeId: ID | null;
   motivation: string | null;
+  coverLetter?: string | null;
   status: ApplicationStatus;
   aiMatchScore?: number | null;
   matchExplanation?: import('@/lib/api/career').JobMatch | null;
@@ -322,10 +355,15 @@ export interface Application {
   strengths?: string | null;
   missingRequirements?: string | null;
   aiScreeningStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | string;
+  analysisStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED' | string;
+  growthPotential?: { score: number | null; level: string; reasons: string[]; developmentPoints: string[] } | null;
   aiScreenedAt?: string | null;
   stageChangedAt?: string | null;
   stageChangedById?: string | null;
   stageChangeSource?: 'AI' | 'HR' | 'SYSTEM' | string;
+  workflow?: { stage: ApplicationStatus; stageEnteredAt: string; elapsedSeconds: number; targetSeconds: number; overdue: boolean; recruiterProcessingOverdue?: boolean; overdueBySeconds: number; recruiterProcessingOverdueBySeconds?: number };
+  classification?: RecruitmentClassification;
+  rankingScore?: number;
   appliedAt: string;
   updatedAt: string;
   job?: {
@@ -425,11 +463,24 @@ export interface Plan {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  /** Candidate catalogue metadata returned by the billing API. */
+  amountMinor?: number;
+  displayAmount?: string;
+  displayName?: string;
+  positioning?: string;
+  highlights?: string[];
+  billingCountry?: string;
+  billingCurrency?: string;
+  paymentAvailable?: boolean;
 }
 
 export interface Payment {
   id: ID;
   amountCents: number;
+  baseAmountTndCents?: number | null;
+  paymentAmountMinor?: number | null;
+  providerExchangeRate?: number | string | null;
+  providerConvertedAmount?: number | null;
   currency: string;
   status: PaymentStatus;
   provider?: string;
@@ -569,10 +620,12 @@ export interface AdminUser {
   lastLoginAt: string | null;
   createdAt: string;
   roles?: Role[];
+  subscription?: { id: string; status: string; provider: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; canceledAt: string | null; remainingDays: number | null; organization: string | null; source: 'CANDIDATE' | 'COMPANY'; plan: { id: string; name: string; type: PlanType; priceCents: number; currency: string; billingInterval: string }; payments?: Array<{ id: string; providerPaymentId: string | null; amountCents: number; currency: string; status: string; createdAt: string; paidAt: string | null; invoiceUrl: string | null }> } | null;
 }
 
 export interface AdminCompany extends Company {
   _count?: { members: number; jobs: number };
+  subscription?: { id: string; status: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; remainingDays: number | null; plan: { id: string; name: string; type: PlanType; priceCents: number; currency: string; billingInterval: string } } | null;
 }
 
 export interface AdminJob extends Job {
@@ -599,8 +652,12 @@ export interface AdminSubscription {
   currentPeriodEnd: string;
   canceledAt: string | null;
   createdAt: string;
+  remainingDays?: number | null;
+  autoRenew?: boolean;
   plan?: { id: ID; name: string; type: PlanType };
   owner?: { id: ID; name: string; email: string } | null;
+  candidate?: { id: ID; user: { name: string; email: string } } | null;
+  company?: { id: ID; commercialName: string } | null;
 }
 
 export interface CompanyAnalytics {

@@ -1,7 +1,9 @@
 'use client';
+import { EasyJobFeatureMark } from '@/components/ui/easyjob-feature-mark';
+
 
 import React, { useState } from 'react';
-import { Sparkles, CheckCircle2, TrendingUp, Star, Building2, FileText, Award, Briefcase, Settings } from 'lucide-react';
+import { CheckCircle2, TrendingUp, Star, Building2, FileText, Award, Briefcase, Settings } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 
 const candidateNodes = [
@@ -184,7 +186,7 @@ export function HeroVisualAnimation() {
           {/* Left Intake Funnel Indicator */}
           <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1">
             <div className="size-10 rounded-full border border-cyan-400/50 bg-cyan-950/60 p-2 flex items-center justify-center backdrop-blur-md shadow-lg shadow-cyan-500/30">
-              <Sparkles className="size-5 text-cyan-300 animate-pulse" />
+              <EasyJobFeatureMark size="md" className=" text-cyan-300 animate-pulse" />
             </div>
           </div>
 
@@ -282,7 +284,7 @@ export function HeroVisualAnimation() {
               <h4 className="font-bold text-white text-xs truncate">{currentCand.name}</h4>
               <p className="text-[10px] text-indigo-200 truncate">{currentCand.role}</p>
               <div className="mt-1 flex items-center justify-end text-[9px] text-cyan-300 gap-1">
-                <Sparkles className="size-2.5 text-cyan-300" />
+                <EasyJobFeatureMark size="sm" className=" text-cyan-300" />
                 <span>{currentCand.status}</span>
               </div>
             </div>

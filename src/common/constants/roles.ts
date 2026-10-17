@@ -3,6 +3,11 @@
  */
 export const ROLES = {
   PLATFORM_ADMIN: 'PLATFORM_ADMIN',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  OPERATIONS_ADMIN: 'OPERATIONS_ADMIN',
+  BILLING_ADMIN: 'BILLING_ADMIN',
+  SUPPORT_ADMIN: 'SUPPORT_ADMIN',
+  READ_ONLY_ADMIN: 'READ_ONLY_ADMIN',
   COMPANY_ADMIN: 'COMPANY_ADMIN',
   HR: 'HR',
   RECRUITER: 'RECRUITER',
@@ -12,6 +17,16 @@ export const ROLES = {
 } as const;
 
 export type RoleName = (typeof ROLES)[keyof typeof ROLES];
+
+/** Roles that may enter the EasyJob platform backoffice. */
+export const PLATFORM_ADMIN_ROLES = [
+  ROLES.PLATFORM_ADMIN,
+  ROLES.SUPER_ADMIN,
+  ROLES.OPERATIONS_ADMIN,
+  ROLES.BILLING_ADMIN,
+  ROLES.SUPPORT_ADMIN,
+  ROLES.READ_ONLY_ADMIN,
+] as const satisfies readonly RoleName[];
 
 /**
  * Maps tenant (company) roles to the permissions they grant.
@@ -43,10 +58,25 @@ export const ROLE_PERMISSIONS: Record<RoleName, readonly string[]> = {
     'admin.companies',
     'admin.verifications',
     'admin.jobs',
-    'admin.analytics',
+    'admin.dashboard',
     'admin.subscriptions',
     'admin.audit',
+    'admin.billing',
+    'admin.plans', 'admin.notifications',
+    'admin.support',
+    'admin.system',
+    'admin.platform_admins',
+    'admin.company_manage', 'admin.user_manage', 'admin.job_moderate', 'admin.support_manage', 'admin.billing_manage', 'admin.plan_manage',
   ],
+  SUPER_ADMIN: [
+    'admin.users', 'admin.companies', 'admin.verifications', 'admin.jobs', 'admin.dashboard',
+    'admin.subscriptions', 'admin.audit', 'admin.billing', 'admin.plans', 'admin.notifications', 'admin.support',
+    'admin.system', 'admin.platform_admins', 'admin.company_manage', 'admin.user_manage', 'admin.job_moderate', 'admin.support_manage', 'admin.billing_manage', 'admin.plan_manage',
+  ],
+  OPERATIONS_ADMIN: ['admin.users', 'admin.companies', 'admin.verifications', 'admin.jobs', 'admin.dashboard', 'admin.notifications', 'admin.support', 'admin.system', 'admin.company_manage', 'admin.user_manage', 'admin.job_moderate'],
+  BILLING_ADMIN: ['admin.subscriptions', 'admin.billing', 'admin.plans', 'admin.notifications', 'admin.audit', 'admin.billing_manage', 'admin.plan_manage'],
+  SUPPORT_ADMIN: ['admin.users', 'admin.support', 'admin.audit', 'admin.system', 'admin.support_manage'],
+  READ_ONLY_ADMIN: ['admin.users', 'admin.companies', 'admin.verifications', 'admin.jobs', 'admin.dashboard', 'admin.subscriptions', 'admin.billing', 'admin.plans', 'admin.notifications', 'admin.support', 'admin.audit', 'admin.system'],
   COMPANY_ADMIN: [
     'candidate.view',
     'candidate.cv.view',

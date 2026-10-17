@@ -1,5 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { useWorkspace } from '@/hooks/use-workspace';
+import { usePublicJobsText } from '@/lib/i18n/public-jobs';
+import { useI18n } from '@/lib/i18n';
 import { Suspense, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
@@ -29,6 +33,7 @@ const SORTS = [
 ];
 
 function JobSearchPage() {
+  const t = usePublicJobsText(), { locale } = useI18n(), workspace = useWorkspace();
   const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState(searchParams.get('keyword') ?? '');
   const [location, setLocation] = useState('');
@@ -105,52 +110,53 @@ function JobSearchPage() {
     keyword || location || remote || employmentType !== 'all' || experienceLevel !== 'all' || salaryMin;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Find jobs</h1>
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      {workspace.currentWorkspace === 'recruiter' && <div className="mb-6 rounded-xl border bg-muted p-4"><p className="text-sm font-semibold">{t('preview')}</p><Link className="mt-2 inline-block text-sm text-primary underline" href={workspace.jobs}>{t('back')}</Link></div>}
+      <h1 className="text-3xl font-semibold tracking-tight">{t('title')}</h1>
       <p className="mt-1 text-muted-foreground">
-        Search open positions from verified companies. Applying is free.
+        {t('description')}
       </p>
 
       {/* Search bar */}
       <form onSubmit={handleSearch} className="mt-6 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute top-1/2 start-3 pointer-events-none size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Job title, skills, or keywords"
-            className="pl-9"
-            aria-label="Search jobs"
+            placeholder={t('keyword')}
+            style={{ paddingInlineStart: '2.5rem' }}
+            aria-label={t('title')}
           />
         </div>
         <div className="relative sm:w-64">
-          <SlidersHorizontal className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <SlidersHorizontal className="absolute top-1/2 start-3 pointer-events-none size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="Location (e.g. Tunis, Remote)"
-            className="pl-9"
-            aria-label="Location"
+            placeholder={t('location')}
+            style={{ paddingInlineStart: '2.5rem' }}
+            aria-label={t('location')}
           />
         </div>
-        <Button type="submit">Search</Button>
+        <Button type="submit">{t('search')}</Button>
       </form>
 
       {/* Filters */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <Label htmlFor="ft" className="text-xs text-muted-foreground">
-            Employment type
+            {t('employment')}
           </Label>
           <Select value={employmentType} onValueChange={(v) => { setEmploymentType(v); setPage(1); }}>
             <SelectTrigger id="ft" className="mt-1">
-              <SelectValue placeholder="All types" />
+              <SelectValue placeholder={t('allTypes')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="all">{t('allTypes')}</SelectItem>
               {Object.entries(EMPLOYMENT_TYPE_LABELS).map(([k, v]) => (
                 <SelectItem key={k} value={k}>
-                  {v}
+                  {t(k)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -158,20 +164,20 @@ function JobSearchPage() {
         </div>
         <div>
           <Label htmlFor="el" className="text-xs text-muted-foreground">
-            Experience level
+            {t('experience')}
           </Label>
           <Select
             value={experienceLevel}
             onValueChange={(v) => { setExperienceLevel(v); setPage(1); }}
           >
             <SelectTrigger id="el" className="mt-1">
-              <SelectValue placeholder="All levels" />
+              <SelectValue placeholder={t('allLevels')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All levels</SelectItem>
+              <SelectItem value="all">{t('allLevels')}</SelectItem>
               {Object.entries(EXPERIENCE_LEVEL_LABELS).map(([k, v]) => (
                 <SelectItem key={k} value={k}>
-                  {v}
+                  {t(k)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -179,7 +185,7 @@ function JobSearchPage() {
         </div>
         <div>
           <Label htmlFor="sm" className="text-xs text-muted-foreground">
-            Min salary (USD/year)
+            {t('salaryMin')}
           </Label>
           <Input
             id="sm"
@@ -188,12 +194,12 @@ function JobSearchPage() {
             value={salaryMin}
             onChange={(e) => setSalaryMin(e.target.value)}
             className="mt-1"
-            placeholder="e.g. 50000"
+            placeholder="0"
           />
         </div>
         <div>
           <Label htmlFor="sort" className="text-xs text-muted-foreground">
-            Sort by
+            {t('sort')}
           </Label>
           <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
             <SelectTrigger id="sort" className="mt-1">
@@ -202,7 +208,7 @@ function JobSearchPage() {
             <SelectContent>
               {SORTS.map((s) => (
                 <SelectItem key={s.value} value={s.value}>
-                  {s.label}
+                  {t(s.value === 'title' ? 'titleSort' : s.value)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -217,7 +223,7 @@ function JobSearchPage() {
                 setPage(1);
               }}
             />
-            Remote only
+            {t('remoteOnly')}
           </label>
         </div>
       </div>
@@ -225,7 +231,7 @@ function JobSearchPage() {
       {hasFilters ? (
         <div className="mt-3">
           <Button variant="link" size="sm" onClick={clearFilters} className="h-auto p-0 text-xs">
-            Clear all filters
+            {t('clear')}
           </Button>
         </div>
       ) : null}
@@ -235,16 +241,16 @@ function JobSearchPage() {
         {query.isPending ? (
           <SkeletonRows rows={6} cols={3} />
         ) : query.isError ? (
-          <ErrorState message="Could not load jobs. Please try again." retry={() => query.refetch()} />
+          <ErrorState message={t('error')} retry={() => query.refetch()} />
         ) : query.data && query.data.items.length === 0 ? (
           <EmptyState
-            title="No jobs match your search"
-            description="Try removing some filters or searching for different keywords."
+            title={t('empty')}
+            description={t('emptyHelp')}
           />
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {query.data?.total ?? 0} job{(query.data?.total ?? 0) === 1 ? '' : 's'} found
+              {t('results')} : {query.data?.total ?? 0}
             </p>
             <div className="grid gap-4 lg:grid-cols-2">
               {query.data?.items.map((job) => <JobCard key={job.id} job={job} />)}

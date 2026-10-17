@@ -1,0 +1,971 @@
+{
+  "software.backend": {
+    "source_code": "15-1252.00",
+    "purpose": {
+      "fr": "développer des services backend fiables et maintenables",
+      "en": "build reliable, maintainable backend services",
+      "ar": "تطوير خدمات خلفية موثوقة وقابلة للصيانة"
+    },
+    "scope": {
+      "fr": "la conception des API, la modélisation des données et la qualité des intégrations",
+      "en": "API design, data modelling and integration quality",
+      "ar": "تصميم واجهات البرمجة ونمذجة البيانات وجودة التكامل"
+    },
+    "collaboration": {
+      "fr": "les équipes produit et frontend",
+      "en": "product and frontend teams",
+      "ar": "فرق المنتج والواجهات"
+    },
+    "activities": [
+      {
+        "fr": "la conception et la maintenance des services backend{{ framework_suffix }}",
+        "en": "backend service design and maintenance{{ framework_suffix }}",
+        "ar": "تصميم الخدمات الخلفية وصيانتها{{ framework_suffix }}"
+      },
+      {
+        "fr": "le développement et la documentation des API REST",
+        "en": "REST API development and documentation",
+        "ar": "تطوير واجهات REST وتوثيقها"
+      },
+      {
+        "fr": "la modélisation et l’intégration des données relationnelles{{ database_suffix }}",
+        "en": "relational data modelling and integration{{ database_suffix }}",
+        "ar": "نمذجة البيانات العلائقية ودمجها{{ database_suffix }}"
+      },
+      {
+        "fr": "l’écriture de tests et les revues de code",
+        "en": "automated testing and code reviews",
+        "ar": "كتابة الاختبارات ومراجعة الكود"
+      },
+      {
+        "fr": "l’amélioration des performances et de la sécurité des services",
+        "en": "service performance and security improvements",
+        "ar": "تحسين أداء الخدمات وأمانها"
+      },
+      {
+        "fr": "la coordination des intégrations avec les équipes produit et frontend",
+        "en": "integration work with product and frontend teams",
+        "ar": "تنسيق التكامل مع فرق المنتج والواجهات"
+      }
+    ],
+    "technical": true
+  },
+  "software.frontend": {
+    "source_code": "15-1254.00",
+    "purpose": {
+      "fr": "concevoir des interfaces web accessibles et adaptées aux usages",
+      "en": "build accessible web interfaces that meet user needs",
+      "ar": "بناء واجهات ويب متاحة تلبي احتياجات المستخدمين"
+    },
+    "scope": {
+      "fr": "les parcours utilisateurs, les composants d’interface et les performances de rendu",
+      "en": "user journeys, interface components and rendering performance",
+      "ar": "مسارات المستخدم ومكونات الواجهة وأداء العرض"
+    },
+    "collaboration": {
+      "fr": "les équipes design et backend",
+      "en": "design and backend teams",
+      "ar": "فرق التصميم والخدمات الخلفية"
+    },
+    "activities": [
+      {
+        "fr": "l’intégration des interfaces responsives",
+        "en": "responsive interface implementation",
+        "ar": "تطوير الواجهات المتجاوبة"
+      },
+      {
+        "fr": "la création de composants réutilisables",
+        "en": "reusable component development",
+        "ar": "إنشاء مكونات قابلة لإعادة الاستخدام"
+      },
+      {
+        "fr": "la connexion des interfaces aux API",
+        "en": "API integration for interfaces",
+        "ar": "ربط الواجهات بواجهات البرمجة"
+      },
+      {
+        "fr": "les tests des parcours et de l’accessibilité",
+        "en": "user journey and accessibility testing",
+        "ar": "اختبار مسارات المستخدم وإمكانية الوصول"
+      },
+      {
+        "fr": "l’optimisation des performances de rendu",
+        "en": "rendering performance optimization",
+        "ar": "تحسين أداء العرض"
+      },
+      {
+        "fr": "la cohérence visuelle avec les maquettes validées",
+        "en": "visual consistency with approved designs",
+        "ar": "ضمان الاتساق مع التصاميم المعتمدة"
+      }
+    ],
+    "technical": true
+  },
+  "software.fullstack": {
+    "source_code": "15-1252.00",
+    "purpose": {
+      "fr": "livrer des fonctionnalités complètes, de l’interface aux services backend",
+      "en": "deliver complete features from user interface to backend services",
+      "ar": "تطوير ميزات متكاملة من الواجهة إلى الخدمات الخلفية"
+    },
+    "scope": {
+      "fr": "les interfaces, les API et les échanges de données entre les composants",
+      "en": "interfaces, APIs and data exchange between components",
+      "ar": "الواجهات وواجهات البرمجة وتبادل البيانات بين المكونات"
+    },
+    "collaboration": {
+      "fr": "les équipes produit et design",
+      "en": "product and design teams",
+      "ar": "فرق المنتج والتصميم"
+    },
+    "activities": [
+      {
+        "fr": "la conception des interfaces et des services associés",
+        "en": "interface and service design",
+        "ar": "تصميم الواجهات والخدمات المرتبطة"
+      },
+      {
+        "fr": "le développement des API et de leurs contrats",
+        "en": "API and contract development",
+        "ar": "تطوير واجهات البرمجة وعقودها"
+      },
+      {
+        "fr": "la modélisation des données et les migrations",
+        "en": "data modelling and migrations",
+        "ar": "نمذجة البيانات وترحيلها"
+      },
+      {
+        "fr": "les tests unitaires et les tests d’intégration",
+        "en": "unit and integration testing",
+        "ar": "اختبارات الوحدات والتكامل"
+      },
+      {
+        "fr": "la sécurité et les performances de bout en bout",
+        "en": "end-to-end security and performance",
+        "ar": "الأمان والأداء عبر المكونات"
+      },
+      {
+        "fr": "la documentation des fonctionnalités livrées",
+        "en": "documentation of delivered features",
+        "ar": "توثيق الميزات المسلّمة"
+      }
+    ],
+    "technical": true
+  },
+  "software.mobile": {
+    "source_code": "15-1252.00",
+    "purpose": {
+      "fr": "développer des applications mobiles fiables sur iOS et Android",
+      "en": "build reliable mobile applications for iOS and Android",
+      "ar": "تطوير تطبيقات جوال موثوقة لنظامي iOS وAndroid"
+    },
+    "scope": {
+      "fr": "les écrans mobiles, la gestion des données et le cycle de publication des applications",
+      "en": "mobile screens, data handling and application release cycles",
+      "ar": "شاشات الجوال وإدارة البيانات ودورة إصدار التطبيقات"
+    },
+    "collaboration": {
+      "fr": "les équipes design et backend",
+      "en": "design and backend teams",
+      "ar": "فرق التصميم والخدمات الخلفية"
+    },
+    "activities": [
+      {
+        "fr": "le développement des écrans et de la navigation mobile",
+        "en": "mobile screen and navigation development",
+        "ar": "تطوير شاشات الجوال والتنقل"
+      },
+      {
+        "fr": "l’intégration des API et du stockage local",
+        "en": "API and local storage integration",
+        "ar": "دمج واجهات البرمجة والتخزين المحلي"
+      },
+      {
+        "fr": "la gestion des états et des erreurs réseau",
+        "en": "state and network error handling",
+        "ar": "إدارة الحالة وأخطاء الشبكة"
+      },
+      {
+        "fr": "les tests sur plusieurs appareils",
+        "en": "testing across devices",
+        "ar": "الاختبار على أجهزة متعددة"
+      },
+      {
+        "fr": "l’optimisation de la fluidité et de la consommation mémoire",
+        "en": "responsiveness and memory optimization",
+        "ar": "تحسين السلاسة واستهلاك الذاكرة"
+      },
+      {
+        "fr": "la préparation et le suivi des versions mobiles",
+        "en": "mobile release preparation and monitoring",
+        "ar": "إعداد إصدارات الجوال ومتابعتها"
+      }
+    ],
+    "technical": true
+  },
+  "software.devops": {
+    "source_code": "15-1244.00",
+    "purpose": {
+      "fr": "automatiser les livraisons et fiabiliser les environnements de production",
+      "en": "automate delivery and improve production reliability",
+      "ar": "أتمتة التسليم وتحسين موثوقية بيئات الإنتاج"
+    },
+    "scope": {
+      "fr": "les pipelines CI/CD, l’infrastructure as code et l’observabilité des services",
+      "en": "CI/CD pipelines, infrastructure as code and service observability",
+      "ar": "خطوط CI/CD والبنية التحتية ككود ومراقبة الخدمات"
+    },
+    "collaboration": {
+      "fr": "les équipes de développement et d’exploitation",
+      "en": "development and operations teams",
+      "ar": "فرق التطوير والتشغيل"
+    },
+    "activities": [
+      {
+        "fr": "la maintenance des pipelines CI/CD",
+        "en": "CI/CD pipeline maintenance",
+        "ar": "صيانة خطوط CI/CD"
+      },
+      {
+        "fr": "l’automatisation des déploiements{{ infrastructure_suffix }}",
+        "en": "deployment automation{{ infrastructure_suffix }}",
+        "ar": "أتمتة النشر{{ infrastructure_suffix }}"
+      },
+      {
+        "fr": "la gestion des environnements et des accès",
+        "en": "environment and access management",
+        "ar": "إدارة البيئات والصلاحيات"
+      },
+      {
+        "fr": "la supervision des services et les alertes",
+        "en": "service monitoring and alerting",
+        "ar": "مراقبة الخدمات والتنبيهات"
+      },
+      {
+        "fr": "l’analyse des incidents et les procédures de reprise",
+        "en": "incident analysis and recovery procedures",
+        "ar": "تحليل الحوادث وإجراءات الاستعادة"
+      },
+      {
+        "fr": "la documentation et la réduction des tâches manuelles",
+        "en": "documentation and reduction of manual operations",
+        "ar": "التوثيق وتقليل العمليات اليدوية"
+      }
+    ],
+    "technical": true
+  },
+  "software.platform": {
+    "source_code": "15-1241.00",
+    "purpose": {
+      "fr": "fournir des plateformes internes utilisables et fiables",
+      "en": "provide usable, reliable internal platforms",
+      "ar": "توفير منصات داخلية عملية وموثوقة"
+    },
+    "scope": {
+      "fr": "les composants d’infrastructure, les outils de livraison et les parcours développeurs",
+      "en": "infrastructure components, delivery tooling and developer workflows",
+      "ar": "مكونات البنية التحتية وأدوات التسليم ومسارات المطورين"
+    },
+    "collaboration": {
+      "fr": "les équipes de développement et d’exploitation",
+      "en": "development and operations teams",
+      "ar": "فرق التطوير والتشغيل"
+    },
+    "activities": [
+      {
+        "fr": "la création de composants d’infrastructure réutilisables",
+        "en": "reusable infrastructure component design",
+        "ar": "تصميم مكونات بنية تحتية قابلة لإعادة الاستخدام"
+      },
+      {
+        "fr": "la standardisation des parcours de déploiement",
+        "en": "deployment workflow standardization",
+        "ar": "توحيد مسارات النشر"
+      },
+      {
+        "fr": "la gestion des accès et des environnements",
+        "en": "access and environment management",
+        "ar": "إدارة الصلاحيات والبيئات"
+      },
+      {
+        "fr": "les tests et la version des composants de plateforme",
+        "en": "platform component testing and versioning",
+        "ar": "اختبار مكونات المنصة وإصداراتها"
+      },
+      {
+        "fr": "la mesure de la fiabilité des outils internes",
+        "en": "internal tooling reliability measurement",
+        "ar": "قياس موثوقية الأدوات الداخلية"
+      },
+      {
+        "fr": "la documentation des usages et l’accompagnement des équipes",
+        "en": "usage documentation and team support",
+        "ar": "توثيق الاستخدام ودعم الفرق"
+      }
+    ],
+    "technical": true
+  },
+  "software.sre": {
+    "source_code": "15-1244.00",
+    "purpose": {
+      "fr": "améliorer la disponibilité des services et leur capacité de reprise",
+      "en": "improve service availability and recovery capability",
+      "ar": "تحسين توافر الخدمات وقدرتها على التعافي"
+    },
+    "scope": {
+      "fr": "les objectifs de fiabilité, les incidents et l’automatisation des opérations",
+      "en": "reliability objectives, incidents and operational automation",
+      "ar": "أهداف الموثوقية والحوادث وأتمتة العمليات"
+    },
+    "collaboration": {
+      "fr": "les équipes de développement et d’exploitation",
+      "en": "development and operations teams",
+      "ar": "فرق التطوير والتشغيل"
+    },
+    "activities": [
+      {
+        "fr": "la définition et le suivi des indicateurs de fiabilité",
+        "en": "reliability indicator definition and tracking",
+        "ar": "تحديد مؤشرات الموثوقية ومتابعتها"
+      },
+      {
+        "fr": "la conception d’alertes exploitables",
+        "en": "actionable alert design",
+        "ar": "تصميم تنبيهات قابلة للتنفيذ"
+      },
+      {
+        "fr": "l’analyse des incidents et des causes racines",
+        "en": "incident and root cause analysis",
+        "ar": "تحليل الحوادث وأسبابها الجذرية"
+      },
+      {
+        "fr": "l’automatisation des opérations répétitives",
+        "en": "repetitive operation automation",
+        "ar": "أتمتة العمليات المتكررة"
+      },
+      {
+        "fr": "les tests de résilience et les plans de reprise",
+        "en": "resilience testing and recovery planning",
+        "ar": "اختبارات الصمود وخطط التعافي"
+      },
+      {
+        "fr": "le suivi des capacités et des budgets d’erreur",
+        "en": "capacity and error budget tracking",
+        "ar": "متابعة السعة وميزانيات الأخطاء"
+      }
+    ],
+    "technical": true
+  },
+  "cloud": {
+    "source_code": "15-1241.00",
+    "purpose": {
+      "fr": "concevoir et exploiter des infrastructures cloud maîtrisées",
+      "en": "design and operate well-controlled cloud infrastructure",
+      "ar": "تصميم وتشغيل بنية سحابية محكمة"
+    },
+    "scope": {
+      "fr": "le provisionnement, les accès, les coûts et la disponibilité des ressources",
+      "en": "provisioning, access, cost and resource availability",
+      "ar": "توفير الموارد والصلاحيات والتكاليف والتوافر"
+    },
+    "collaboration": {
+      "fr": "les équipes sécurité et développement",
+      "en": "security and development teams",
+      "ar": "فرق الأمان والتطوير"
+    },
+    "activities": [
+      {
+        "fr": "le provisionnement automatisé des ressources cloud",
+        "en": "automated cloud resource provisioning",
+        "ar": "توفير الموارد السحابية آليًا"
+      },
+      {
+        "fr": "la gestion des droits et des secrets",
+        "en": "permission and secret management",
+        "ar": "إدارة الصلاحيات والأسرار"
+      },
+      {
+        "fr": "la configuration des réseaux et des sauvegardes",
+        "en": "network and backup configuration",
+        "ar": "إعداد الشبكات والنسخ الاحتياطية"
+      },
+      {
+        "fr": "la supervision de la disponibilité",
+        "en": "availability monitoring",
+        "ar": "مراقبة التوافر"
+      },
+      {
+        "fr": "le suivi et l’optimisation des coûts",
+        "en": "cost tracking and optimization",
+        "ar": "متابعة التكاليف وتحسينها"
+      },
+      {
+        "fr": "la documentation des procédures d’exploitation",
+        "en": "operating procedure documentation",
+        "ar": "توثيق إجراءات التشغيل"
+      }
+    ],
+    "technical": true
+  },
+  "software.qa": {
+    "source_code": "15-1253.00",
+    "purpose": {
+      "fr": "sécuriser les livraisons par une démarche de test reproductible",
+      "en": "support reliable releases with reproducible testing",
+      "ar": "ضمان إصدارات موثوقة باختبارات قابلة للتكرار"
+    },
+    "scope": {
+      "fr": "les scénarios de test, les régressions et la traçabilité des anomalies",
+      "en": "test scenarios, regressions and defect traceability",
+      "ar": "سيناريوهات الاختبار والتراجع وتتبع العيوب"
+    },
+    "collaboration": {
+      "fr": "les équipes produit et développement",
+      "en": "product and development teams",
+      "ar": "فرق المنتج والتطوير"
+    },
+    "activities": [
+      {
+        "fr": "la définition des scénarios de test",
+        "en": "test scenario definition",
+        "ar": "تحديد سيناريوهات الاختبار"
+      },
+      {
+        "fr": "l’automatisation des tests de régression",
+        "en": "regression test automation",
+        "ar": "أتمتة اختبارات التراجع"
+      },
+      {
+        "fr": "les tests des API et des interfaces",
+        "en": "API and interface testing",
+        "ar": "اختبار الواجهات وواجهات البرمجة"
+      },
+      {
+        "fr": "la qualification et le suivi des anomalies",
+        "en": "defect triage and tracking",
+        "ar": "تصنيف العيوب ومتابعتها"
+      },
+      {
+        "fr": "la préparation des jeux de données de test",
+        "en": "test data preparation",
+        "ar": "إعداد بيانات الاختبار"
+      },
+      {
+        "fr": "le suivi des critères de qualité avant livraison",
+        "en": "pre-release quality criteria tracking",
+        "ar": "متابعة معايير الجودة قبل النشر"
+      }
+    ],
+    "technical": true
+  },
+  "data.analytics": {
+    "source_code": "15-2051.01",
+    "purpose": {
+      "fr": "éclairer les décisions métier par des analyses fiables",
+      "en": "inform business decisions with reliable analysis",
+      "ar": "دعم القرارات المهنية بتحليلات موثوقة"
+    },
+    "scope": {
+      "fr": "la qualité des données, les indicateurs et l’interprétation des résultats",
+      "en": "data quality, indicators and interpretation of findings",
+      "ar": "جودة البيانات والمؤشرات وتفسير النتائج"
+    },
+    "collaboration": {
+      "fr": "les équipes métier et données",
+      "en": "business and data teams",
+      "ar": "فرق الأعمال والبيانات"
+    },
+    "activities": [
+      {
+        "fr": "la collecte et la vérification des données",
+        "en": "data collection and validation",
+        "ar": "جمع البيانات والتحقق منها"
+      },
+      {
+        "fr": "la construction des requêtes SQL",
+        "en": "SQL query development",
+        "ar": "تطوير استعلامات SQL"
+      },
+      {
+        "fr": "la définition des indicateurs métier",
+        "en": "business indicator definition",
+        "ar": "تحديد مؤشرات الأعمال"
+      },
+      {
+        "fr": "la création de tableaux de bord",
+        "en": "dashboard creation",
+        "ar": "إنشاء لوحات المؤشرات"
+      },
+      {
+        "fr": "l’analyse des tendances et des écarts",
+        "en": "trend and variance analysis",
+        "ar": "تحليل الاتجاهات والفروقات"
+      },
+      {
+        "fr": "la présentation des résultats et de leurs limites",
+        "en": "communication of findings and limitations",
+        "ar": "عرض النتائج وحدودها"
+      }
+    ],
+    "technical": true
+  },
+  "data.engineering": {
+    "source_code": "15-1243.01",
+    "purpose": {
+      "fr": "rendre les données fiables et accessibles aux équipes",
+      "en": "make data reliable and accessible to teams",
+      "ar": "جعل البيانات موثوقة ومتاحة للفرق"
+    },
+    "scope": {
+      "fr": "les pipelines, les modèles de données et les contrôles de qualité",
+      "en": "pipelines, data models and quality controls",
+      "ar": "خطوط المعالجة ونماذج البيانات وضوابط الجودة"
+    },
+    "collaboration": {
+      "fr": "les équipes analyse et produit",
+      "en": "analytics and product teams",
+      "ar": "فرق التحليل والمنتج"
+    },
+    "activities": [
+      {
+        "fr": "la conception des pipelines de données",
+        "en": "data pipeline design",
+        "ar": "تصميم خطوط البيانات"
+      },
+      {
+        "fr": "l’intégration des sources et des transformations",
+        "en": "source integration and transformation",
+        "ar": "دمج المصادر والتحويلات"
+      },
+      {
+        "fr": "la modélisation des entrepôts de données",
+        "en": "data warehouse modelling",
+        "ar": "نمذجة مستودعات البيانات"
+      },
+      {
+        "fr": "les tests de qualité et de fraîcheur",
+        "en": "data quality and freshness testing",
+        "ar": "اختبار الجودة وحداثة البيانات"
+      },
+      {
+        "fr": "la supervision des traitements et des incidents",
+        "en": "processing and incident monitoring",
+        "ar": "مراقبة المعالجة والحوادث"
+      },
+      {
+        "fr": "la documentation du lignage et des contrats de données",
+        "en": "lineage and data contract documentation",
+        "ar": "توثيق مصادر البيانات وعقودها"
+      }
+    ],
+    "technical": true
+  },
+  "data.science": {
+    "source_code": "15-2051.00",
+    "purpose": {
+      "fr": "transformer les données en modèles évaluables et utiles",
+      "en": "turn data into measurable, useful models",
+      "ar": "تحويل البيانات إلى نماذج مفيدة وقابلة للتقييم"
+    },
+    "scope": {
+      "fr": "la préparation des données, l’expérimentation et la validation des modèles",
+      "en": "data preparation, experimentation and model validation",
+      "ar": "إعداد البيانات والتجارب والتحقق من النماذج"
+    },
+    "collaboration": {
+      "fr": "les équipes métier et ingénierie",
+      "en": "business and engineering teams",
+      "ar": "فرق الأعمال والهندسة"
+    },
+    "activities": [
+      {
+        "fr": "la préparation et l’exploration des données",
+        "en": "data preparation and exploration",
+        "ar": "إعداد البيانات واستكشافها"
+      },
+      {
+        "fr": "la conception des protocoles d’expérimentation",
+        "en": "experimental protocol design",
+        "ar": "تصميم بروتوكولات التجارب"
+      },
+      {
+        "fr": "la comparaison des modèles et des références",
+        "en": "model and baseline comparison",
+        "ar": "مقارنة النماذج والمراجع"
+      },
+      {
+        "fr": "l’évaluation des biais et des limites",
+        "en": "bias and limitation assessment",
+        "ar": "تقييم الانحياز والحدود"
+      },
+      {
+        "fr": "la reproductibilité des analyses",
+        "en": "analysis reproducibility",
+        "ar": "ضمان قابلية إعادة التحليلات"
+      },
+      {
+        "fr": "la restitution des résultats aux équipes métier",
+        "en": "communication of findings to business teams",
+        "ar": "عرض النتائج لفرق الأعمال"
+      }
+    ],
+    "technical": true
+  },
+  "product": {
+    "source_code": "11-2021.00",
+    "purpose": {
+      "fr": "faire évoluer le produit à partir de besoins utilisateurs vérifiés",
+      "en": "evolve the product around validated user needs",
+      "ar": "تطوير المنتج وفق احتياجات المستخدمين المتحقق منها"
+    },
+    "scope": {
+      "fr": "la découverte des besoins, la priorisation et la mesure des résultats",
+      "en": "discovery, prioritization and outcome measurement",
+      "ar": "استكشاف الاحتياجات وترتيب الأولويات وقياس النتائج"
+    },
+    "collaboration": {
+      "fr": "les équipes design, techniques et métier",
+      "en": "design, technical and business teams",
+      "ar": "فرق التصميم والتقنية والأعمال"
+    },
+    "activities": [
+      {
+        "fr": "la conduite d’entretiens utilisateurs",
+        "en": "user interview facilitation",
+        "ar": "إجراء مقابلات المستخدمين"
+      },
+      {
+        "fr": "la formulation des problèmes et des hypothèses",
+        "en": "problem and hypothesis definition",
+        "ar": "تحديد المشكلات والفرضيات"
+      },
+      {
+        "fr": "la priorisation du carnet produit",
+        "en": "product backlog prioritization",
+        "ar": "ترتيب أولويات المنتج"
+      },
+      {
+        "fr": "la définition des critères d’acceptation",
+        "en": "acceptance criteria definition",
+        "ar": "تحديد معايير القبول"
+      },
+      {
+        "fr": "le suivi des livraisons et des dépendances",
+        "en": "delivery and dependency tracking",
+        "ar": "متابعة التسليم والاعتماديات"
+      },
+      {
+        "fr": "la mesure des usages et des résultats",
+        "en": "usage and outcome measurement",
+        "ar": "قياس الاستخدام والنتائج"
+      }
+    ],
+    "technical": false
+  },
+  "design": {
+    "source_code": "15-1255.00",
+    "purpose": {
+      "fr": "concevoir des expériences claires, accessibles et cohérentes",
+      "en": "design clear, accessible and consistent experiences",
+      "ar": "تصميم تجارب واضحة ومتاحة ومتسقة"
+    },
+    "scope": {
+      "fr": "la recherche utilisateur, les prototypes et la cohérence des interfaces",
+      "en": "user research, prototypes and interface consistency",
+      "ar": "بحث المستخدم والنماذج الأولية واتساق الواجهات"
+    },
+    "collaboration": {
+      "fr": "les équipes produit et développement",
+      "en": "product and development teams",
+      "ar": "فرق المنتج والتطوير"
+    },
+    "activities": [
+      {
+        "fr": "la recherche et la synthèse des besoins utilisateurs",
+        "en": "user research and needs synthesis",
+        "ar": "بحث المستخدم وتلخيص احتياجاته"
+      },
+      {
+        "fr": "la conception des parcours et des maquettes",
+        "en": "journey and layout design",
+        "ar": "تصميم المسارات والمخططات"
+      },
+      {
+        "fr": "la préparation des prototypes interactifs",
+        "en": "interactive prototype preparation",
+        "ar": "إعداد نماذج تفاعلية"
+      },
+      {
+        "fr": "les tests d’utilisabilité et d’accessibilité",
+        "en": "usability and accessibility testing",
+        "ar": "اختبارات الاستخدام وإمكانية الوصول"
+      },
+      {
+        "fr": "la maintenance des composants de design",
+        "en": "design component maintenance",
+        "ar": "صيانة مكونات التصميم"
+      },
+      {
+        "fr": "la transmission des spécifications aux développeurs",
+        "en": "developer specification handoff",
+        "ar": "تسليم المواصفات للمطورين"
+      }
+    ],
+    "technical": false
+  },
+  "sales": {
+    "source_code": "41-3091.00",
+    "purpose": {
+      "fr": "développer des relations clients et des opportunités qualifiées",
+      "en": "develop customer relationships and qualified opportunities",
+      "ar": "تطوير علاقات العملاء والفرص المؤهلة"
+    },
+    "scope": {
+      "fr": "la qualification des besoins, les propositions et le suivi commercial",
+      "en": "needs qualification, proposals and sales follow-up",
+      "ar": "تأهيل الاحتياجات والعروض والمتابعة التجارية"
+    },
+    "collaboration": {
+      "fr": "les équipes marketing et service client",
+      "en": "marketing and customer service teams",
+      "ar": "فرق التسويق وخدمة العملاء"
+    },
+    "activities": [
+      {
+        "fr": "la prospection et la qualification des contacts",
+        "en": "prospecting and contact qualification",
+        "ar": "البحث عن العملاء وتأهيل الاتصالات"
+      },
+      {
+        "fr": "l’analyse des besoins clients",
+        "en": "customer needs analysis",
+        "ar": "تحليل احتياجات العملاء"
+      },
+      {
+        "fr": "la préparation des propositions commerciales",
+        "en": "sales proposal preparation",
+        "ar": "إعداد العروض التجارية"
+      },
+      {
+        "fr": "la négociation dans le cadre défini",
+        "en": "negotiation within agreed boundaries",
+        "ar": "التفاوض ضمن الإطار المحدد"
+      },
+      {
+        "fr": "la tenue du CRM et le suivi des opportunités",
+        "en": "CRM maintenance and opportunity tracking",
+        "ar": "صيانة CRM ومتابعة الفرص"
+      },
+      {
+        "fr": "la coordination du passage de relais aux équipes clients",
+        "en": "handoff coordination with customer teams",
+        "ar": "تنسيق التسليم لفرق العملاء"
+      }
+    ],
+    "technical": false
+  },
+  "marketing": {
+    "source_code": "13-1161.00",
+    "purpose": {
+      "fr": "concevoir des actions marketing mesurables et cohérentes",
+      "en": "design measurable, consistent marketing activities",
+      "ar": "تصميم أنشطة تسويقية متسقة وقابلة للقياس"
+    },
+    "scope": {
+      "fr": "les contenus, les canaux de diffusion et la mesure des conversions",
+      "en": "content, distribution channels and conversion measurement",
+      "ar": "المحتوى وقنوات النشر وقياس التحويلات"
+    },
+    "collaboration": {
+      "fr": "les équipes commerciales et produit",
+      "en": "sales and product teams",
+      "ar": "فرق المبيعات والمنتج"
+    },
+    "activities": [
+      {
+        "fr": "l’analyse des publics et des besoins",
+        "en": "audience and needs analysis",
+        "ar": "تحليل الجمهور والاحتياجات"
+      },
+      {
+        "fr": "la planification des campagnes",
+        "en": "campaign planning",
+        "ar": "تخطيط الحملات"
+      },
+      {
+        "fr": "la production et la révision des contenus",
+        "en": "content production and review",
+        "ar": "إنتاج المحتوى ومراجعته"
+      },
+      {
+        "fr": "la coordination des canaux de diffusion",
+        "en": "distribution channel coordination",
+        "ar": "تنسيق قنوات النشر"
+      },
+      {
+        "fr": "le suivi des performances et des conversions",
+        "en": "performance and conversion tracking",
+        "ar": "متابعة الأداء والتحويلات"
+      },
+      {
+        "fr": "l’ajustement des campagnes à partir des résultats",
+        "en": "evidence-based campaign adjustment",
+        "ar": "تعديل الحملات وفق النتائج"
+      }
+    ],
+    "technical": false
+  },
+  "hr": {
+    "source_code": "13-1071.00",
+    "purpose": {
+      "fr": "conduire des recrutements structurés et respectueux des candidats",
+      "en": "run structured recruitment that respects candidates",
+      "ar": "إدارة توظيف منظم يحترم المترشحين"
+    },
+    "scope": {
+      "fr": "la qualification des besoins, les entretiens et le suivi des candidatures",
+      "en": "role requirements, interviews and application tracking",
+      "ar": "متطلبات الوظائف والمقابلات ومتابعة الطلبات"
+    },
+    "collaboration": {
+      "fr": "les responsables de recrutement et les équipes métier",
+      "en": "hiring managers and business teams",
+      "ar": "مسؤولي التوظيف وفرق الأعمال"
+    },
+    "activities": [
+      {
+        "fr": "la clarification des besoins de recrutement",
+        "en": "recruitment needs clarification",
+        "ar": "توضيح احتياجات التوظيف"
+      },
+      {
+        "fr": "la recherche et l’approche des candidats",
+        "en": "candidate sourcing and outreach",
+        "ar": "البحث عن المترشحين والتواصل معهم"
+      },
+      {
+        "fr": "la qualification des candidatures",
+        "en": "application screening",
+        "ar": "فرز الطلبات"
+      },
+      {
+        "fr": "la coordination et la préparation des entretiens",
+        "en": "interview preparation and coordination",
+        "ar": "إعداد المقابلات وتنسيقها"
+      },
+      {
+        "fr": "le suivi des décisions et des échanges dans l’ATS",
+        "en": "decision and communication tracking in the ATS",
+        "ar": "متابعة القرارات والتواصل في ATS"
+      },
+      {
+        "fr": "l’amélioration de l’expérience candidat",
+        "en": "candidate experience improvement",
+        "ar": "تحسين تجربة المترشح"
+      }
+    ],
+    "technical": false
+  },
+  "finance": {
+    "source_code": "13-2051.00",
+    "purpose": {
+      "fr": "produire des analyses financières utiles aux décisions",
+      "en": "produce financial analysis that supports decisions",
+      "ar": "إنتاج تحليلات مالية تدعم القرارات"
+    },
+    "scope": {
+      "fr": "les prévisions, les écarts budgétaires et la fiabilité des reportings",
+      "en": "forecasts, budget variances and reporting reliability",
+      "ar": "التوقعات والفروقات الميزانية وموثوقية التقارير"
+    },
+    "collaboration": {
+      "fr": "les équipes comptables et opérationnelles",
+      "en": "accounting and operations teams",
+      "ar": "فرق المحاسبة والعمليات"
+    },
+    "activities": [
+      {
+        "fr": "la collecte et la vérification des données financières",
+        "en": "financial data collection and validation",
+        "ar": "جمع البيانات المالية والتحقق منها"
+      },
+      {
+        "fr": "la préparation des budgets et des prévisions",
+        "en": "budget and forecast preparation",
+        "ar": "إعداد الميزانيات والتوقعات"
+      },
+      {
+        "fr": "l’analyse des écarts et des tendances",
+        "en": "variance and trend analysis",
+        "ar": "تحليل الفروقات والاتجاهات"
+      },
+      {
+        "fr": "la construction des modèles financiers",
+        "en": "financial model development",
+        "ar": "تطوير النماذج المالية"
+      },
+      {
+        "fr": "la rédaction des synthèses et des reportings",
+        "en": "financial summaries and reporting",
+        "ar": "إعداد الملخصات والتقارير"
+      },
+      {
+        "fr": "la traçabilité des hypothèses et des contrôles",
+        "en": "assumption and control traceability",
+        "ar": "تتبع الفرضيات والضوابط"
+      }
+    ],
+    "technical": false
+  },
+  "support": {
+    "source_code": "43-4051.00",
+    "purpose": {
+      "fr": "résoudre les demandes clients avec un suivi clair",
+      "en": "resolve customer requests with clear follow-up",
+      "ar": "حل طلبات العملاء بمتابعة واضحة"
+    },
+    "scope": {
+      "fr": "le diagnostic des demandes, la documentation des solutions et les escalades",
+      "en": "request diagnosis, solution documentation and escalation",
+      "ar": "تشخيص الطلبات وتوثيق الحلول والتصعيد"
+    },
+    "collaboration": {
+      "fr": "les équipes produit et techniques",
+      "en": "product and technical teams",
+      "ar": "فرق المنتج والتقنية"
+    },
+    "activities": [
+      {
+        "fr": "la qualification et la priorisation des tickets",
+        "en": "ticket triage and prioritization",
+        "ar": "تصنيف التذاكر وترتيب أولوياتها"
+      },
+      {
+        "fr": "le diagnostic des problèmes signalés",
+        "en": "reported problem diagnosis",
+        "ar": "تشخيص المشكلات المبلغ عنها"
+      },
+      {
+        "fr": "la communication des solutions aux clients",
+        "en": "solution communication to customers",
+        "ar": "شرح الحلول للعملاء"
+      },
+      {
+        "fr": "l’escalade des incidents avec les informations utiles",
+        "en": "incident escalation with relevant evidence",
+        "ar": "تصعيد الحوادث بالمعلومات اللازمة"
+      },
+      {
+        "fr": "la mise à jour de la base de connaissances",
+        "en": "knowledge base maintenance",
+        "ar": "تحديث قاعدة المعرفة"
+      },
+      {
+        "fr": "le suivi des demandes jusqu’à leur résolution",
+        "en": "request tracking through resolution",
+        "ar": "متابعة الطلبات حتى حلها"
+      }
+    ],
+    "technical": false
+  }
+}

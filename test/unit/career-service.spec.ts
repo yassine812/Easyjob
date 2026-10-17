@@ -3,19 +3,29 @@ import { CareerService } from '../../src/career/career.service';
 
 describe('Candidate career ownership and consent', () => {
   function setup() {
-    const profile = { id: 'candidate', user: { emailVerifiedAt: new Date() }, skills: [], resumes: [] };
+    const profile = { id: 'candidate', user: { emailVerifiedAt: new Date() }, skills: [], resumes: [{ id: 'owned-pdf', mimeType: 'application/pdf' }] };
     const settings = { autoApply: false, approvedDraftId: null, domains: [], locations: [], workModes: [], excludedCompanies: [], excludedJobTypes: [] };
     const prisma = {
       candidateProfile: { findUnique: jest.fn().mockResolvedValue(profile) },
       careerSettings: { upsert: jest.fn().mockResolvedValue(settings), update: jest.fn().mockImplementation(({ data }) => data) },
-      cvDraft: { findFirst: jest.fn().mockResolvedValue({ id: 'draft', content: 'Reviewed content', keywords: [] }), update: jest.fn().mockImplementation(({ data }) => data) },
+      cvDraft: { findFirst: jest.fn().mockResolvedValue({ id: 'draft', version: 1, content: 'Reviewed content', keywords: [] }), update: jest.fn().mockImplementation(({ data }) => data) },
+      $transaction: (run: (tx: unknown) => unknown) => run({ cvDraftRevision: { upsert: jest.fn() }, cvDraft: { updateMany: async () => ({ count: 1 }), findUniqueOrThrow: async () => ({ id: 'draft', content: 'Changed professional content', keywords: [], approvedAt: null }) } }),
       job: { findMany: jest.fn().mockResolvedValue([]) },
     };
-    const entitlements = { assertCan: jest.fn().mockResolvedValue(undefined), can: jest.fn().mockResolvedValue(false) };
+    const entitlements = { getActivePlan: jest.fn().mockResolvedValue({ features: {} }), assertCan: jest.fn().mockResolvedValue(undefined), can: jest.fn().mockResolvedValue(false) };
     const ai = { tailorCv: jest.fn().mockResolvedValue({ tailored_cv: '## Skills\nReact, PostgreSQL' }) };
     const service = new CareerService(prisma as never, entitlements as never, ai as never, {} as never);
     return { service, prisma, settings, entitlements, ai };
   }
+  it('does not read or initialize personal preferences in the general catalogue', async () => {
+    const { service, prisma } = setup();
+    const preferences = jest.spyOn(service, 'settings');
+    await service.search('user', { sort: 'newest' });
+    expect(preferences).not.toHaveBeenCalled();
+    expect(prisma.job.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { AND: [expect.objectContaining({ status: 'PUBLISHED', company: expect.objectContaining({ status: 'ACTIVE' }) })] },
+    }));
+  });
   it('cannot enable Auto Apply without explicit consent', async () => {
     const { service, prisma } = setup();
     await expect(service.updateSettings('user', { autoApply: true, approvedDraftId: 'draft' })).rejects.toThrow(BadRequestException);
@@ -27,11 +37,11 @@ describe('Candidate career ownership and consent', () => {
     await expect(service.updateSettings('user', { autoApply: true, consent: true })).rejects.toThrow(ForbiddenException);
     expect(prisma.careerSettings.update).not.toHaveBeenCalled();
   });
-  it('requires an owned approved CV', async () => {
+  it('requires an owned PDF CV', async () => {
     const { service, prisma } = setup();
     prisma.cvDraft.findFirst.mockResolvedValue(null);
-    await expect(service.updateSettings('user', { autoApply: true, consent: true, approvedDraftId: 'foreign' })).rejects.toThrow(BadRequestException);
-    expect(prisma.cvDraft.findFirst).toHaveBeenCalledWith({ where: { id: 'foreign', candidateId: 'candidate', approvedAt: { not: null } } });
+    await expect(service.updateSettings('user', { autoApply: true, consent: true, preferredResumeId: 'foreign' })).rejects.toThrow(BadRequestException);
+    expect(prisma.careerSettings.update).not.toHaveBeenCalled();
   });
   it('always permits disabling after downgrade and clears consent', async () => {
     const { service, entitlements } = setup();
@@ -54,7 +64,7 @@ describe('Candidate career ownership and consent', () => {
     const result = await service.regenerateSection('user', 'draft', { content, sectionIndex: 1 });
     expect(result.content).toContain('# Ada\nada@example.test\n\n');
     expect(result.content).toContain('## Education\nActual degree');
-    expect(ai.tailorCv.mock.calls[0][0].cv_text).toBe('## Skills\nReact\n\n');
+    expect(ai.tailorCv.mock.calls[0][0].cv_text).toBe('## Skills\nReact');
     expect(prisma.cvDraft.update).not.toHaveBeenCalled();
   });
   it('rejects another candidate draft before invoking AI', async () => {
@@ -66,7 +76,7 @@ describe('Candidate career ownership and consent', () => {
     const { service, prisma } = setup();
     expect((await service.search('user', { sort: 'match' })).items).toEqual([]);
     const filter = prisma.job.findMany.mock.calls[0][0].where.AND[0];
-    expect(filter.company).toEqual({ status: 'ACTIVE', verification: { status: 'VERIFIED' } });
+    expect(filter.company).toEqual(expect.objectContaining({ status: 'ACTIVE', verification: { status: 'VERIFIED' } }));
     expect(filter.status).toBe('PUBLISHED');
     expect(filter.OR[1].expiresAt.gt).toBeInstanceOf(Date);
   });

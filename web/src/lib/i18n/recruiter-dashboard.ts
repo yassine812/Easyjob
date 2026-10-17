@@ -1,0 +1,53 @@
+'use client';
+import { useI18n } from './index';
+
+const copy = {
+  title: ['Recruitment overview', 'Vue du recrutement', 'نظرة على التوظيف'],
+  subtitle: ['Your hiring activity, priorities and strongest profiles, in one place.', 'Pilotez vos recrutements, vos priorités et les meilleurs profils depuis un seul espace.', 'تابع التوظيف والأولويات وأفضل الملفات من مكان واحد.'],
+  workspace: ['Recruiter workspace', 'Espace recrutement', 'فضاء التوظيف'],
+  live: ['Current workload', 'Charge de travail actuelle', 'العمل الحالي'],
+  period: ['Selected period', 'Période sélectionnée', 'الفترة المختارة'],
+  last7: ['Last 7 days', '7 derniers jours', 'آخر 7 أيام'],
+  last30: ['Last 30 days', '30 derniers jours', 'آخر 30 يومًا'],
+  last90: ['Last 90 days', '90 derniers jours', 'آخر 90 يومًا'],
+  received: ['Applications received', 'Candidatures reçues', 'الترشحات المستلمة'],
+  comparison: ['vs. previous period', 'vs période précédente', 'مقارنة بالفترة السابقة'],
+  tasks: ['View all applications', 'Voir tous les dossiers', 'عرض كل الملفات'],
+  pendingFiles: ['to review', 'à traiter', 'للمراجعة'],
+  brand: ['Build better teams, faster.', 'Construisez de meilleures équipes, plus vite.', 'كوّن فرقًا أفضل، بسرعة أكبر.'],
+  brandSub: ['Good talent today. A brighter tomorrow.', 'Les bons talents aujourd’hui. Une équipe plus forte demain.', 'مواهب اليوم، فريق أقوى غدًا.'],
+  activityHelp: ['Applications received during the selected period.', 'Candidatures reçues pendant la période sélectionnée.', 'الترشحات المستلمة خلال الفترة المختارة.'],
+  pipelineHelp: ['Current stage of applications received in this period.', 'Étape actuelle des candidatures reçues sur cette période.', 'المرحلة الحالية لترشحات هذه الفترة.'],
+  viewPipeline: ['View pipeline', 'Voir le pipeline', 'عرض المراحل'],
+  qualityHelp: ['Distribution by EasyJob matching quality.', 'Répartition selon la qualité du matching EasyJob.', 'التوزيع حسب جودة مطابقة EasyJob.'],
+  topEmpty: ['No priority profiles to review yet.', 'Aucun profil prioritaire pour le moment.', 'لا توجد ملفات ذات أولوية حاليًا.'],
+  jobsEmpty: ['Your most active jobs will appear here.', 'Vos offres les plus actives apparaîtront ici.', 'ستظهر عروضك الأكثر نشاطًا هنا.'],
+  recentEmpty: ['New applications will appear here.', 'Les nouvelles candidatures apparaîtront ici.', 'ستظهر الترشحات الجديدة هنا.'],
+  interviewEmpty: ['No upcoming interviews.', 'Aucun entretien à venir.', 'لا توجد مقابلات قادمة.'],
+  chartEmpty: ['No applications received in this period.', 'Aucune candidature reçue sur cette période.', 'لا توجد ترشحات في هذه الفترة.'],
+  viewAll: ['View all', 'Tout voir', 'عرض الكل'],
+  calendar: ['View calendar', 'Voir le calendrier', 'عرض التقويم'],
+  schedule: ['Schedule an interview', 'Planifier un entretien', 'جدولة مقابلة'],
+  attention: ['Attention required', 'Attention requise', 'يحتاج إلى متابعة'],
+  overdue: ['Applications past their target time', 'Dossiers au-delà du délai cible', 'ملفات تجاوزت المهلة'],
+  clear: ['Everything is up to date.', 'Tout est à jour.', 'كل شيء محدّث.'],
+  velocity: ['Hiring velocity', 'Vitesse de recrutement', 'سرعة التوظيف'],
+  velocityHelp: ['Average time between recorded transitions.', 'Délai moyen entre les transitions enregistrées.', 'متوسط الوقت بين الانتقالات المسجلة.'],
+  applicationToInterview: ['Application → interview', 'Candidature → entretien', 'ترشح ← مقابلة'],
+  interviewToOffer: ['Interview → offer', 'Entretien → offre d’embauche', 'مقابلة ← عرض توظيف'],
+  offerToHire: ['Offer → hired', 'Offre d’embauche → embauche', 'عرض توظيف ← توظيف'],
+  samples: ['observations', 'observations', 'ملاحظات'],
+  funnel: ['Conversion funnel', 'Entonnoir de conversion', 'مسار التحويل'],
+  funnelHelp: ['Applications that completed each step in order, within this period.', 'Candidatures ayant franchi chaque étape dans l’ordre, sur cette période.', 'الترشحات التي اجتازت المراحل بالترتيب خلال هذه الفترة.'],
+  match: ['EasyJob matching', 'Matching EasyJob', 'مطابقة EasyJob'],
+  potential: ['Potential', 'Potentiel', 'الإمكانات'],
+  insufficient: ['More completed transitions are needed.', 'Davantage de transitions terminées sont nécessaires.', 'نحتاج إلى مزيد من الانتقالات المكتملة.'],
+  load: ['Loading recruitment overview', 'Préparation de la vue du recrutement', 'تحميل نظرة التوظيف'],
+  pendingAnalysis: ['Not yet analyzed', 'Pas encore analysée', 'لم يتم التحليل بعد'],
+  now: ['Now', 'Actuellement', 'حاليًا'],
+  progress: ['Applications', 'Candidatures', 'الترشحات'],
+} satisfies Record<string, [string, string, string]>;
+export function useDashboardText() {
+  const { locale } = useI18n();
+  return (key: keyof typeof copy) => copy[key][locale === 'fr' ? 1 : locale === 'ar' ? 2 : 0];
+}

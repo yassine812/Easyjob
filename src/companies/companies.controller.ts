@@ -4,13 +4,23 @@ import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CompanyPermissions } from '../common/decorators/company-permissions.decorator';
 import { CompaniesService, type RequestMeta } from './companies.service';
+import { CompanyDirectoryService } from './company-directory.service';
 import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
 import type { AuthRequest } from '../common/types/auth';
 
 @ApiTags('companies')
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) {}
+  constructor(private readonly companiesService: CompaniesService, private readonly directory: CompanyDirectoryService) {}
+
+  @Get('search')
+  @ApiBearerAuth()
+  async search(@CurrentUser('userId') _userId: string, @Req() req: AuthRequest) {
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const country = typeof req.query.country === 'string' ? req.query.country : undefined;
+    const response = await this.directory.search(query, country);
+    return { results: response.results.map((company) => ({ ...company, location: [company.city, company.countryName].filter(Boolean).join(', ') || null })), providerAvailable: response.providerAvailable };
+  }
 
   @Public() @Get('profile/:slug')
   async publicProfile(@Param('slug') slug: string) { return this.companiesService.getBySlug(slug); }

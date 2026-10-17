@@ -1,0 +1,7 @@
+{
+  "name": "candidate-cv-tailoring",
+  "provider": "easyjob-deterministic",
+  "version": "1.0.0",
+  "paidDependency": false,
+  "confirmationRequired": true
+}

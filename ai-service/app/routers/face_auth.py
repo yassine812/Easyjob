@@ -41,7 +41,7 @@ async def _read_limited(file: UploadFile) -> bytes:
     return data
 
 
-def _analyze(frames_data: list[bytes], require_liveness: bool = True) -> dict:
+def _analyze(frames_data: list[bytes], require_liveness: bool = True, allow_blur: bool = False) -> dict:
     """Runs detection → quality → liveness → embedding. Never stores frames."""
     images: list = []
     for data in frames_data:
@@ -50,9 +50,17 @@ def _analyze(frames_data: list[bytes], require_liveness: bool = True) -> dict:
         except detector.FaceDetectionError as exc:
             raise HTTPException(status_code=422, detail=_safe_detail("invalid_image", str(exc))) from exc
 
-    passed, reasons = quality.check_quality(images[0])
-    if not passed:
-        raise HTTPException(status_code=422, detail=_safe_detail(reasons[0], "Face quality check failed"))
+    quality_warnings: list[str] = []
+    for image in images if allow_blur else images[:1]:
+        passed, reasons = quality.check_quality(image)
+        if not passed:
+            # A low sharpness score is advisory for login, not an identity
+            # decision. Still require a detectable face and every structural
+            # check; keep reference/enrollment quality requirements strict.
+            usable_blur = allow_blur and reasons == ["low_quality"] and len(detector.detect_faces(image)) == 1
+            if not usable_blur:
+                raise HTTPException(status_code=422, detail=_safe_detail(reasons[0], "Face quality check failed"))
+            quality_warnings = ["low_quality"]
 
     if require_liveness:
         live, live_reason = liveness.check_liveness(images)
@@ -70,7 +78,7 @@ def _analyze(frames_data: list[bytes], require_liveness: bool = True) -> dict:
 
     return {
         "embedding": emb,
-        "quality": {"passed": True, "reasons": []},
+        "quality": {"passed": not quality_warnings, "reasons": quality_warnings},
         "liveness": {"passed": True, "reason": None},
     }
 
@@ -98,5 +106,5 @@ async def face_embed(
     frame_a: Annotated[UploadFile, File(...)],
     frame_b: Annotated[UploadFile, File(...)],
 ) -> dict:
-    """Computes a live embedding for comparison (liveness still enforced)."""
-    return _analyze([await _read_limited(frame_a), await _read_limited(frame_b)])
+    """Attempts comparison for detectable blurry faces; liveness is enforced."""
+    return _analyze([await _read_limited(frame_a), await _read_limited(frame_b)], allow_blur=True)

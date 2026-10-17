@@ -339,7 +339,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       popularTags: 'Popular:',
       trustedBy: 'Trusted by 10,000+ top organizations worldwide',
       featuredTitle: 'Featured Opportunities',
-      featuredSubtitle: 'Explore hand-picked roles powered by EasyJob AI matching.',
+      featuredSubtitle: 'Explore hand-picked roles powered by EasyJob matching.',
       viewAllJobs: 'View all jobs',
       applyNow: 'Apply Now',
       aiMatch: 'AI Match',

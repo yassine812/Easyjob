@@ -78,9 +78,11 @@ describe('Admin provisioning, password recovery and CV prefill', () => {
     expect(bad.status).toBe(400);
     const png = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#335599' } }).png().toBuffer();
     expect((await ctx.http.post('/api/v1/candidates/me/photo').set(authHeader(candidate.accessToken)).attach('file', png, { filename: 'photo.png', contentType: 'image/png' })).status).toBe(201);
-    expect((await ctx.http.get('/api/v1/candidates/me/photo').set(authHeader(candidate.accessToken))).body.url).toBeTruthy();
-    expect((await ctx.http.get('/api/v1/candidates/me/photo').set(authHeader(admin.accessToken))).body.url).toBeNull();
+    expect((await ctx.http.get('/api/v1/candidates/me/photo').set(authHeader(candidate.accessToken))).body.avatar_url).toBeTruthy();
+    expect((await ctx.http.get('/api/v1/auth/me').set(authHeader(candidate.accessToken))).body.avatar_url).toBeTruthy();
+    expect((await ctx.http.get('/api/v1/candidates/me/photo').set(authHeader(admin.accessToken))).body.avatar_url).toBeNull();
     expect((await ctx.http.delete('/api/v1/candidates/me/photo').set(authHeader(candidate.accessToken))).status).toBe(200);
-    expect((await ctx.http.get('/api/v1/candidates/me/photo').set(authHeader(candidate.accessToken))).body.url).toBeNull();
+    expect((await ctx.http.get('/api/v1/candidates/me/photo').set(authHeader(candidate.accessToken))).body.avatar_url).toBeNull();
+    expect((await ctx.http.get('/api/v1/auth/me').set(authHeader(candidate.accessToken))).body.avatar_url).toBeNull();
   });
 });

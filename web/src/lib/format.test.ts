@@ -3,6 +3,7 @@ import {
   formatDate,
   formatFileSize,
   formatMoney,
+  formatJobSalary,
   formatSalary,
   initials,
   pluralize,
@@ -14,8 +15,8 @@ describe('formatMoney', () => {
   });
 
   it('formats the Tunisian catalogue without a factor-of-ten error or rounding', () => {
-    expect(formatMoney(2499, 'TND', 'fr-TN')).toMatch(/24,99\s+TND/);
-    expect(formatMoney(4999, 'TND', 'en')).toMatch(/TND\s+49\.99/);
+    expect(formatMoney(4900, 'TND', 'fr-TN')).toMatch(/49\s+TND/);
+    expect(formatMoney(7900, 'TND', 'en')).toMatch(/TND\s+79/);
     expect(formatMoney(0, 'TND', 'fr')).toMatch(/0\s+TND/);
   });
 
@@ -50,6 +51,12 @@ describe('formatSalary', () => {
     expect(formatSalary(50000, null, 'USD')).toContain('From');
     expect(formatSalary(null, 80000, 'USD')).toContain('Up to');
     expect(formatSalary(null, null)).toBe('Not specified');
+  });
+});
+
+describe('formatJobSalary', () => {
+  it('formats whole-unit job salaries without treating them as cents', () => {
+    expect(formatJobSalary(3200, 4800, 'TND', 'en')).toBe('3,200 – 4,800 TND');
   });
 });
 

@@ -1,0 +1,4 @@
+ALTER TABLE "Resume" ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+UPDATE "Resume" SET "updatedAt" = "createdAt";
+ALTER TABLE "CvDraft" ADD COLUMN "document" JSONB;
+ALTER TABLE "CvDraftRevision" ADD COLUMN "document" JSONB;

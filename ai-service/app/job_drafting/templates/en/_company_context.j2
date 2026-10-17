@@ -1,0 +1,1 @@
+{% macro introduction() -%}{% if intro_choice == 0 %}{{ company or 'Our team' }} is looking for {{ indefinite_title }} to {{ family.purpose() }}.{% else %}Join {{ company or 'our team' }} as {{ indefinite_title }} and help {{ family.purpose() }}.{% endif %}{%- endmacro %}

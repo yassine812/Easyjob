@@ -18,6 +18,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { notificationHref } from '@/lib/notification-navigation';
 
 export function NotificationBell() {
   const t = useCompanyText(); const router = useRouter(); const companyId = useParams<{ companyId?: string }>()?.companyId;
@@ -58,7 +59,7 @@ export function NotificationBell() {
                 <DropdownMenuItem
                   key={n.id}
                   className="flex cursor-pointer items-start gap-3 px-4 py-3"
-                  onClick={() => { markRead(n.id); const href = n.data?.href; if (typeof href === 'string' && href.startsWith('/') && !href.startsWith('//') && !href.includes('\\')) router.push(href); }}
+                  onClick={() => { markRead(n.id); const href = notificationHref(n); if (href) router.push(href); }}
                 >
                   <div className="min-w-0 flex-1">
                     <p className={cn('text-sm', !n.readAt && 'font-medium')}>{n.title}</p>

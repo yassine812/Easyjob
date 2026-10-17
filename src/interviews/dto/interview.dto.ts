@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { InterviewStatus, InterviewType } from '@prisma/client';
 import {
-  IsDateString,
+  IsDateString, IsIn, IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -11,6 +11,10 @@ import {
 } from 'class-validator';
 
 export class CreateInterviewDto {
+  @IsOptional() @IsString() @MaxLength(80) timezone?: string;
+  @IsOptional() @IsIn(['EASYJOB', 'ONSITE', 'EXTERNAL']) locationType?: string;
+  @IsOptional() @IsBoolean() assistantEnabled?: boolean;
+
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true })
   memberIds?: string[];
   @ApiProperty()
@@ -44,6 +48,10 @@ export class CreateInterviewDto {
 }
 
 export class UpdateInterviewDto {
+  @IsOptional() @IsString() @MaxLength(80) timezone?: string;
+  @IsOptional() @IsIn(['EASYJOB', 'ONSITE', 'EXTERNAL']) locationType?: string;
+  @IsOptional() @IsBoolean() assistantEnabled?: boolean;
+
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true })
   memberIds?: string[];
   @ApiPropertyOptional()

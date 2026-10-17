@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCompanyText } from '@/lib/i18n/company';
-import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Building2, Check, ChevronsUpDown } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useActiveCompany } from '@/hooks/use-company';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { COMPANY_STATUS_LABELS } from '@/lib/constants';
 
-/** Company switcher — visible to users with at least one membership. */
+/**
+ * Company switcher — only useful when a recruiter can actually change
+ * organisations. A single membership is selected automatically by the
+ * session bootstrap, so showing a disabled-looking dropdown adds noise.
+ */
 export function CompanySwitcher() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -26,7 +30,7 @@ export function CompanySwitcher() {
   const memberships = useAuthStore((s) => s.user?.memberships ?? []);
   const { activeCompany } = useActiveCompany();
 
-  if (memberships.length === 0) return null;
+  if (memberships.length <= 1) return null;
 
   return (
     <DropdownMenu>
@@ -48,7 +52,7 @@ export function CompanySwitcher() {
               if (activeCompany?.companyId === m.companyId) return;
               await queryClient.cancelQueries();
               queryClient.clear();
-              window.location.assign(`/company/${m.companyId}/dashboard`);
+              router.push(`/company/${m.companyId}/dashboard`);
             }}
           >
             <span className="flex min-w-0 items-center gap-2">

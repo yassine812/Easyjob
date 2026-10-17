@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from '../../src/auth/auth.service';
 import { ROLES } from '../../src/common/constants/roles';
@@ -57,7 +57,7 @@ interface MockDb {
   userRole: { create: jest.Mock; findMany: jest.Mock };
   candidateProfile: { create: jest.Mock };
   role: { findUnique: jest.Mock };
-  emailVerificationToken: { create: jest.Mock; findUnique: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
+  emailVerificationToken: { create: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
   passwordResetToken: { create: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
   refreshToken: { updateMany: jest.Mock };
   $transaction: jest.Mock;
@@ -76,6 +76,7 @@ const makeService = (overrides: Record<string, unknown> = {}) => {
     emailVerificationToken: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
     },
@@ -126,6 +127,19 @@ describe('AuthService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('never accepts a platform-admin role through public registration', async () => {
+    const { service, prisma } = makeService();
+    await expect(
+      service.register({
+        name: 'Admin',
+        email: 'admin@test.com',
+        password: 'Str0ngPass123',
+        role: 'SUPER_ADMIN',
+      } as never, {}),
+    ).rejects.toThrow(ForbiddenException);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
   it('logs in with correct credentials and returns tokens', async () => {
     const { service, prisma, tokenService } = makeService();
     const hash = await bcrypt.hash('Str0ngPass123', 10);
@@ -160,18 +174,47 @@ describe('AuthService', () => {
     );
   });
 
-  it('verifies email only with a valid unused token', async () => {
-    const { service, prisma } = makeService();
-    prisma.emailVerificationToken.findUnique.mockResolvedValue(null);
-    await expect(service.verifyEmail('bad-token')).rejects.toThrow(BadRequestException);
-    prisma.emailVerificationToken.findUnique.mockResolvedValue({
-      id: 't1',
-      userId: 'u1',
-      usedAt: null,
-      expiresAt: new Date(Date.now() + 10000),
+  it('verifies a code bound to the email and issues a session only once', async () => {
+    const { service, prisma, tokenService } = makeService();
+    prisma.emailVerificationToken.findFirst.mockResolvedValue({ id: 't1', userId: 'u1', usedAt: null, expiresAt: new Date(Date.now() + 60000), tokenHash: await bcrypt.hash('123456', 4), user: { status: 'ACTIVE' } });
+    prisma.emailVerificationToken.updateMany.mockResolvedValue({ count: 1 });
+    prisma.user.update.mockResolvedValue({ id: 'u1', emailVerifiedAt: new Date() });
+    await expect(service.verifyEmail('JANE@test.com', '123456')).resolves.toEqual({ verified: true, accessToken: 'access-token', refreshToken: 'refresh-token' });
+    expect(prisma.emailVerificationToken.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { user: { email: 'jane@test.com' } } }));
+    expect(tokenService.issueAccessToken).toHaveBeenCalledTimes(1);
+    prisma.emailVerificationToken.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.verifyEmail('jane@test.com', '123456')).rejects.toThrow(BadRequestException);
+    expect(tokenService.issueAccessToken).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['unknown', 'expired', 'used', 'suspended', 'wrong', 'exhausted', 'replayed'])('rejects %s verification without issuing a session', async reason => {
+    const { service, prisma, tokenService } = makeService();
+    prisma.emailVerificationToken.findFirst.mockResolvedValue(reason === 'unknown' ? null : {
+      id: 't1', userId: 'u1', usedAt: reason === 'used' ? new Date() : null,
+      expiresAt: new Date(Date.now() + (reason === 'expired' ? -60000 : 60000)),
+      tokenHash: await bcrypt.hash('123456', 4), user: { status: reason === 'suspended' ? 'SUSPENDED' : 'ACTIVE' },
     });
-    prisma.$transaction.mockImplementation(async (ops: unknown[]) => ops);
-    await expect(service.verifyEmail('good-token')).resolves.toEqual({ verified: true });
+    prisma.emailVerificationToken.updateMany.mockResolvedValue({ count: reason === 'exhausted' ? 0 : 1 });
+    if (reason === 'replayed') prisma.emailVerificationToken.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    await expect(service.verifyEmail('jane@test.com', reason === 'wrong' ? '654321' : '123456')).rejects.toThrow(BadRequestException);
+    expect(tokenService.issueAccessToken).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('sends a six-digit code without a verification link and stores only its hash', async () => {
+    const { service, prisma, email } = makeService();
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'jane@test.com', emailVerifiedAt: null });
+    await service.resendVerification('jane@test.com');
+    const message = email.enqueue.mock.calls[0][0];
+    const code = message.text.match(/\b\d{6}\b/)[0];
+    expect(message.html).not.toContain('href=');
+    const stored = prisma.emailVerificationToken.create.mock.calls[0][0].data;
+    expect(await bcrypt.compare(code, stored.tokenHash)).toBe(true);
+    expect(stored.expiresAt.getTime() - Date.now()).toBeLessThanOrEqual(600000);
+    expect(prisma.emailVerificationToken.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1', usedAt: null } }));
+    prisma.emailVerificationToken.findFirst.mockResolvedValue({ createdAt: new Date() });
+    await service.resendVerification('jane@test.com');
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
   });
 
   it('does not leak whether an email exists on forgot-password', async () => {

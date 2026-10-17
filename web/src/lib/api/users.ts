@@ -14,11 +14,12 @@ export interface AdminUserDetail extends AdminUser {
 export const usersApi = {
   updateMe: (dto: UpdateProfileDto) => api.patch<MeUser>('/users/me', dto),
   adminList: (params: { page?: number; limit?: number; search?: string; status?: string } = {}) =>
-    api.get<Paginated<AdminUser>>(`/admin/users${qs(params)}`),
-  adminGet: (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`),
-  adminUpdate: (id: string, dto: AdminUpdateUserDto) => api.patch<AdminUser>(`/admin/users/${id}`, dto),
+    api.get<Paginated<AdminUser>>(`/platform-admin/users${qs(params)}`),
+  adminGet: (id: string) => api.get<AdminUserDetail>(`/platform-admin/users/${id}`),
+  adminUpdate: (id: string, dto: AdminUpdateUserDto) => api.patch<AdminUser>(`/platform-admin/users/${id}`, dto),
   adminAssignRoles: (id: string, dto: AssignRolesDto) =>
-    api.patch<{ success: boolean }>(`/admin/users/${id}/roles`, dto),
-  adminRoles: () => api.get<Array<{ id: string; name: Role; permissions: string[] }>>('/admin/roles'),
-  adminPermissions: () => api.get<string[]>('/admin/permissions'),
+    api.patch<{ success: boolean }>(`/platform-admin/users/${id}/roles`, dto),
+  adminRoles: () => api.get<Array<{ id: string; name: Role; permissions: string[] }>>('/platform-admin/roles'),
+  adminPermissions: () => api.get<string[]>('/platform-admin/permissions'),
 };
+

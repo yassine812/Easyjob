@@ -1,15 +1,15 @@
 'use client';
 
 import {
-  BarChart3,
   Briefcase,
   Building2,
-  ClipboardList,
   CreditCard,
+  Database,
   FileClock,
   LayoutDashboard,
   ShieldCheck,
   Users,
+  LifeBuoy,
 } from 'lucide-react';
 import { RequireAdmin } from '@/components/shared/guards';
 import { useCompanyText } from '@/lib/i18n/company';
@@ -27,9 +27,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { group: 'manage', href: '/admin/companies', label: ux('companies'), icon: Building2 },
           { group: 'manage', href: '/admin/verifications', label: ux('verifications'), icon: ShieldCheck },
           { group: 'manage', href: '/admin/jobs', label: t('jobs'), icon: Briefcase },
+          { group: 'manage', href: '/admin/job-sources', label: t('jobSourceDashboard'), icon: Database },
+          { group: 'manage', href: '/admin/support', label: 'Support inbox', icon: LifeBuoy },
           { placement: 'bottom', href: '/admin/subscriptions', label: ux('subscriptions'), icon: CreditCard },
           { placement: 'bottom', href: '/admin/audit-logs', label: ux('audit'), icon: FileClock },
-          { href: '/admin/analytics', label: t('analytics'), icon: BarChart3 },
         ]}
       >
         {children}
@@ -37,5 +38,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </RequireAdmin>
   );
 }
-
-export { ClipboardList };

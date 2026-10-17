@@ -1,2 +1,3 @@
 import { GuidedInterviewCoach } from '@/components/candidate/guided-interview-coach';
-export default function Page() { return <GuidedInterviewCoach />; }
+import { Suspense } from 'react';
+export default function Page() { return <Suspense><GuidedInterviewCoach /></Suspense>; }

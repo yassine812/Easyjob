@@ -21,6 +21,7 @@ FROM node:24-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
 ENV RUN_WORKERS=false
+ENV NODE_USE_SYSTEM_CA=1
 # Prisma's query engine needs OpenSSL at runtime.
 RUN apk add --no-cache openssl
 COPY --from=build /app/node_modules ./node_modules

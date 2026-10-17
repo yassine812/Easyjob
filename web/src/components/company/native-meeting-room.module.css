@@ -1,0 +1,19 @@
+.room { display:flex; flex-direction:column; min-height:480px; background:#101722; color:#e5e7eb; }
+.status { display:flex; justify-content:space-between; gap:12px; padding:14px 18px; font-size:12px; color:#b6c2d6; }
+.grid { flex:1; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); align-content:center; gap:12px; padding:12px; }
+.tile { position:relative; display:grid; place-items:center; min-width:0; min-height:190px; aspect-ratio:16/10; background:#1c2939; border:2px solid transparent; border-radius:14px; overflow:hidden; }
+.tile video { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+.tile.screen { grid-column:1/-1; aspect-ratio:16/9; }
+.screen video { object-fit:contain; }
+.speaking { border-color:#67d5c5; }
+.avatar { display:grid; place-items:center; width:72px; height:72px; border-radius:50%; background:#333f66; color:#c9d3ff; font-size:24px; }
+.name { position:absolute; bottom:10px; inset-inline-start:10px; max-width:calc(100% - 20px); display:flex; gap:6px; align-items:center; border-radius:6px; padding:6px 10px; background:#090f1dcc; font-size:12px; }
+.name span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.controls { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; padding:16px; border-top:1px solid #334155; }
+.controls svg { width:18px; height:18px; }
+.devicePicker { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; padding:16px; }
+.devicePicker label { min-width:0; display:flex; flex-direction:column; gap:6px; font-size:12px; }
+.devicePicker select { min-width:0; width:100%; border:1px solid #475569; border-radius:8px; background:#172033; color:#e5e7eb; padding:8px; }
+.people { list-style:none; padding:16px; margin:0; display:flex; flex-wrap:wrap; gap:16px; font-size:13px; }
+.error { padding:12px 16px; font-size:13px; color:#fda4af; }
+@media(max-width:600px) { .room { min-height:350px; } .grid { grid-template-columns:1fr; } .controls { gap:6px; padding:10px; } }

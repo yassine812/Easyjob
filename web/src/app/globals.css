@@ -1334,11 +1334,17 @@
 html[dir='rtl'], html[dir='rtl'] body, html[dir='rtl'] h1, html[dir='rtl'] h2, html[dir='rtl'] h3 { font-family: var(--font-arabic), var(--font-inter), sans-serif; letter-spacing: 0; }
 body { line-height: 1.6; }
 .workspace-shell { background: var(--surface-canvas); }
+.workspace-page-container { width: 100%; max-width: 90rem; min-width: 0; margin-inline: auto; }
 .workspace-shell h1 { font-size: var(--text-h1); line-height: 1.25; font-weight: 650; letter-spacing: -.03em; }
 .workspace-shell header > div > p { max-width: 68ch; }
 .workspace-nav-item { display: flex; align-items: center; gap: .75rem; min-height: 42px; padding: .6rem .75rem; border-radius: .6rem; font-size: .8125rem; font-weight: 500; color: var(--muted-foreground); transition: background-color var(--motion-fast), color var(--motion-fast); }
 .workspace-nav-item:hover { background: var(--muted); color: var(--foreground); }
 .workspace-nav-item.is-active { background: var(--accent); color: var(--accent-foreground); font-weight: 650; }
+.workspace-sidebar-nav { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
+.workspace-sidebar-nav::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.workspace-sidebar .workspace-nav-item.is-active { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); box-shadow: inset 2px 0 0 var(--primary); }
+[data-sidebar-compact="true"] .workspace-nav-item { min-height: 40px; padding: .5rem .75rem; border-radius: .45rem; }
+[data-sidebar-compact="true"] .workspace-nav-item.is-active { background: color-mix(in srgb, var(--primary) 10%, transparent); box-shadow: inset 2px 0 0 var(--primary); }
 .workspace-nav-item:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .mobile-dock { padding-bottom: max(.5rem, env(safe-area-inset-bottom)); }
 .skip-link { position: fixed; inset-inline-start: 1rem; top: -6rem; z-index: 100; padding: .75rem 1rem; border-radius: .5rem; background: var(--primary); color: var(--primary-foreground); }

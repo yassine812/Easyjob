@@ -1582,8 +1582,9 @@ export interface components {
             refreshToken?: string;
         };
         VerifyEmailDto: {
-            /** @description Token from the verification link */
-            token: string;
+            email: string;
+            /** @description Six-digit code received by email */
+            code: string;
         };
         ResendVerificationDto: {
             /** @example jane@example.com */
@@ -1679,6 +1680,12 @@ export interface components {
         };
         ExperienceDto: {
             companyName: string;
+            companyId?: string;
+            companyLogoUrl?: string;
+            companyWebsite?: string;
+            companyProvider?: string;
+            location?: string;
+            countryCode?: string;
             title: string;
             description?: string;
             startDate: string;

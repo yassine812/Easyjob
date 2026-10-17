@@ -231,13 +231,13 @@ describe('BiometricService — enrollment', () => {
     );
   });
 
-  it('treats an AI rejection as a generic 401 on face login (no quality leak)', async () => {
+  it('reports capture feedback without issuing an identity decision or session', async () => {
     const { service, faceClient } = makeService();
     faceClient.embed.mockRejectedValueOnce(new FaceRejectedError('no_face'));
     const { challengeId } = await service.faceStart('jane@test.com', { ip: '5.5.5.5' });
     await expect(
       service.faceVerify('jane@test.com', challengeId, [jpegFrame(1), jpegFrame(2)], { ip: '5.5.5.5' }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toMatchObject({ status: 422, response: 'FACE_CAPTURE:no_face' });
   });
 
   it('disables face login and deletes the template', async () => {
@@ -248,6 +248,26 @@ describe('BiometricService — enrollment', () => {
 });
 
 describe('BiometricService — face login', () => {
+  it('requires email confirmation after a valid face match without issuing a session', async () => {
+    const { service, prisma, tokenService } = makeService();
+    prisma.user.findUnique.mockResolvedValueOnce(enrolledUser({ emailVerifiedAt: null }));
+    const { challengeId } = await service.faceStart('jane@test.com', {});
+    await expect(service.faceVerify('jane@test.com', challengeId, [jpegFrame(1), jpegFrame(2)], {}))
+      .rejects.toMatchObject({ response: { code: 'EMAIL_VERIFICATION_REQUIRED' } });
+    expect(tokenService.issueAccessToken).not.toHaveBeenCalled();
+    expect(tokenService.issueRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('does not reveal unverified email status to a wrong face', async () => {
+    const { service, prisma, faceClient, tokenService } = makeService();
+    prisma.user.findUnique.mockResolvedValueOnce(enrolledUser({ emailVerifiedAt: null }));
+    faceClient.embed.mockResolvedValueOnce({ embedding: BAD, quality: { passed: true, reasons: [] }, liveness: { passed: true } });
+    const { challengeId } = await service.faceStart('jane@test.com', {});
+    await expect(service.faceVerify('jane@test.com', challengeId, [jpegFrame(1), jpegFrame(2)], {}))
+      .rejects.toThrow('Face verification failed.');
+    expect(tokenService.issueAccessToken).not.toHaveBeenCalled();
+  });
+
   it('issues tokens after a successful face match', async () => {
     const { service } = makeService();
     const { challengeId } = await service.faceStart('jane@test.com', { ip: '9.9.9.9' });

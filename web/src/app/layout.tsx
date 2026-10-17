@@ -10,6 +10,7 @@ import { SocketProvider } from '@/providers/socket-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { I18nProvider } from '@/lib/i18n';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { RetireLegacyWorker } from '@/components/layout/retire-legacy-worker';
 
 const interSans = Inter({
@@ -70,8 +71,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <QueryProvider>
               <AuthProvider>
                 <SocketProvider>
+                  <TooltipProvider delayDuration={250}>
                   {children}
                   <Toaster richColors position="top-right" />
+                  </TooltipProvider>
                 </SocketProvider>
               </AuthProvider>
             </QueryProvider>

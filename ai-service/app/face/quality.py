@@ -37,13 +37,9 @@ def check_quality(img: np.ndarray) -> tuple[bool, list[str]]:
 
     faces = detect_faces(img)
     if len(faces) == 0:
-        # No face found — distinguish a blurry/blank frame (whole image
-        # smooth) from a sharp frame that simply contains no face.
-        if sharpness(img) < MIN_SHARPNESS:
-            reasons.append("low_quality")
-        else:
-            reasons.append("no_face")
-        return (False, reasons)
+        # Without a detected face we cannot judge facial sharpness. A plain
+        # background must not turn a detector miss into a misleading blur error.
+        return (False, ["no_face"])
 
     if len(faces) > 1:
         return (False, ["multiple_faces"])

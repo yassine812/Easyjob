@@ -1,0 +1,1 @@
+# candidate-star-story  ## Purpose Store candidate-authored Situation, Task, Action and Result stories.  ## Safety - Deterministic and self-hosted; no LLM, API key or paid SaaS is required. - Never invent candidate facts or make a hiring decision. - Candidate controls every CV change and every message.

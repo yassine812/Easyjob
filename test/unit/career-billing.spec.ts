@@ -9,18 +9,18 @@ describe('Candidate plan payment boundaries', () => {
   const make = (prisma = {}) => new SubscriptionsService(prisma as never, {} as never, {} as never, {} as never,
     {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, config);
   it('uses explicit development routing without inventing Tunisian pricing', () => {
-    expect(make().resolvePaymentRouting('TN', { priceCents: 1999 })).toEqual({ provider: 'DEV', currency: 'USD', amountCents: 1999, billingCountry: 'TN' });
+    expect(make().resolvePaymentRouting('TN', { priceCents: 7900 })).toEqual({ provider: 'DEV', currency: 'USD', amountCents: 7900, billingCountry: 'TN' });
   });
   it('does not silently invent a TND price for a real payment', () => {
-    const live = { ...config, env: 'production', payment: { ...config.payment, provider: 'konnect' as const } };
+    const live = { ...config, env: 'production', payment: { ...config.payment, provider: 'konnect' as const, konnect: { apiKey: 'test', receiverWalletId: 'wallet', enabled: true, mode: 'sandbox' as const, webhookSecret: '' } } } as AppConfig;
     const service = new SubscriptionsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, live);
-    expect(() => service.resolvePaymentRouting('TN', { priceCents: 1999 })).toThrow(BadRequestException);
-    expect(service.resolvePaymentRouting('TN', { priceCents: 1999, priceTndCents: 6200 }).amountCents).toBe(6200);
-    expect(service.resolvePaymentRouting('TN', { priceCents: 999, currency: 'TND' })).toEqual({ provider: 'KONNECT', currency: 'TND', amountCents: 999, billingCountry: 'TN' });
+    expect(() => service.resolvePaymentRouting('TN', { priceCents: 7900 })).toThrow(BadRequestException);
+    expect(service.resolvePaymentRouting('TN', { priceCents: 7900, priceTndCents: 6200 }).amountCents).toBe(6200);
+    expect(service.resolvePaymentRouting('TN', { priceCents: 4900, currency: 'TND' })).toEqual({ provider: 'KONNECT', currency: 'TND', amountCents: 4900, billingCountry: 'TN' });
     expect(() => service.resolvePaymentRouting('TN', { priceCents: -1, currency: 'TND' })).toThrow(BadRequestException);
   });
   it('preserves the catalogue currency in automated-test routing', () => {
-    expect(make().resolvePaymentRouting('TN', { priceCents: 999, currency: 'TND' })).toEqual({ provider: 'DEV', currency: 'TND', amountCents: 999, billingCountry: 'TN' });
+    expect(make().resolvePaymentRouting('TN', { priceCents: 4900, currency: 'TND' })).toEqual({ provider: 'DEV', currency: 'TND', amountCents: 4900, billingCountry: 'TN' });
   });
   it('does not reveal payment details from another candidate', async () => {
     const service = make({ payment: { findFirst: jest.fn().mockResolvedValue({ subscription: { ownerType: 'CANDIDATE', candidate: { userId: 'other' } } }) } });
@@ -38,7 +38,7 @@ describe('Candidate plan payment boundaries', () => {
     expect(tx.subscription.update).not.toHaveBeenCalled();
   });
   it('keeps an existing USD renewal at its paid price after the catalogue becomes TND', async () => {
-    const subscription = { id: 'sub', ownerType: 'CANDIDATE', candidateId: 'candidate', plan: { priceCents: 1999, currency: 'TND', billingInterval: 'MONTHLY' } };
+    const subscription = { id: 'sub', ownerType: 'CANDIDATE', candidateId: 'candidate', plan: { priceCents: 7900, currency: 'TND', billingInterval: 'MONTHLY' } };
     const tx = { processedWebhookEvent: { create: jest.fn() },
       payment: { findFirst: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValueOnce({ amountCents: 999, currency: 'USD' }), create: jest.fn(), update: jest.fn() },
       subscription: { findFirst: jest.fn().mockResolvedValue(subscription), updateMany: jest.fn(), update: jest.fn() },
@@ -66,6 +66,14 @@ describe('Konnect callbacks require authoritative verification', () => {
     await provider.createCheckout({ plan: { id: 'pro', name: 'PRO', type: 'CANDIDATE', priceCents: 999, currency: 'TND', billingInterval: 'MONTHLY' }, ownerId: 'candidate', ownerType: 'CANDIDATE', email: 'candidate@example.test', successUrl: 'http://localhost/success', cancelUrl: 'http://localhost/cancel', orderId: 'order' });
     expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toMatchObject({ token: 'TND', amount: 9990 });
     expect(await provider.handleWebhook(Buffer.from('{"payment_ref":"ref"}'), undefined)).toEqual([expect.objectContaining({ amountCents: 999, currency: 'TND' })]);
+  });
+  it('supports EUR and USD provider minor units', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce({ ok: true, json: async () => ({ payUrl: 'https://pay.example/checkout', paymentRef: 'ref' }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ payment: { status: 'completed', amount: 4510, reachedAmount: 4510, token: 'EUR', orderId: 'order', convertedAmount: 49000, exchangeRate: 0.92 } }) } as Response);
+    const provider = new KonnectPaymentProvider({ ...config, payment: { ...config.payment, konnect: { apiKey: 'test', receiverWalletId: 'wallet', webhookSecret: '', webhookUrl: 'https://api.example/webhook', mode: 'sandbox' } } });
+    await provider.createCheckout({ plan: { id: 'pro', name: 'PRO', type: 'CANDIDATE', priceCents: 4510, currency: 'EUR', billingInterval: 'MONTHLY' }, ownerId: 'candidate', ownerType: 'CANDIDATE', email: 'candidate@example.test', successUrl: 'http://localhost/success', cancelUrl: 'http://localhost/cancel', orderId: 'order' });
+    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toMatchObject({ token: 'EUR', amount: 4510 });
+    expect(await provider.handleWebhook(Buffer.from('{"payment_ref":"ref"}'), undefined)).toEqual([expect.objectContaining({ amountCents: 4510, paymentAmountMinor: 4510, currency: 'EUR', providerConvertedAmount: 49000 })]);
   });
   it('does not simulate checkout when credentials are missing', async () => {
     const provider = new KonnectPaymentProvider(config);

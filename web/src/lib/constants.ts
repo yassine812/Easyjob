@@ -44,7 +44,7 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   SHORTLISTED: 'Shortlisted',
   ASSESSMENT: 'Assessment',
   INTERVIEW: 'Interview',
-  OFFER: 'Offer',
+  OFFER: 'Employment offer',
   HIRED: 'Hired',
   REJECTED: 'Rejected',
   WITHDRAWN: 'Withdrawn',
@@ -82,6 +82,7 @@ export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
 };
 
 export const INTERVIEW_STATUS_LABELS: Record<InterviewStatus, string> = {
+  IN_PROGRESS: 'In progress',
   NO_SHOW: 'No-show',
   SCHEDULED: 'Scheduled',
   CONFIRMED: 'Confirmed',
@@ -132,6 +133,11 @@ export const MEMBER_ROLE_LABELS: Record<string, string> = {
   INTERVIEWER: 'Interviewer',
   CANDIDATE: 'Candidate',
   PLATFORM_ADMIN: 'Platform admin',
+  SUPER_ADMIN: 'Super admin',
+  OPERATIONS_ADMIN: 'Operations admin',
+  BILLING_ADMIN: 'Billing admin',
+  SUPPORT_ADMIN: 'Support admin',
+  READ_ONLY_ADMIN: 'Read-only admin',
 };
 
 export const AI_TYPE_LABELS: Record<string, string> = {

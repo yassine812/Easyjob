@@ -1,19 +1,26 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { ApplicationStatus } from '@prisma/client';
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ApplicationStatus, JobStatus } from '@prisma/client';
+import { IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CompanyPermissions } from '../common/decorators/company-permissions.decorator';
 import { ApplicationsService } from './applications.service';
-import { AddApplicationNoteDto, ApplyDto, UpdateApplicationStatusDto } from './dto/application.dto';
+import { AddApplicationNoteDto, ApplyDto, ApplicationMessageDto, UpdateApplicationStatusDto } from './dto/application.dto';
 import type { AuthRequest } from '../common/types/auth';
 import type { RequestMeta } from '../companies/companies.service';
 
 class ListApplicationsQuery {
+  @IsOptional() @IsDateString() from?: string;
+  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsIn(['true', 'false']) overdue?: string;
+  @IsOptional() @IsIn(['true', 'false']) activeOnly?: string;
   @IsOptional() @IsString() @MaxLength(150) search?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100) minimumMatch?: number;
-  @IsOptional() @IsIn(['newest', 'match']) sort?: string;
+  @IsOptional() @IsIn(['newest', 'oldest', 'match', 'stageTime', 'potential']) sort?: string;
+  @IsOptional() @IsIn(['STRONG_MATCH', 'PROMISING', 'REVIEW', 'LOW_ALIGNMENT']) classification?: 'STRONG_MATCH' | 'PROMISING' | 'REVIEW' | 'LOW_ALIGNMENT';
+  @IsOptional() @Type(() => Number) @IsInt() @IsIn([10, 20, 50]) topN?: number;
+  @IsOptional() @IsIn(['true', 'false']) includeLowAlignment?: string;
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -33,6 +40,14 @@ class ListApplicationsQuery {
   @IsOptional()
   @IsString()
   jobId?: string;
+}
+
+class ListJobSummariesQuery {
+  @IsOptional() @IsString() @MaxLength(150) search?: string;
+  @IsOptional() @IsEnum(JobStatus) status?: JobStatus;
+  @IsOptional() @IsIn(['newest', 'oldest', 'title']) sort?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) limit?: number;
 }
 
 @ApiTags('applications')
@@ -68,7 +83,7 @@ export class ApplicationsController {
 
   @Get('companies/:companyId/application-jobs')
   @CompanyPermissions('application.view')
-  listJobs(@CurrentUser('userId') userId: string, @Param('companyId') companyId: string, @Query() query: ListApplicationsQuery) {
+  listJobs(@CurrentUser('userId') userId: string, @Param('companyId') companyId: string, @Query() query: ListJobSummariesQuery) {
     return this.applicationsService.listJobSummaries(userId, companyId, query);
   }
 
@@ -120,6 +135,16 @@ export class ApplicationsController {
   @Get('applications/:id/cv')
   async getCv(@CurrentUser('userId') userId: string, @Param('id') id: string, @Req() req: AuthRequest) {
     return this.applicationsService.getCvUrl(userId, id, requestMeta(req));
+  }
+
+  @Get('applications/:id/messages')
+  async listMessages(@CurrentUser('userId') userId: string, @Param('id') id: string) {
+    return this.applicationsService.listMessages(id, userId);
+  }
+
+  @Post('applications/:id/messages')
+  async sendMessage(@CurrentUser('userId') userId: string, @Param('id') id: string, @Body() dto: ApplicationMessageDto) {
+    return this.applicationsService.sendMessage(id, userId, dto);
   }
 }
 

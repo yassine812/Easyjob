@@ -152,6 +152,21 @@ export async function apiFetch<T>(path: string, init: RequestOptions = {}): Prom
   return result;
 }
 
+/** Fetch an authenticated binary response (for interview brief/PDF downloads). */
+export async function apiBlob(path: string): Promise<Blob> {
+  const token = useAuthStore.getState().accessToken;
+  const response = await fetch(`${env.apiUrl}${path}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Request-Id': crypto.randomUUID() },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { message?: string } | null;
+    throw new ApiError(response.status, body?.message ?? `Request failed (${response.status})`, body ?? undefined);
+  }
+  return response.blob();
+}
+
 /** Query-string builder for pagination + filters (only defined params). */
 export function qs(params: object): string {
   const search = new URLSearchParams();

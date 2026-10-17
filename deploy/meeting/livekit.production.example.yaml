@@ -1,0 +1,21 @@
+# Use on a dedicated Linux media host with host networking. Fill placeholders before deploying.
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true
+keys:
+  REPLACE_API_KEY: REPLACE_WITH_RANDOM_SECRET_AT_LEAST_32_CHARACTERS
+redis:
+  address: 127.0.0.1:6379
+  password: REPLACE_REDIS_PASSWORD
+turn:
+  enabled: true
+  domain: turn.example.com
+  udp_port: 3478
+  tls_port: 443
+  cert_file: /certs/turn/fullchain.pem
+  key_file: /certs/turn/privkey.pem
+webhook:
+  api_key: REPLACE_API_KEY
+  urls: ["https://api.example.com/api/v1/meetings/events"]

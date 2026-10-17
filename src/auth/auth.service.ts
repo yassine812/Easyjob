@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { RealtimeService } from '../realtime/realtime.service';
 import * as bcrypt from 'bcryptjs';
+import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CONFIG, type AppConfig } from '../config/configuration';
@@ -8,9 +9,10 @@ import { TokenService } from './token.service';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../queues/email/email.service';
 import { emailTemplates } from '../queues/email/templates';
-import { addDays, addMinutes } from '../common/utils/dates';
+import { addMinutes } from '../common/utils/dates';
 import { generateToken, hashToken } from '../common/utils/tokens';
-import { ROLES } from '../common/constants/roles';
+import { PLATFORM_ADMIN_ROLES, ROLES } from '../common/constants/roles';
+import { StorageService } from '../files/storage.service';
 import type {
   ChangePasswordDto,
   LoginDto,
@@ -32,9 +34,21 @@ export class AuthService {
     private readonly emailService: EmailService,
     @Inject(CONFIG) private readonly config: AppConfig,
     @Optional() private readonly realtime?: RealtimeService,
+    private readonly storage?: StorageService,
   ) {}
 
   async register(dto: RegisterDto, meta: AuthRequestMeta) {
+    // Keep this invariant in the service as well as in the DTO/ValidationPipe:
+    // a future client or an internal caller must never be able to request a
+    // platform-admin role through public registration.
+    const submitted = dto as RegisterDto & { role?: unknown; roles?: unknown };
+    const submittedRoles = [
+      submitted.role,
+      ...(Array.isArray(submitted.roles) ? submitted.roles : []),
+    ].filter((role): role is string => typeof role === 'string');
+    if (submittedRoles.some(role => (PLATFORM_ADMIN_ROLES as readonly string[]).includes(role.toUpperCase()))) {
+      throw new ForbiddenException('Platform administrator accounts are created by the server operator');
+    }
     if (dto.intent === 'company' || dto.company) throw new ForbiddenException('Company accounts are created by the platform administrator');
     const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -161,32 +175,48 @@ export class AuthService {
     return { accessToken: pair.accessToken, refreshToken: pair.refreshToken };
   }
 
-  async verifyEmail(token: string): Promise<{ verified: boolean }> {
-    const record = await this.prisma.emailVerificationToken.findUnique({
-      where: { tokenHash: hashToken(token) },
+  async verifyEmail(email: string, code: string, meta: AuthRequestMeta = {}) {
+    const record = await this.prisma.emailVerificationToken.findFirst({
+      where: { user: { email: email.trim().toLowerCase() } },
+      orderBy: { createdAt: 'desc' },
       include: { user: true },
     });
-    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestException('Invalid or expired verification token');
+    const invalid = () => new BadRequestException('Invalid or expired verification code');
+    if (!/^\d{6}$/.test(code) || !record || record.usedAt || record.expiresAt.getTime() <= Date.now() || record.user.status !== 'ACTIVE') {
+      throw invalid();
     }
-    await this.prisma.$transaction([
-      this.prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
-      this.prisma.user.update({
+    const attempt = await this.prisma.emailVerificationToken.updateMany({
+      where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: 5 } },
+      data: { attempts: { increment: 1 } },
+    });
+    if (attempt.count !== 1 || !(await bcrypt.compare(code, record.tokenHash))) throw invalid();
+    const user = await this.prisma.$transaction(async tx => {
+      const consumed = await tx.emailVerificationToken.updateMany({
+        where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      });
+      if (consumed.count !== 1) throw invalid();
+      const verified = await tx.user.update({
         where: { id: record.userId },
-        data: { emailVerifiedAt: new Date() },
-      }),
-      this.prisma.emailVerificationToken.updateMany({
+        data: { emailVerifiedAt: new Date(), lastLoginAt: new Date() },
+      });
+      await tx.emailVerificationToken.updateMany({
         where: { userId: record.userId, usedAt: null, id: { not: record.id } },
         data: { usedAt: new Date() },
-      }),
-    ]);
+      });
+      return verified;
+    });
     await this.audit.log({
       actorId: record.userId,
       action: 'auth.email_verified',
       entityType: 'User',
       entityId: record.userId,
     });
-    return { verified: true };
+    return {
+      verified: true,
+      accessToken: await this.tokenService.issueAccessToken(user),
+      refreshToken: await this.tokenService.issueRefreshToken(user.id, meta.ip, meta.userAgent),
+    };
   }
 
   async resendVerification(email: string): Promise<{ sent: boolean }> {
@@ -219,6 +249,7 @@ export class AuthService {
         to: user.email,
         subject: rendered.subject,
         html: rendered.html,
+        text: rendered.text,
         dedupeKey: `password-reset:${user.id}:${Date.now()}`,
       });
       await this.audit.log({
@@ -252,7 +283,7 @@ export class AuthService {
     await this.prisma.$transaction(async tx => {
       const claimed = await tx.passwordResetToken.updateMany({ where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
       if (claimed.count !== 1) throw new BadRequestException('Invalid or expired reset token');
-      await tx.user.update({ where: { id: record.userId }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, sessionVersion: { increment: 1 } } });
+      await tx.user.update({ where: { id: record.userId }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, emailVerifiedAt: new Date(), sessionVersion: { increment: 1 } } });
       await tx.passwordResetToken.updateMany({ where: { userId: record.userId, usedAt: null }, data: { usedAt: new Date() } });
       await tx.refreshToken.updateMany({ where: { userId: record.userId, revokedAt: null }, data: { revokedAt: new Date() } });
     });
@@ -288,7 +319,7 @@ export class AuthService {
       where: { id: userId },
       include: {
         roles: { include: { role: true } },
-        candidateProfile: { select: { id: true, headline: true, visibility: true } },
+        candidateProfile: { select: { id: true, headline: true, visibility: true, photoKey: true } },
         companyMemberships: {
           where: { status: 'ACTIVE' },
           include: { company: { select: { id: true, commercialName: true, slug: true, status: true } } },
@@ -308,6 +339,7 @@ export class AuthService {
       createdAt: user.createdAt,
       roles: user.roles.map((ur) => ur.role.name),
       candidateProfileId: user.candidateProfile?.id ?? null,
+      avatar_url: await this.avatarUrl(user.candidateProfile?.photoKey),
       memberships: user.companyMemberships.map((m) => ({
         companyId: m.company.id,
         companyName: m.company.commercialName,
@@ -318,21 +350,34 @@ export class AuthService {
     };
   }
 
+  /** CandidateProfile.photoKey is the sole persisted profile-photo reference. */
+  private async avatarUrl(photoKey: string | null | undefined): Promise<string | null> {
+    if (!photoKey || !this.storage) return null;
+    try {
+      await this.storage.getBytes(photoKey);
+      return await this.storage.presignedGet(photoKey);
+    } catch {
+      return null;
+    }
+  }
+
   private async createVerificationTokenAndEmail(userId: string, email: string): Promise<void> {
-    const raw = generateToken();
-    await this.prisma.emailVerificationToken.create({
-      data: {
-        userId,
-        tokenHash: hashToken(raw),
-        expiresAt: addDays(new Date(), 7),
-      },
-    });
-    const url = `${this.config.frontendUrl}/verify-email?token=${raw}`;
-    const rendered = emailTemplates.verifyEmail(url);
+    const raw = randomInt(0, 1_000_000).toString().padStart(6, '0');
+    const tokenHash = await bcrypt.hash(raw, 10);
+    const created = await this.prisma.$transaction(async tx => {
+      const recent = await tx.emailVerificationToken.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } });
+      if (recent && recent.createdAt.getTime() > Date.now() - 120_000) return false;
+      await tx.emailVerificationToken.updateMany({ where: { userId, usedAt: null }, data: { usedAt: new Date() } });
+      await tx.emailVerificationToken.create({ data: { userId, tokenHash, expiresAt: addMinutes(new Date(), 10) } });
+      return true;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    if (!created) return;
+    const rendered = emailTemplates.verifyEmail(raw);
     await this.emailService.enqueue({
       to: email,
       subject: rendered.subject,
       html: rendered.html,
+      text: rendered.text,
       dedupeKey: `verify-email:${userId}:${Date.now()}`,
     });
   }

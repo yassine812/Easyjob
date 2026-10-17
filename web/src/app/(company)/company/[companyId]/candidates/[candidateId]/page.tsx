@@ -1,9 +1,11 @@
 'use client';
+import { EasyJobFeatureMark } from '@/components/ui/easyjob-feature-mark';
+
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { GraduationCap, MapPin, Sparkles } from 'lucide-react';
+import { GraduationCap, MapPin } from 'lucide-react';
 import { candidatesApi } from '@/lib/api/candidates';
 import { RequireCompanyPermission } from '@/components/shared/guards';
 import { PageHeader, ErrorState, PageLoader } from '@/components/shared';
@@ -47,7 +49,7 @@ export default function CompanyCandidateProfilePage() {
         >
           {p.visibility === 'PUBLIC' ? (
             <Badge variant="success">
-              <Sparkles className="mr-1 size-3" /> Public profile
+              <EasyJobFeatureMark size="sm" className="mr-1 " /> Public profile
             </Badge>
           ) : null}
         </PageHeader>

@@ -1,14 +1,16 @@
 """Face detection.
 
-Uses OpenCV's bundled Haar cascade (CPU-only, no model download at runtime).
+Uses Haar cascades with a bundled YuNet fallback (CPU-only, no runtime downloads).
 Returns raw face rectangles; callers decide how many faces are acceptable.
 
-The Haar detector is fast and dependency-free but weaker than modern deep
-models (profile poses, heavy occlusion). It is adequate for a guided
-enrollment flow where the user is told to look straight at the camera.
+Existing Haar crops are preserved for compatibility with enrolled templates.
+YuNet handles camera faces that the cascades miss, including soft captures.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
+from threading import local
 
 import cv2
 import numpy as np
@@ -22,6 +24,33 @@ _cascade = cv2.CascadeClassifier(
 _profile_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_profileface.xml"
 )
+_thread_models = local()
+
+
+def _detect_yunet(img: np.ndarray, min_size: int) -> list[tuple[int, int, int, int]]:
+    """Fallback detector; keep mutable DNN input dimensions local to each thread."""
+    model = getattr(_thread_models, "yunet", None)
+    if model is None:
+        model = cv2.FaceDetectorYN.create(
+            str(Path(__file__).parent / "models" / "face_detection_yunet_2023mar.onnx"),
+            "", (320, 320), 0.9, 0.3, 5000,
+        )
+        _thread_models.yunet = model
+    height, width = img.shape[:2]
+    scale = min(1.0, 640 / max(height, width))
+    resized = cv2.resize(img, (round(width * scale), round(height * scale))) if scale < 1 else img
+    model.setInputSize((resized.shape[1], resized.shape[0]))
+    _, faces = model.detect(resized)
+    if faces is None:
+        return []
+    boxes = []
+    for face in faces:
+        x, y, w, h = face[:4] / scale
+        left, top = max(0, round(float(x))), max(0, round(float(y)))
+        right, bottom = min(width, round(float(x + w))), min(height, round(float(y + h)))
+        if min(right - left, bottom - top) >= min_size:
+            boxes.append((left, top, right - left, bottom - top))
+    return boxes
 
 
 class FaceDetectionError(ValueError):
@@ -79,6 +108,9 @@ def detect_faces(img: np.ndarray, min_size: int = MIN_FACE_SIZE) -> list[tuple[i
         )
         width = gray.shape[1]
         boxes.extend((width - int(x) - int(w), int(y), int(w), int(h)) for x, y, w, h in mirrored)
+
+    if not boxes:
+        return _detect_yunet(img, min_size)
 
     groups: list[list[tuple[int, int, int, int]]] = []
     for box in sorted(boxes, key=lambda b: b[2] * b[3], reverse=True):

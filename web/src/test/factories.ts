@@ -24,6 +24,7 @@ export function makeUser(options: MakeUserOptions = {}): MeUser {
     createdAt: '2026-01-01T00:00:00.000Z',
     roles: options.roles ?? ['CANDIDATE'],
     candidateProfileId: null,
+    avatarUrl: null,
     memberships: (options.memberships ?? []).map((m) => ({
       companyId: m.companyId ?? 'c1',
       companyName: m.companyName ?? 'Test Company',

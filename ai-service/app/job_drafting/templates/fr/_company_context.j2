@@ -1,0 +1,4 @@
+{% macro introduction() -%}
+{% if intro_choice == 0 %}{{ company or 'Notre équipe' }} recherche un {{ narrative_title }} pour {{ family.purpose() }}.
+{% else %}{% if company %}Rejoignez {{ company }}{% else %}Rejoignez notre équipe{% endif %} en tant que {{ narrative_title }} pour {{ family.purpose() }}.{% endif %}
+{%- endmacro %}

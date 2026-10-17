@@ -1,0 +1,8 @@
+{
+  "runtime": "EasyJobSkillRuntime",
+  "defaultTimeoutMs": 8000,
+  "externalResearch": "enrichment_only",
+  "transcription": "optional",
+  "cameraAnalysis": false,
+  "automaticHiringDecision": false
+}

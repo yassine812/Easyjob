@@ -112,6 +112,34 @@ services:
       api:
         condition: service_started
 
+  external-research-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: startup-starter-external-research-worker
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/external-research-worker-main.js"]
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/startup_starter?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: docker-access-secret-0123456789abcdef0123456789abcdef
+      JWT_REFRESH_SECRET: docker-refresh-secret-0123456789abcdef0123456789abcdef
+      STORAGE_PROVIDER: local
+      EMAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      PAYMENT_PROVIDER: dev
+      DEV_WEBHOOK_SECRET: dev-webhook-secret-change-me
+      EXTERNAL_RESEARCH_ENABLED: "false"
+      AGENT_REACH_ENABLED: "false"
+      RUN_WORKERS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   ai:
     build:
       context: ./ai-service

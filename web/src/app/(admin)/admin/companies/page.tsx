@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ProvisionCompany } from '@/components/admin/provision-company';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { COMPANY_STATUS_LABELS } from '@/lib/constants';
+import { adminStatusLabel } from '@/lib/admin-labels';
 import { formatDate } from '@/lib/format';
 
 export default function AdminCompaniesPage() {
@@ -36,12 +38,13 @@ export default function AdminCompaniesPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Companies" description="All companies on the platform.">
+      <PageHeader title="Entreprises" description="Toutes les entreprises de la plateforme.">
         <div className="flex gap-2">
+          <ProvisionCompany compact />
           <div className="relative">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search company"
+              placeholder="Rechercher une entreprise"
               className="w-56 pl-9"
               value={search}
               onChange={(e) => {
@@ -61,10 +64,10 @@ export default function AdminCompaniesPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {Object.entries(COMPANY_STATUS_LABELS).map(([k, v]) => (
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {Object.entries(COMPANY_STATUS_LABELS).map(([k]) => (
                 <SelectItem key={k} value={k}>
-                  {v}
+                  {adminStatusLabel(k)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -73,30 +76,30 @@ export default function AdminCompaniesPage() {
       </PageHeader>
 
       <div className="mt-8">
-        <ProvisionCompany />
         {companies.isPending ? (
           <SkeletonRows rows={8} cols={5} />
         ) : companies.isError ? (
-          <ErrorState message="Could not load companies." retry={() => companies.refetch()} />
+          <ErrorState message="Impossible de charger les entreprises." retry={() => companies.refetch()} />
         ) : companies.data && companies.data.items.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Company</th>
-                    <th className="px-4 py-3">Slug</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Members</th>
-                    <th className="px-4 py-3">Jobs</th>
-                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Entreprise</th>
+                    <th className="px-4 py-3">Identifiant</th>
+                    <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3">Plan / expiration</th>
+                    <th className="px-4 py-3">Membres</th>
+                    <th className="px-4 py-3">Offres</th>
+                    <th className="px-4 py-3">Créée le</th>
                   </tr>
                 </thead>
                 <tbody>
                   {companies.data.items.map((c) => (
                     <tr key={c.id} className="border-t">
                       <td className="px-4 py-3">
-                        <p className="font-medium">{c.commercialName}</p>
+                        <Link className="font-medium hover:underline" href={`/platform-admin/companies/${c.id}`}>{c.commercialName}</Link>
                         <p className="text-xs text-muted-foreground">{c.legalName}</p>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{c.slug}</td>
@@ -110,9 +113,10 @@ export default function AdminCompaniesPage() {
                                 : 'warning'
                           }
                         >
-                          {COMPANY_STATUS_LABELS[c.status]}
+                          {adminStatusLabel(c.status)}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3"><p>{c.subscription?.plan.name ?? '—'}</p>{c.subscription?.remainingDays != null && <Badge variant={c.subscription.remainingDays <= 7 ? 'warning' : 'success'}>{c.subscription.remainingDays === 0 ? 'Expiré' : `${c.subscription.remainingDays} j restants`}</Badge>}</td>
                       <td className="px-4 py-3">{c._count?.members ?? 0}</td>
                       <td className="px-4 py-3">{c._count?.jobs ?? 0}</td>
                       <td className="px-4 py-3 text-muted-foreground">{formatDate(c.createdAt)}</td>
@@ -129,7 +133,7 @@ export default function AdminCompaniesPage() {
             />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No companies found.</p>
+          <p className="text-sm text-muted-foreground">Aucune entreprise trouvée.</p>
         )}
       </div>
     </div>

@@ -45,6 +45,11 @@ export class FilesController {
     }
     const stream = this.storage.stream(key);
     const contentType = contentTypeFor(key);
+    // Signed images are embedded by the frontend, which may use another origin.
+    // Override Helmet's same-origin default only after signature validation.
+    if (contentType.startsWith('image/')) {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('Content-Disposition', `inline; filename="${key.split('/').pop() ?? 'file'}"`);

@@ -1,0 +1,20 @@
+This product uses a filtered subset of the O*NET 31.0 Database, developed by the
+U.S. Department of Labor, Employment and Training Administration (USDOL/ETA).
+Source: https://www.onetcenter.org/database.html
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Modifications: only the occupation codes listed in scripts/import_job_knowledge.py
+are retained. Field values in onet-31.0.json are otherwise unchanged. Download URLs
+and SHA-256 hashes are stored in the snapshot. The source categories are broader
+than the EasyJob specialties: e.g. Django is an EasyJob specialization of Software
+Developers, not a separate O*NET occupation. Product Manager uses Marketing Managers
+as a broad source category; the product-specific responsibilities are EasyJob edits.
+
+roles.json and families.json are curated EasyJob editorial adaptations. French and
+Arabic phrasing, seniority profiles, technologies and skill importance are EasyJob
+editorial decisions, not official O*NET translations, ratings or endorsements.
+O*NET task IDs and knowledge areas remain available in the generated provenance.
+O*NET does not endorse EasyJob or the generated content.
+
+No ESCO extract is currently bundled. No external dataset is downloaded at runtime.

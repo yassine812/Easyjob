@@ -1,5 +1,6 @@
+import { EasyJobFeatureMark } from '@/components/ui/easyjob-feature-mark';
 import Link from 'next/link';
-import { ArrowRight, Bot, Building2, Users } from 'lucide-react';
+import { ArrowRight, Building2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { site } from '@/config/site';
 
@@ -8,7 +9,7 @@ export default function AboutPage() {
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
       <h1 className="text-4xl font-semibold tracking-tight">About {site.name}</h1>
       <p className="mt-4 text-lg text-muted-foreground">
-        {site.name} is a recruitment platform built for startups: fast job posting, AI-powered CV
+        {site.name} is a recruitment platform built for startups: fast job posting, CV
         analysis and matching, and a collaborative hiring pipeline — all in one place.
       </p>
 
@@ -22,11 +23,10 @@ export default function AboutPage() {
           </p>
         </div>
         <div className="rounded-xl border bg-card p-6">
-          <Bot className="size-6 text-primary" />
-          <h2 className="mt-3 font-semibold">AI that actually helps</h2>
+          <EasyJobFeatureMark size="md" />
+          <h2 className="mt-3 font-semibold">Assistance from EasyJob</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            CV analysis, generation, job matching, cover letters and interview questions — driven by
-            a dedicated AI service, never by hand-waving.
+            CV analysis, generation, job matching, cover letters and interview questions — based on the information in your profile and the job requirements.
           </p>
         </div>
         <div className="rounded-xl border bg-card p-6">

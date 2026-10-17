@@ -4,8 +4,24 @@ pydantic==2.10.4
 python-multipart==0.0.20
 httpx==0.28.1
 pypdf==5.1.0
+PyMuPDF==1.27.2.3
 python-docx==1.1.2
 pytest==8.3.4
+
+# Deterministic job drafting: no model, embeddings or provider dependency.
+RapidFuzz>=3.14,<4
+Jinja2>=3.1.6,<4
+Babel>=2.17,<3
+
+# Local interview intelligence. All execute on the host; sentence-transformers
+# is optional at runtime and only loads an already cached model when enabled.
+spacy>=3.8,<4
+scikit-learn>=1.5,<2
+sentence-transformers>=3.3,<4
+torch>=2.5
+faster-whisper>=1.1,<2
+silero-vad>=5,<6
+mediapipe>=0.10,<1
 
 # Face authentication (CPU-only)
 opencv-python-headless>=4.10,<5

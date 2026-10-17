@@ -2,6 +2,10 @@
 import { useI18n } from './index';
 import { useCareerText } from './career';
 export const productCopy: Record<string, [string, string, string]> = {
+  loginServiceError: ['Sign-in is temporarily unavailable. Please try again shortly.', 'La connexion est temporairement indisponible. Réessaie dans quelques instants.', 'تسجيل الدخول غير متاح مؤقتاً. حاول مجدداً بعد قليل.'],
+  loginRateLimit: ['Too many attempts. Please wait before trying again.', 'Trop de tentatives. Patiente avant de réessayer.', 'محاولات كثيرة. انتظر قليلاً قبل المحاولة مجدداً.'],
+  loginTemporaryExpired: ['Your temporary password has expired. Use Forgot password to choose a new one.', 'Ton mot de passe temporaire a expiré. Utilise « Mot de passe oublié » pour en choisir un nouveau.', 'انتهت صلاحية كلمة المرور المؤقتة. استخدم «نسيت كلمة المرور» لاختيار كلمة جديدة.'],
+  loginSuspended: ['This account is suspended. Please contact support.', 'Ce compte est suspendu. Contacte le support.', 'هذا الحساب موقوف. تواصل مع الدعم.'],
   signInHelp: ['Sign in to continue your career journey.', 'Connecte-toi pour poursuivre ton parcours.', 'سجّل الدخول لمتابعة مسارك المهني.'],
   continue: ['Continue', 'Continuer', 'متابعة'],
   signingIn: ['Signing in…', 'Connexion…', 'جارٍ تسجيل الدخول…'],

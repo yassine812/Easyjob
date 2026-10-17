@@ -36,6 +36,7 @@ export interface InterviewResult {
 export interface TailorResult {
   tailored_cv: string;
 }
+export interface TranslateCvResult { document: Record<string, unknown>; translated: boolean; method: string }
 
 export interface JobAnalysisResult {
   summary: string;
@@ -107,12 +108,30 @@ export class AiClient {
     return this.post<CvAnalysisResult>('/ai/cv/analyze', input);
   }
 
+  renderCvPdf(input: { content: string; template: string; fontSize: number; html?: string; css?: string; margin?: number }): Promise<{ pdfBase64: string; inspection: Record<string, unknown> & { text: string }; layout: string }> {
+    return this.post('/ai/cv/render-pdf', input);
+  }
+
+  async inspectPdf(bytes: Buffer): Promise<Record<string, unknown>> {
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), 'cv.pdf');
+    const response = await fetch(`${this.config.ai.baseUrl}/ai/cv/inspect-pdf`, { method: 'POST', body: form, signal: AbortSignal.timeout(this.config.ai.timeoutMs), headers: this.config.ai.apiKey ? { Authorization: `Bearer ${this.config.ai.apiKey}` } : {} });
+    if (!response.ok) throw new Error('PDF inspection unavailable');
+    return response.json() as Promise<Record<string, unknown>>;
+  }
+
   generateCv(profile: Record<string, unknown>): Promise<GenerateResult> {
     return this.post<GenerateResult>('/ai/cv/generate', { profile });
   }
 
   tailorCv(input: { cv_text: string; job: Record<string, unknown> }): Promise<TailorResult> {
     return this.post<TailorResult>('/ai/cv/tailor', input);
+  }
+
+  translateCv(input: { document: Record<string, unknown>; sourceLocale: string; targetLocale: string; sourceLanguage?: string; targetLanguage?: string; professionalDomain?: string; seniority?: string }): Promise<TranslateCvResult> {
+    const sourceLanguage = input.sourceLanguage ?? input.sourceLocale.slice(0, 2);
+    const targetLanguage = input.targetLanguage ?? input.targetLocale.slice(0, 2);
+    return this.post<TranslateCvResult>('/ai/cv/translate', { ...input, sourceLanguage, targetLanguage });
   }
 
   analyzeJob(job: Record<string, unknown>): Promise<JobAnalysisResult> {

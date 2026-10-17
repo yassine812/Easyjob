@@ -1,0 +1,13 @@
+name: easyjob-meeting
+services:
+  media:
+    image: livekit/livekit-server:v1.13.8
+    command: ["--config", "/etc/livekit.yaml"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+    volumes:
+      - ../../.runtime/easyjob-meeting/livekit.yaml:/etc/livekit.yaml:ro
+    mem_limit: 512m

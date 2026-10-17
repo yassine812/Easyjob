@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth-store';
 import { cn } from '@/lib/utils';
-import { getDashboardRoute } from '@/lib/permissions';
+import { useWorkspace } from '@/hooks/use-workspace';
 import { Logo } from '@/components/layout/logo';
 
 import { useProductText } from '@/lib/i18n/product';
@@ -18,12 +18,12 @@ export function MarketingNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAuthed = useAuthStore((s) => s.status === 'authenticated');
-  const user = useAuthStore((s) => s.user);
-  const dashboardHref = getDashboardRoute(user);
+  const workspace = useWorkspace();
+  const dashboardHref = workspace.home;
   const { t } = useI18n(), copy = useProductText();
 
   const links = [
-    { href: '/jobs', label: t.nav.jobs },
+    { href: workspace.jobs, label: t.nav.jobs },
     { href: '/#companies', label: t.nav.companies },
     { href: '/pricing', label: t.nav.pricing },
     { href: '/about', label: t.nav.about },
@@ -32,7 +32,7 @@ export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Logo size="lg" />
+        <Logo href={workspace.home} size="lg" />
         <nav className="hidden items-center gap-8 md:flex" aria-label={copy('menu')}>
           {links.map((l) => (
             <Link

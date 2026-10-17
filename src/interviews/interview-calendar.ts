@@ -1,0 +1,6 @@
+const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+const date = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+export function interviewCalendar(item: { id: string; startAt: Date; endAt: Date; status: string; calendarSequence: number; timezone: string; location?: string | null }, title: string, url: string) {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//EasyJob//Interviews//EN', 'CALSCALE:GREGORIAN', `METHOD:${item.status === 'CANCELLED' ? 'CANCEL' : 'REQUEST'}`, 'BEGIN:VEVENT', `UID:${item.id}@easyjob`, `SEQUENCE:${item.calendarSequence}`, `DTSTAMP:${date(new Date())}`, `DTSTART:${date(item.startAt)}`, `DTEND:${date(item.endAt)}`, `SUMMARY:${escape(title)}`, `DESCRIPTION:${escape(`${item.timezone}\n${url}`)}`, `LOCATION:${escape(item.location || url)}`, `URL:${url}`, `STATUS:${item.status === 'CANCELLED' ? 'CANCELLED' : 'CONFIRMED'}`, 'END:VEVENT', 'END:VCALENDAR'];
+  return lines.map(line => { let out = '', bytes = 0; for (const char of line) { const n = Buffer.byteLength(char); if (bytes + n > 73) { out += '\r\n '; bytes = 1; } out += char; bytes += n; } return out; }).join('\r\n') + '\r\n';
+}

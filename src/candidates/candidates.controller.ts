@@ -18,11 +18,14 @@ import { CompanyContextParam } from '../common/decorators/company-context.decora
 import { CompanyPermissions } from '../common/decorators/company-permissions.decorator';
 import { CandidatesService } from './candidates.service';
 import { ResumesService } from './resumes.service';
+import { MAX_FILE_SIZE_BYTES } from '../files/file-validation.service';
 import {
   AddSkillDto,
+  RenameResumeDto,
   EducationDto,
   ExperienceDto,
   JobPreferenceDto,
+  ApplyProfileCompletionDto,
   SaveJobDto,
   UpdateCandidateProfileDto,
 } from './dto/candidate.dto';
@@ -45,9 +48,27 @@ export class CandidatesController {
     return this.candidatesService.getMyProfile(userId);
   }
 
+  /** Search the private EasyJob company directory for the experience editor. */
+  @Get('me/companies/search')
+  async searchCompanies(@CurrentUser('userId') userId: string, @Req() req: AuthRequest) {
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const country = typeof req.query.country === 'string' ? req.query.country : undefined;
+    return this.candidatesService.searchCompanies(userId, query, country);
+  }
+
   @Patch('me')
   async updateMe(@CurrentUser('userId') userId: string, @Body() dto: UpdateCandidateProfileDto) {
     return this.candidatesService.updateProfile(userId, dto);
+  }
+
+  @Post('me/profile-completion/suggestions')
+  async profileCompletionSuggestions(@CurrentUser('userId') userId: string) {
+    return this.candidatesService.profileCompletionSuggestions(userId);
+  }
+
+  @Put('me/profile-completion')
+  async applyProfileCompletion(@CurrentUser('userId') userId: string, @Body() dto: ApplyProfileCompletionDto) {
+    return this.candidatesService.applyProfileCompletion(userId, dto);
   }
 
   // ---- skills ----
@@ -109,7 +130,7 @@ export class CandidatesController {
   @Post('me/resumes')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
+    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
   )
   async uploadResume(
     @CurrentUser('userId') userId: string,
@@ -127,9 +148,24 @@ export class CandidatesController {
     return this.resumesService.list(userId);
   }
 
+  @Get('me/resumes/upload-policy')
+  resumeUploadPolicy() {
+    return { maxBytes: MAX_FILE_SIZE_BYTES };
+  }
+
   @Post('me/resumes/:id/primary')
   async setPrimaryResume(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     return this.resumesService.setPrimary(userId, id);
+  }
+  @Get('me/resumes/:id/versions')
+  resumeVersions(@CurrentUser('userId') userId: string, @Param('id') id: string) { return this.resumesService.history(userId, id); }
+  @Post('me/resumes/:id/duplicate')
+  duplicateResume(@CurrentUser('userId') userId: string, @Param('id') id: string) { return this.resumesService.duplicate(userId, id); }
+  @Post('me/resumes/:id/versions/:versionId/restore')
+  restoreResume(@CurrentUser('userId') userId: string, @Param('id') id: string, @Param('versionId') versionId: string) { return this.resumesService.restore(userId, id, versionId); }
+  @Patch('me/resumes/:id')
+  renameResume(@CurrentUser('userId') userId: string, @Param('id') id: string, @Body() dto: RenameResumeDto) {
+    return this.resumesService.rename(userId, id, dto.name);
   }
 
   @Delete('me/resumes/:id')

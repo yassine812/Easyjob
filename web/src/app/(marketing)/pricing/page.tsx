@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Check, Minus } from 'lucide-react';
+import { BadgeCheck, Check, Minus } from 'lucide-react';
 import { billingApi } from '@/lib/api/billing';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { formatMoney } from '@/lib/format';
 import type { Plan } from '@/types/api';
 import { useI18n } from '@/lib/i18n';
 import { useProductText } from '@/lib/i18n/product';
+import { useCareerText } from '@/lib/i18n/career';
 
 function featureLabel(key: string): string {
   switch (key) {
@@ -102,8 +103,18 @@ function CompanyPlanCard({ plan, highlight, locale, tx }: { plan: Plan; highligh
 }
 
 function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
-  const entries = Object.entries(plan.features ?? {});
-  const displayName = plan.name === 'CAREER_AI' ? 'PREMIUM' : plan.name;
+  const t = useCareerText();
+  const displayName = plan.displayName ?? ({ FREE: 'EasyJob Start', PRO: 'EasyJob Boost', PREMIUM: 'EasyJob Max', CAREER_AI: 'EasyJob Max' } as Record<string, string>)[plan.name] ?? plan.name;
+  const f = plan.features ?? {};
+  const entries = ([
+    ['job_search', 'planFeatureJobSearch', f.job_search], ['tracking', 'planFeatureTracking', f.tracking],
+    ['cv_limit', 'planFeatureCvs', f.cv_limit ?? f['cv.uploads']], ['basic_ats', 'planFeatureBasicAts', f.basic_ats],
+    ['advanced_ats', 'planFeatureAdvancedAts', f.advanced_ats], ['cv_tailoring', 'planFeatureTailoring', f.cv_tailoring],
+    ['detailed_matching', 'planFeatureMatching', f.detailed_matching], ['interview_preparation', 'planFeatureInterview', f.interview_preparation],
+    ['advanced_analytics', 'planFeatureAnalytics', f.advanced_analytics], ['email_alerts', 'planFeatureAlerts', f.email_alerts],
+    ['auto_apply', 'planFeatureAutoApply', f.auto_apply], ['coding_interview', 'planFeatureCoding', f.coding_interview],
+    ['adaptive_interview', 'planFeatureAdaptive', f.adaptive_interview],
+  ] as Array<[string, string, unknown]>).filter(([, , value]) => typeof value === 'number' ? value > 0 : value === true);
   return (
     <div
       className={
@@ -112,10 +123,10 @@ function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
           : 'flex flex-col rounded-2xl border bg-card p-6 shadow-sm'
       }
     >
-      {highlight ? <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Most popular</Badge> : displayName === 'PREMIUM' ? <Badge className="absolute -top-3 left-1/2 -translate-x-1/2" variant="secondary">Maximum AI assistance</Badge> : null}
+      {highlight ? <Badge className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5"><BadgeCheck className="size-3.5" aria-hidden="true" />{t('mostPopular')}</Badge> : displayName === 'EasyJob Max' ? <Badge className="absolute -top-3 left-1/2 -translate-x-1/2" variant="secondary">Maximum AI assistance</Badge> : null}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{displayName}</h3>
-        {plan.priceCents === 0 ? <Badge variant="secondary">Free</Badge> : null}
+        {plan.priceCents === 0 ? <Badge variant="secondary">EasyJob Start</Badge> : null}
       </div>
       <p className="mt-3 text-3xl font-semibold tracking-tight">
         {formatMoney(plan.priceCents, plan.currency)}
@@ -124,7 +135,7 @@ function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
         </span>
       </p>
       <ul className="mt-6 flex-1 space-y-3">
-        {entries.map(([key, value]) => (
+        {entries.map(([key, label, value]) => (
           <li key={key} className="flex items-start gap-2 text-sm">
             {featureIncluded(value) ? (
               <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
@@ -132,7 +143,7 @@ function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
               <Minus className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" />
             )}
             <span className="text-muted-foreground">
-              {featureLabel(key)}
+              {t(label)}
               {typeof value === 'number' ? (
                 <span className="font-medium text-foreground"> · {value}</span>
               ) : null}

@@ -84,7 +84,7 @@ export class AiService {
     type: AiAnalysisType,
     inputReference: Record<string, unknown>,
   ): Promise<{ analysisId: string }> {
-    const feature: Partial<Record<AiAnalysisType, string>> = { CV_GENERATE: 'career.builder', CV_TAILOR: 'career.builder', MATCH: 'career.match', COVER_LETTER: 'ai.cover_letter', INTERVIEW: 'career.coach' };
+    const feature: Partial<Record<AiAnalysisType, string>> = { CV_GENERATE: 'career.builder', CV_TAILOR: 'cv_tailoring', MATCH: 'detailed_matching', COVER_LETTER: 'ai.cover_letter', INTERVIEW: 'interview_preparation' };
     if (feature[type]) await this.entitlements.assertCan({ ownerType: 'CANDIDATE', ownerId: String(inputReference.candidateId) }, feature[type]!);
     const analysis = await this.prisma.aiAnalysis.create({
       data: {

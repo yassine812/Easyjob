@@ -5,7 +5,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CompanyPermissions } from '../common/decorators/company-permissions.decorator';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { ROLES } from '../common/constants/roles';
+import { PLATFORM_ADMIN_ROLES } from '../common/constants/roles';
 import { AnalyticsService } from './analytics.service';
 
 @ApiTags('analytics')
@@ -20,9 +20,9 @@ export class AnalyticsController {
     return this.analyticsService.scopedCompanyMetrics(companyId, await this.access.jobScope(userId, companyId));
   }
 
-  @Get('admin/analytics')
-  @Roles(ROLES.PLATFORM_ADMIN)
-  @Permissions('admin.analytics')
+  @Get(['admin/analytics', 'platform-admin/analytics'])
+  @Roles(...PLATFORM_ADMIN_ROLES)
+  @Permissions('admin.dashboard')
   async platformMetrics() {
     return this.analyticsService.platformMetrics();
   }

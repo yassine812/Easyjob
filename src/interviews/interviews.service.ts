@@ -1,3 +1,6 @@
+import { EasyJobMeetingProvider } from './meeting-provider';
+import { EntitlementService } from '../entitlements/entitlement.service';
+import { InterviewInvitationsService } from './interview-invitations.service';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InterviewStatus } from '@prisma/client';
@@ -10,6 +13,7 @@ import { emailTemplates } from '../queues/email/templates';
 import { RealtimeService } from '../realtime/realtime.service';
 import { toJson } from '../common/utils/json';
 import { CreateInterviewDto, UpdateInterviewDto } from './dto/interview.dto';
+import { InterviewBriefService } from './interview-brief.service';
 import type { RequestMeta } from '../companies/companies.service';
 
 @Injectable()
@@ -22,6 +26,10 @@ export class InterviewsService {
     private readonly emailService: EmailService,
     private readonly realtime: RealtimeService,
     private readonly events: EventEmitter2,
+    private readonly meetings: EasyJobMeetingProvider,
+    private readonly entitlements: EntitlementService,
+    private readonly invitations: InterviewInvitationsService,
+    private readonly briefs?: InterviewBriefService,
   ) {}
 
   async create(userId: string, dto: CreateInterviewDto, meta: RequestMeta) {
@@ -37,8 +45,12 @@ export class InterviewsService {
     await this.validateParticipants(application.job.companyId, memberIds);
     this.assertTimeRange(dto.startAt, dto.endAt);
 
+    if (['HIRED','REJECTED','WITHDRAWN'].includes(application.status)) throw new BadRequestException('Application is closed');
+    if (new Date(dto.startAt).getTime() <= Date.now()) throw new BadRequestException('Schedule interviews in the future');
+    const config = await this.validateConfiguration(application.job.companyId, dto);
     const interview = await this.prisma.interview.create({
       data: {
+        ...config,
         applicationId: dto.applicationId,
         jobId: application.job.id,
         scheduledById: userId,
@@ -48,7 +60,7 @@ export class InterviewsService {
         location: dto.location ?? null,
         notes: dto.notes ?? null,
         status: 'SCHEDULED',
-        participants: { create: memberIds.map(memberId => ({ memberId })) },
+        participants: { create: memberIds.map(memberId => ({ memberId, invitedAt: new Date() })) },
       },
     });
 
@@ -62,20 +74,8 @@ export class InterviewsService {
       userAgent: meta.userAgent,
     });
 
-    const when = interview.startAt.toISOString();
-    await this.notifications.create({
-      userId: application.candidate.userId,
-      type: 'interview.scheduled',
-      title: 'Interview scheduled',
-      message: `An interview for "${application.job.title}" was scheduled on ${when}.`,
-      data: { interviewId: interview.id, applicationId: application.id },
-      email: {
-        subject: emailTemplates.interviewScheduled(application.job.title, when).subject,
-        html: emailTemplates.interviewScheduled(application.job.title, when).html,
-        to: application.candidate.user.email,
-      },
-      dedupeKey: `interview.scheduled:${interview.id}:${Date.now()}`,
-    });
+    await this.invitations.send(interview.id, 'scheduled');
+    if (interview.assistantEnabled) await this.briefs?.generate(interview.id);
 
     this.realtime.emitToCompany(application.job.companyId, 'interview.updated', { id: interview.id });
     this.realtime.emitToUser(application.candidate.userId, 'interview.scheduled', { id: interview.id });
@@ -103,6 +103,7 @@ export class InterviewsService {
           },
         },
         scheduledBy: { select: { id: true, name: true } },
+        participants: { include: { member: { include: { user: { select: { id: true, name: true } } } } } }, feedback: true,
       },
     });
     if (!interview) throw new NotFoundException('Interview not found');
@@ -136,7 +137,7 @@ export class InterviewsService {
     await this.access.assertInterviewPermission(userId, interview.application.job.companyId, interviewId, 'interview.update');
     if (dto.memberIds) await this.validateParticipants(interview.application.job.companyId, dto.memberIds);
 
-    if (interview.status === InterviewStatus.COMPLETED || interview.status === InterviewStatus.CANCELLED) {
+    if (interview.status === InterviewStatus.COMPLETED || interview.status === InterviewStatus.CANCELLED || interview.status === InterviewStatus.NO_SHOW) {
       throw new BadRequestException(`Cannot update a ${interview.status} interview`);
     }
     const startAt = dto.startAt ? new Date(dto.startAt) : interview.startAt;
@@ -150,20 +151,25 @@ export class InterviewsService {
       throw new BadRequestException(`Invalid status transition to ${status}`);
     }
 
+    const config = await this.validateConfiguration(interview.application.job.companyId, { timezone: dto.timezone ?? interview.timezone, locationType: dto.locationType ?? interview.locationType, assistantEnabled: dto.assistantEnabled ?? interview.assistantEnabled, location: dto.location ?? interview.location ?? undefined }, interview.meetingRoomId);
     const updated = await this.prisma.interview.update({
-      where: { id: interviewId },
+      where: { id: interviewId, updatedAt: interview.updatedAt },
       data: {
+        ...config, calendarSequence: { increment: 1 },
         startAt,
         endAt,
         type: dto.type ?? interview.type,
         location: dto.location !== undefined ? dto.location : interview.location,
         notes: dto.notes !== undefined ? dto.notes : interview.notes,
         status,
-        ...(dto.memberIds ? { participants: { deleteMany: {}, create: [...new Set(dto.memberIds)].map(memberId => ({ memberId })) } } : {}),
+        ...(dto.memberIds ? { participants: { deleteMany: {}, create: [...new Set(dto.memberIds)].map(memberId => ({ memberId, invitedAt: new Date() })) } } : {}),
         ...(status === 'COMPLETED' ? { completedAt: new Date() } : {}),
-        ...(startAt.getTime() !== interview.startAt.getTime() ? { reminderSentAt: null } : {}),
+        ...(['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status) ? { endedAt: new Date() } : {}),
+        ...(startAt.getTime() !== interview.startAt.getTime() ? { reminderSentAt: null, reminderHourSentAt: null } : {}),
       },
     });
+
+    if (updated.meetingRoomId && ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)) await this.meetings.closeRoom(updated.meetingRoomId);
 
     await this.audit.log({
       actorId: userId,
@@ -179,20 +185,8 @@ export class InterviewsService {
       userAgent: meta.userAgent,
     });
 
-    const when = startAt.toISOString();
-    await this.notifications.create({
-      userId: interview.application.candidate.userId,
-      type: 'interview.updated',
-      title: 'Interview updated',
-      message: `Your interview for "${interview.application.job.title}" is now scheduled on ${when} (${status}).`,
-      data: { interviewId },
-      email: {
-        subject: emailTemplates.interviewScheduled(interview.application.job.title, when).subject,
-        html: emailTemplates.interviewScheduled(interview.application.job.title, when).html,
-        to: interview.application.candidate.user.email,
-      },
-      dedupeKey: `interview.updated:${interviewId}:${Date.now()}`,
-    });
+    if (!['COMPLETED','NO_SHOW'].includes(status)) await this.invitations.send(interviewId, status === 'CANCELLED' ? 'cancelled' : 'updated');
+    if (updated.assistantEnabled && (dto.assistantEnabled === true || !interview.assistantEnabled)) await this.briefs?.generate(interviewId);
 
     this.realtime.emitToCompany(interview.application.job.companyId, 'interview.updated', { id: interviewId });
     this.realtime.emitToUser(interview.application.candidate.userId, 'interview.updated', { id: interviewId, status });
@@ -207,8 +201,18 @@ export class InterviewsService {
     return updated;
   }
 
+  private async validateConfiguration(companyId: string, dto: { timezone?: string; locationType?: string; assistantEnabled?: boolean; location?: string }, room?: string | null) {
+    const timezone = dto.timezone ?? 'Africa/Tunis';
+    try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(); } catch { throw new BadRequestException('Invalid timezone'); }
+    const locationType = dto.locationType ?? 'EXTERNAL';
+    if (dto.assistantEnabled) await this.entitlements.assertRecruitmentIntelligence(companyId);
+    if (locationType === 'EXTERNAL' && dto.location && !/^https:\/\//i.test(dto.location)) throw new BadRequestException('External meeting link must use HTTPS');
+    if (locationType === 'ONSITE' && !dto.location?.trim()) throw new BadRequestException('Specify a physical location');
+    const meetingRoomId = locationType === 'EASYJOB' ? room ?? this.meetings.createRoom() : null;
+    return { timezone, locationType, assistantEnabled: dto.assistantEnabled ?? false, meetingProvider: meetingRoomId ? 'EASYJOB' : null, meetingRoomId, meetingUrl: null };
+  }
   private candidateView<T extends { notes: string | null; aiReport: unknown }>(item: T) {
-    const { notes: _notes, aiReport: _report, ...publicInterview } = item;
+    const { notes: _notes, aiReport: _report, assistantNotes: _assistant, feedback: _feedback, questions: _questions, answers: _answers, ...publicInterview } = item as T & Record<string, unknown>;
     return publicInterview;
   }
 
@@ -218,6 +222,7 @@ export class InterviewsService {
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       throw new BadRequestException('Invalid interview times');
     }
+    if (end.getTime() - start.getTime() > 8 * 3600000) throw new BadRequestException('Interview duration cannot exceed eight hours');
     if (end.getTime() <= start.getTime()) {
       throw new BadRequestException('Interview end time must be after start time');
     }

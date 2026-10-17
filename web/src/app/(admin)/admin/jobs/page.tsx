@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { JOB_STATUS_LABELS } from '@/lib/constants';
+import { adminStatusLabel } from '@/lib/admin-labels';
 import { formatDate } from '@/lib/format';
 
 export default function AdminJobsPage() {
@@ -53,31 +54,31 @@ export default function AdminJobsPage() {
   const approve = useMutation({
     mutationFn: (id: string) => adminApi.approveJob(id),
     onSuccess: () => {
-      toast.success('Job approved');
+      toast.success('Offre approuvée');
       invalidate();
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not approve'),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Impossible d’approuver l’offre'),
   });
 
   const reject = useMutation({
     mutationFn: () => adminApi.rejectJob(rejectingId!, reason),
     onSuccess: () => {
-      toast.success('Job rejected');
+      toast.success('Offre refusée');
       setRejectingId(null);
       setReason('');
       invalidate();
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not reject'),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Impossible de refuser l’offre'),
   });
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Jobs" description="Approve or reject job posts.">
+      <PageHeader title="Offres" description="Approuver ou refuser les offres publiées.">
         <div className="flex gap-2">
           <div className="relative">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search job"
+              placeholder="Rechercher une offre"
               className="w-56 pl-9"
               value={search}
               onChange={(e) => {
@@ -97,10 +98,10 @@ export default function AdminJobsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {Object.entries(JOB_STATUS_LABELS).map(([k, v]) => (
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {Object.entries(JOB_STATUS_LABELS).map(([k]) => (
                 <SelectItem key={k} value={k}>
-                  {v}
+                  {adminStatusLabel(k)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -112,18 +113,18 @@ export default function AdminJobsPage() {
         {jobs.isPending ? (
           <SkeletonRows rows={8} cols={5} />
         ) : jobs.isError ? (
-          <ErrorState message="Could not load jobs." retry={() => jobs.refetch()} />
+          <ErrorState message="Impossible de charger les offres." retry={() => jobs.refetch()} />
         ) : jobs.data && jobs.data.items.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Job</th>
-                    <th className="px-4 py-3">Company</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Applications</th>
-                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Offre</th>
+                    <th className="px-4 py-3">Entreprise</th>
+                    <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3">Candidatures</th>
+                    <th className="px-4 py-3">Créée le</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -133,7 +134,7 @@ export default function AdminJobsPage() {
                       <td className="px-4 py-3 font-medium">{j.title}</td>
                       <td className="px-4 py-3 text-muted-foreground">{j.company?.commercialName}</td>
                       <td className="px-4 py-3">
-                        <Badge variant="secondary">{JOB_STATUS_LABELS[j.status]}</Badge>
+                        <Badge variant="secondary">{adminStatusLabel(j.status)}</Badge>
                       </td>
                       <td className="px-4 py-3">{j._count?.applications ?? 0}</td>
                       <td className="px-4 py-3 text-muted-foreground">{formatDate(j.createdAt)}</td>
@@ -146,7 +147,7 @@ export default function AdminJobsPage() {
                               className="text-emerald-600 hover:text-emerald-600"
                               onClick={() => approve.mutate(j.id)}
                             >
-                              <CheckCircle2 className="mr-1 size-3.5" /> Approve
+                              <CheckCircle2 className="mr-1 size-3.5" /> Approuver
                             </Button>
                             <Button
                               variant="outline"
@@ -154,12 +155,12 @@ export default function AdminJobsPage() {
                               className="text-destructive hover:text-destructive"
                               onClick={() => setRejectingId(j.id)}
                             >
-                              <XCircle className="mr-1 size-3.5" /> Reject
+                              <XCircle className="mr-1 size-3.5" /> Refuser
                             </Button>
                           </div>
                         ) : (
                           <div className="text-right text-xs text-muted-foreground">
-                            {j.rejectionReason ? `Rejected: ${j.rejectionReason}` : '—'}
+                            {j.rejectionReason ? `Refus : ${j.rejectionReason}` : '—'}
                           </div>
                         )}
                       </td>
@@ -176,32 +177,32 @@ export default function AdminJobsPage() {
             />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No jobs found.</p>
+          <p className="text-sm text-muted-foreground">Aucune offre trouvée.</p>
         )}
       </div>
 
       <Dialog open={!!rejectingId} onOpenChange={(o) => !o && setRejectingId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject job</DialogTitle>
-            <DialogDescription>The job creator will be notified with this reason.</DialogDescription>
+            <DialogTitle>Refuser l’offre</DialogTitle>
+            <DialogDescription>L’auteur de l’offre recevra ce motif.</DialogDescription>
           </DialogHeader>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason for rejection"
+            placeholder="Motif du refus"
             maxLength={500}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectingId(null)}>
-              Cancel
+              Annuler
             </Button>
             <Button
               variant="destructive"
               disabled={!reason.trim() || reject.isPending}
               onClick={() => reject.mutate()}
             >
-              {reject.isPending ? 'Rejecting…' : 'Reject job'}
+              {reject.isPending ? 'Refus en cours…' : 'Refuser l’offre'}
             </Button>
           </DialogFooter>
         </DialogContent>

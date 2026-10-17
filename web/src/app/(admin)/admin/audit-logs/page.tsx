@@ -25,11 +25,11 @@ export default function AdminAuditLogsPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Audit logs" description="Every important action on the platform.">
+      <PageHeader title="Journal d’audit" description="Toutes les actions importantes de la plateforme.">
         <div className="relative">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Filter by action (e.g. auth.login)"
+            placeholder="Filtrer par action (ex. auth.login)"
             className="w-80 pl-9"
             value={action}
             onChange={(e) => {
@@ -44,17 +44,17 @@ export default function AdminAuditLogsPage() {
         {logs.isPending ? (
           <SkeletonRows rows={10} cols={5} />
         ) : logs.isError ? (
-          <ErrorState message="Could not load audit logs." retry={() => logs.refetch()} />
+          <ErrorState message="Impossible de charger le journal d’audit." retry={() => logs.refetch()} />
         ) : logs.data && logs.data.items.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Time</th>
-                    <th className="px-4 py-3">Actor</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Auteur</th>
                     <th className="px-4 py-3">Action</th>
-                    <th className="px-4 py-3">Entity</th>
+                    <th className="px-4 py-3">Objet</th>
                     <th className="px-4 py-3">IP</th>
                   </tr>
                 </thead>
@@ -65,7 +65,7 @@ export default function AdminAuditLogsPage() {
                         {formatDateTime(l.createdAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-medium">{l.actor?.name ?? 'System'}</p>
+                        <p className="font-medium">{l.actor?.name ?? 'Système'}</p>
                         <p className="text-xs text-muted-foreground">{l.actor?.email ?? ''}</p>
                       </td>
                       <td className="px-4 py-3">
@@ -93,7 +93,7 @@ export default function AdminAuditLogsPage() {
             />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No audit logs found.</p>
+          <p className="text-sm text-muted-foreground">Aucune entrée d’audit trouvée.</p>
         )}
       </div>
     </div>

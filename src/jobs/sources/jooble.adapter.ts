@@ -1,5 +1,5 @@
 import { BadGatewayException, Injectable } from '@nestjs/common';
-import type { ExternalJobListing, ExternalJobSearchInput, ExternalJobSearchResult, JobSourceAdapter } from './job-source.types';
+import type { ExternalJobListing, ExternalJobSearchInput, ExternalJobSearchResult, JobSourceAdapter, JobSourceHealth } from './job-source.types';
 
 interface JoobleResponse {
   totalCount?: number;
@@ -21,12 +21,24 @@ interface JoobleResponse {
 export class JoobleAdapter implements JobSourceAdapter {
   readonly type = 'JOOBLE' as const;
   readonly name = 'Jooble';
+  readonly syncIntervalMs = 24 * 60 * 60 * 1000;
 
   private readonly apiKey = process.env.JOOBLE_API_KEY?.trim() || '';
   private readonly apiBaseUrl = process.env.JOOBLE_API_BASE_URL?.trim() || 'https://tn.jooble.org/api/';
 
   isConfigured(): boolean {
     return Boolean(this.apiKey);
+  }
+
+  async healthCheck(): Promise<JobSourceHealth> {
+    return this.isConfigured()
+      ? { status: 'ACTIVE', detail: null }
+      : { status: 'CONFIGURATION_REQUIRED', detail: 'Add JOOBLE_API_KEY on the server to enable Jooble search.' };
+  }
+
+  async fetchJobs(): Promise<ExternalJobSearchResult> {
+    if (!this.isConfigured()) return { jobs: [], total: 0 };
+    return this.search({ keyword: process.env.JOOBLE_SYNC_KEYWORD?.trim() || 'emploi', location: 'Tunisia', page: 1, limit: 50 });
   }
 
   async search(input: ExternalJobSearchInput): Promise<ExternalJobSearchResult> {
@@ -51,9 +63,9 @@ export class JoobleAdapter implements JobSourceAdapter {
         body: JSON.stringify({
           keywords: input.keyword,
           location: input.location,
-          page: String(input.page ?? 1),
+          page: input.page ?? 1,
           ResultOnPage: input.limit ?? 20,
-          companysearch: false,
+          companysearch: input.companySearch ?? false,
         }),
         signal: AbortSignal.timeout(8_000),
       });

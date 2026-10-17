@@ -24,6 +24,10 @@ class AIProvider(ABC):
         ...
 
     @abstractmethod
+    def translate_cv(self, document: dict[str, Any], source_locale: str, target_locale: str, context: dict[str, Any]) -> dict[str, Any]:
+        ...
+
+    @abstractmethod
     def analyze_job(self, job: dict[str, Any]) -> dict[str, Any]:
         ...
 

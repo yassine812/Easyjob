@@ -1,0 +1,66 @@
+.calendar { --fc-border-color: var(--border); --fc-page-bg-color: var(--card); --fc-neutral-bg-color: var(--muted); --fc-today-bg-color: color-mix(in srgb, var(--primary) 8%, transparent); --fc-button-bg-color: var(--secondary); --fc-button-border-color: var(--border); --fc-button-text-color: var(--foreground); --fc-button-hover-bg-color: var(--accent); --fc-button-hover-border-color: var(--border); --fc-button-active-bg-color: var(--primary); --fc-button-active-border-color: var(--primary); }
+.calendar { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); container-type: inline-size; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.dateNavigation { display: flex; gap: 6px; align-items: center; }
+.dateNavigation button { height: 42px; }
+.periodTitle { flex: 1; min-width: 150px; text-align: center; font-size: 1.1rem; font-weight: 600; }
+.viewControl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--background); }
+.viewControl button { height: 40px; min-width: 72px; padding-inline: 14px; border-radius: 8px; font-size: .85rem; }
+.calendarCaption { display: flex; align-items: center; justify-content: space-between; min-height: 36px; margin: 4px 0 12px; color: var(--muted-foreground); font-size: .75rem; }
+@container (max-width: 900px) { .viewControl { width: 100%; } .periodTitle { text-align: end; } }
+.calendar :global(.fc-toolbar) { flex-wrap: wrap; gap: 12px; }
+.calendar :global(.fc-toolbar-title) { font-size: 1.2rem; }
+.calendar :global(.fc-button) { font-size: .8rem; border-radius: .6rem; padding: .5rem .65rem; }
+.calendar :global(.fc-event) { border-radius: .55rem; padding: 0; cursor: pointer; overflow: hidden; box-shadow: 0 5px 14px rgb(5 10 30 / 16%); }
+.calendar :global(.fc-timegrid-event) { min-height: 0; }
+.calendar :global(.fc-scrollgrid-section-header .fc-scroller) { overflow: hidden !important; }
+.calendar :global(.fc-timegrid-slot) { height: 3.75rem; }
+.calendar :global(.fc-timegrid-slot-minor) { border-top-style: dotted; opacity: .45; }
+.calendar :global(.fc-timegrid-axis-cushion) { color: var(--muted-foreground); font-size: .72rem; font-variant-numeric: tabular-nums; }
+.calendar :global(.fc-col-header-cell) { padding: .65rem .25rem; }
+.calendar :global(.fc-col-header-cell.fc-day-today) { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.calendar :global(.fc-day-today) { background: color-mix(in srgb, var(--primary) 6%, transparent) !important; }
+/* The current-time marker should guide the eye without overpowering an interview card. */
+.calendar :global(.fc-now-indicator-line) { border-color: color-mix(in srgb, var(--primary) 62%, var(--border)); border-width: 1px; border-style: dashed; opacity: .72; }
+.calendar :global(.fc-now-indicator-arrow) { border-top-color: color-mix(in srgb, var(--primary) 78%, var(--border)); border-bottom-color: transparent; opacity: .82; }
+.eventCard { display: flex; min-width: 0; height: 100%; flex-direction: column; gap: 3px; overflow: hidden; padding: 6px; color: white; font-size: .75rem; line-height: 1.2; }
+.eventCard > * { flex-shrink: 0; }
+.eventTime { flex: 0 0 auto; font-size: .65rem; font-variant-numeric: tabular-nums; opacity: .9; }
+.eventCandidate, .eventRole, .eventMeta, .eventInterviewers { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eventCandidate { flex: 0 0 auto; font-size: .78rem; }
+.eventRole, .eventMeta, .eventInterviewers { opacity: .84; }
+.eventRole { font-weight: 500; }
+.eventMeta, .eventInterviewers { font-size: .64rem; }
+.eventShort { padding-block: 4px; }
+.eventShort .eventCandidate { font-size: .74rem; }
+.eventLong .eventMeta, .eventLong .eventInterviewers { display: block; }
+.eventCard[data-short="true"] { padding-block: 2px; gap: 0; }
+.eventCard[data-day="true"] { gap: 3px; }
+.eventCard[data-agenda="true"] { height: auto; color: var(--foreground); gap: 5px; padding: 10px 6px; }
+.eventCard[data-agenda="true"] .eventCandidate, .eventCard[data-agenda="true"] .eventRole, .eventCard[data-agenda="true"] .eventMeta { white-space: normal; overflow-wrap: anywhere; }
+.agendaStatus { font-size: .75rem; font-weight: 600; }
+.monthEvent { display: flex; align-items: center; min-width: 0; gap: 5px; padding: 4px 5px; color: white; font-size: .7rem; }
+.monthEvent time { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.monthEvent strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.calendar :global(.fc-list-event) { box-shadow: none; }
+.calendar :global(.fc-list-event-time) { display: none; }
+.calendar :global(.fc-list-event-title) { width: 100%; text-align: start; }
+.calendar :global(.fc-list-event-dot) { border-color: inherit; }
+.calendar :global(.fc-daygrid-more-link) { font-size: .75rem; padding: 4px; }
+.calendar :global(.event-completed) { opacity: .7; }
+.calendar :global(.event-cancelled) { opacity: .58; filter: saturate(.45); }
+.calendar :global(.fc-list-event-time), .calendar :global(.fc-list-event-title) { font-size: .82rem; }
+.calendar :global(.fc-daygrid-day-number), .calendar :global(.fc-col-header-cell-cushion) { font-size: .8rem; }
+@media (max-width: 640px) {
+  .calendar { padding: 10px; }
+  .toolbar { gap: 12px; }
+  .periodTitle { min-width: 0; font-size: .9rem; }
+  .viewControl button { min-width: 0; padding-inline: 5px; font-size: .75rem; }
+  .calendar :global(.fc-list-event-graphic) { width: 22px; padding-inline: 4px; }
+  .calendar :global(.fc-toolbar) { align-items: stretch; flex-direction: column; }
+  .calendar :global(.fc-button-group) { display: flex; flex-wrap: wrap; }
+  .calendar :global(.fc-list-event-title) { overflow-wrap: anywhere; }
+  .calendar :global(.fc-toolbar-title) { font-size: 1rem; }
+  .eventCard { padding: 6px; font-size: .8rem; }
+  .eventCandidate { font-size: .85rem; }
+}

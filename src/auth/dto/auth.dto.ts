@@ -75,10 +75,14 @@ export class RefreshDto {
 }
 
 export class VerifyEmailDto {
-  @ApiProperty({ description: 'Token from the verification link' })
+  @ApiProperty()
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ description: 'Six-digit code received by email' })
   @IsString()
-  @IsNotEmpty()
-  token!: string;
+  @Matches(/^\d{6}$/)
+  code!: string;
 }
 
 export class ResendVerificationDto {

@@ -13,7 +13,7 @@ export interface CreateNotificationInput {
   title: string;
   message?: string;
   data?: Record<string, unknown>;
-  email?: { subject: string; html: string; to?: string };
+  email?: { subject: string; html: string; to?: string; attachments?: { filename: string; content: string; contentType: string }[] };
   /** Dedupe key to avoid duplicate notifications (idempotency). */
   dedupeKey?: string;
 }

@@ -1,7 +1,8 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, Matches, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, Matches, ValidateNested } from 'class-validator';
 
 export class WorkspaceQuery {
+  @IsOptional() @IsIn(['upcoming', 'latest']) sort?: string;
   @IsOptional() @IsString() @MaxLength(100) skill?: string;
   @IsOptional() @IsString() @MaxLength(100) location?: string;
   @IsOptional() @IsString() @MaxLength(100) education?: string;
@@ -26,6 +27,17 @@ export class MatchThresholdsDto {
   @IsInt() @Min(1) @Max(99) strong!: number;
   @IsInt() @Min(1) @Max(98) good!: number;
   @IsInt() @Min(0) @Max(97) potential!: number;
+  @IsOptional() @IsInt() @Min(1) @Max(98) promising?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(97) review?: number;
+}
+class StageSlaHoursDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) APPLIED?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) SCREENING?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) UNDER_REVIEW?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) SHORTLISTED?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) ASSESSMENT?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) INTERVIEW?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(8760) OFFER?: number;
 }
 export class RecruitmentSettingsDto {
   @IsArray() @ArrayMaxSize(30) @IsString({ each: true }) @MaxLength(120, { each: true }) domains!: string[];
@@ -35,6 +47,7 @@ export class RecruitmentSettingsDto {
   @IsArray() @IsIn(['REMOTE', 'HYBRID', 'ONSITE'], { each: true }) workModes!: string[];
   @IsInt() @Min(0) @Max(100000) hiringVolume!: number;
   @ValidateNested() @Type(() => MatchThresholdsDto) thresholds!: MatchThresholdsDto;
+  @IsOptional() @ValidateNested() @Type(() => StageSlaHoursDto) stageSlaHours?: StageSlaHoursDto;
   @IsOptional() @IsBoolean() completeOnboarding?: boolean;
 }
 export class AssignmentDto {
@@ -49,7 +62,13 @@ export class CommunicationDto extends EmailTemplateDto {
   @IsIn(['EMAIL', 'IN_APP', 'BOTH']) channel!: 'EMAIL' | 'IN_APP' | 'BOTH';
   @IsString() @MaxLength(100) requestId!: string;
 }
+class InterviewCriterionDto {
+  @IsString() @MaxLength(150) label!: string;
+  @IsInt() @Min(1) @Max(5) score!: number;
+}
 export class FeedbackDto {
+  @IsOptional() @IsArray() @ArrayMaxSize(12) @ValidateNested({ each: true }) @Type(() => InterviewCriterionDto) criteria?: InterviewCriterionDto[];
+  @IsOptional() @IsIn(['CONTINUE','REVIEW','STOP']) recommendation?: string;
   @IsOptional() @IsInt() @Min(0) @Max(100) technical?: number;
   @IsOptional() @IsInt() @Min(0) @Max(100) communication?: number;
   @IsOptional() @IsInt() @Min(0) @Max(100) problemSolving?: number;
@@ -73,9 +92,18 @@ export class InterviewAnswersDto {
 }
 export class OfferDto {
   @IsString() @MaxLength(200) title!: string;
-  @IsString() @MaxLength(15000) terms!: string;
+  @IsString() @MaxLength(100) contractType!: string;
+  @IsNumber({ maxDecimalPlaces: 3 }) @Min(0.001) @Max(99999999999) salaryAmount!: number;
+  @IsString() @Matches(/^[A-Z]{3}$/) salaryCurrency!: string;
+  @IsIn(['MONTH', 'YEAR', 'HOUR']) salaryPeriod!: string;
+  @IsIn(['REMOTE', 'HYBRID', 'ONSITE']) workMode!: string;
+  @IsOptional() @IsString() @MaxLength(300) location?: string;
+  @IsOptional() @IsDateString() startDate?: string;
+  @IsArray() @ArrayMaxSize(30) @IsString({ each: true }) @MaxLength(200, { each: true }) benefits!: string[];
+  @IsOptional() @IsString() @MaxLength(15000) terms?: string;
   @IsOptional() @IsDateString() expiresAt?: string;
 }
 export class OfferResponseDto {
   @IsIn(['ACCEPTED', 'DECLINED']) response!: 'ACCEPTED' | 'DECLINED';
+  @IsOptional() @IsString() @MaxLength(1000) reason?: string;
 }

@@ -1,17 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CandidateVisibility, EmploymentType, ExperienceLevel, SkillLevel } from '@prisma/client';
 import {
+  ArrayMaxSize,
   IsBoolean,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
+
+export class RenameResumeDto {
+  @IsString() @IsNotEmpty() @MaxLength(150) name!: string;
+}
 
 export class UpdateCandidateProfileDto {
   @ApiPropertyOptional({ example: 'Senior Full-Stack Engineer' })
@@ -59,6 +66,18 @@ export class UpdateCandidateProfileDto {
   @IsOptional()
   @IsEnum(EmploymentType)
   employmentTypePreference?: EmploymentType;
+
+  /**
+   * Candidate-confirmed languages. This only replaces the languages extracted
+   * from a CV when the candidate saves this field explicitly.
+   */
+  @ApiPropertyOptional({ type: [String], example: ['French — native', 'English — professional'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  languages?: string[];
 }
 
 export class AddSkillDto {
@@ -80,6 +99,43 @@ export class ExperienceDto {
   @IsNotEmpty()
   @MaxLength(200)
   companyName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  companyId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  companyLogoUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(500)
+  companyWebsite?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  companyProvider?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  location?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  countryCode?: string;
+
 
   @ApiProperty()
   @IsString()
@@ -193,5 +249,46 @@ export class JobPreferenceDto {
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
+  keywords?: string[];
+}
+
+/** Candidate-selected values from the EasyJob profile-completion preview. */
+export class ApplyProfileCompletionDto {
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  languages?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  jobTitle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  location?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  remote?: boolean;
+
+  @ApiPropertyOptional({ enum: EmploymentType })
+  @IsOptional()
+  @IsEnum(EmploymentType)
+  employmentType?: EmploymentType;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
   keywords?: string[];
 }

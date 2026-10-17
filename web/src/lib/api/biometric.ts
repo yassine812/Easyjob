@@ -36,7 +36,7 @@ export function frameToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('Could not encode frame'))),
       'image/jpeg',
-      0.85,
+      0.95,
     );
   });
 }

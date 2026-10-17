@@ -1,0 +1,1 @@
+# candidate-interview-prep  ## Purpose Prepare deterministic technical and behavioural interview practice from one job and CV.  ## Safety - Deterministic and self-hosted; no LLM, API key or paid SaaS is required. - Never invent candidate facts or make a hiring decision. - Candidate controls every CV change and every message.

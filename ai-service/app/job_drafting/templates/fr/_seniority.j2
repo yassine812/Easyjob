@@ -1,0 +1,6 @@
+{% macro expectations() -%}
+{% if seniority == 'JUNIOR' %}Vous contribuerez aux réalisations avec l’accompagnement de l’équipe, en développant vos pratiques de {% if technical %}test{% else %}suivi{% endif %}, de documentation et de vérification. Votre autonomie progressera à travers des missions délimitées et des retours réguliers.
+{% elif seniority == 'MID' %}Vous prendrez en charge des réalisations de bout en bout, participerez à leur conception et contribuerez aux décisions de l’équipe. Vous veillerez à la qualité des livrables et à la clarté de leur documentation.
+{% elif seniority == 'SENIOR' %}{% if technical %}Vous porterez les choix d’architecture et les standards de qualité, avec une attention particulière aux performances, à la sécurité et à la fiabilité.{% else %}Vous porterez les décisions métier et les standards de qualité, en explicitant les critères de réussite et les risques à maîtriser.{% endif %} Vous accompagnerez les profils moins expérimentés et partagerez les pratiques éprouvées.
+{% else %}{% if technical %}Vous définirez la direction technique et les choix d’architecture transverses.{% else %}Vous définirez les orientations métier et les priorités transverses.{% endif %} Vous coordonnerez les contributions, arbitrerez les dépendances et accompagnerez l’équipe dans l’adoption de standards communs.
+{% endif %}{%- endmacro %}

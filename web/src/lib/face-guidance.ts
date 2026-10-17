@@ -28,7 +28,10 @@ export function loadFaceGuidance(): Promise<FaceApi> {
 }
 export async function observeFace(video: HTMLVideoElement | HTMLCanvasElement): Promise<FaceObservation[]> {
   const api = await loadFaceGuidance();
-  return api.detectAllFaces(video, new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: .55 })).withFaceLandmarks(true);
+  // Webcam frames are often softer and darker than enrollment images. A
+  // slightly larger input and a lower confidence threshold prevent a visible
+  // face from flickering into "no face" while the browser is still focusing.
+  return api.detectAllFaces(video, new api.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: .45 })).withFaceLandmarks(true);
 }
 /** Match the server's frontal-face detector; movement is lateral, not a profile turn. */
 export function capturePosition(faces: FaceObservation[], width: number, height: number, origin?: number): ReturnType<typeof facePose> {
@@ -47,7 +50,7 @@ export function facePose(faces: FaceObservation[], width: number, height: number
   if (!faces.length) return 'none';
   if (faces.length !== 1) return 'multiple';
   const { detection, landmarks } = faces[0], b = detection.box, p = landmarks.positions;
-  if (detection.score < .55 || b.width < width * .18 || b.width > width * .85 || b.x < 0 || b.y < 0 || b.x + b.width > width || b.y + b.height > height || p.length < 68) return 'position';
+  if (detection.score < .45 || b.width < width * .18 || b.width > width * .85 || b.x < 0 || b.y < 0 || b.x + b.width > width || b.y + b.height > height || p.length < 68) return 'position';
   const span = Math.abs(p[45].x - p[36].x);
   if (span < 10) return 'position';
   const yaw = (p[30].x - (p[36].x + p[45].x) / 2) / span;

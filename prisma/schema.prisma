@@ -99,9 +99,20 @@ enum JobStatus {
 }
 
 enum JobSourceType {
-  JOOBLE
-  TANITJOBS
-  LINKEDIN
+  APEC
+  GLASSDOOR
+  WELCOME_TO_THE_JUNGLE
+  INDEED
+  FABSKILL
+  JOBREVIEW
+  EMPLOITUNISIE
+  OPTIONCARRIERE
+  KEEJOB
+    JOOBLE
+    TANITJOBS
+    ANETI
+    ANETI_INTERNATIONAL
+    LINKEDIN
   COMPANY_DIRECT
   OTHER_JOB_BOARD
 }
@@ -114,6 +125,9 @@ enum SourceApplicationMethod {
 }
 
 enum AggregatedJobStatus {
+  EXPIRED
+  PAUSED
+  REMOVED
   OPEN
   CLOSED
   NO_LONGER_AVAILABLE
@@ -150,6 +164,7 @@ enum InterviewType {
 }
 
 enum InterviewStatus {
+  IN_PROGRESS
   NO_SHOW
   SCHEDULED
   CONFIRMED
@@ -184,6 +199,11 @@ enum PaymentStatus {
   CANCELLED
   EXPIRED
   REFUNDED
+}
+
+enum InvoiceStatus {
+  PAID
+  VOID
 }
 
 enum AssessmentStatus {
@@ -292,6 +312,10 @@ model User {
   jobsCreated               Job[]                    @relation("JobCreatedBy")
   jobsApproved              Job[]                    @relation("JobApprovedBy")
   applicationsStageChanged  Application[]            @relation("ApplicationStageChangedBy")
+  applicationsAlignmentOverridden Application[]      @relation("ApplicationAlignmentOverrideBy")
+  supportTickets             SupportTicket[]
+  supportMessages            SupportMessage[]
+  assignedSupportTickets     SupportTicket[]        @relation("SupportAssigned")
 
   @@index([status])
   @@index([createdAt])
@@ -380,6 +404,7 @@ model EmailVerificationToken {
   tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
+  attempts  Int       @default(0)
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -552,8 +577,27 @@ model CandidateProfile {
   coachSessions                   CoachSession[]
   externalJobSaves                ExternalJobSave[]
   externalApplicationPreparations ExternalApplicationPreparation[]
+  starStories                     CandidateStarStory[]
 
   @@index([visibility])
+}
+
+model CandidateStarStory {
+  id            String   @id @default(cuid())
+  candidateId   String
+  title         String
+  situation     String
+  task          String
+  action        String
+  result        String
+  relatedSkills String[] @default([])
+  relatedRoles  String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  candidate CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, updatedAt])
 }
 
 model JobPreference {
@@ -599,6 +643,12 @@ model Experience {
   id          String    @id @default(cuid())
   candidateId String
   companyName String
+  companyId   String?
+  companyLogoUrl String?
+  companyWebsite String?
+  companyProvider String?
+  location    String?
+  countryCode String?
   title       String
   description String?
   startDate   DateTime
@@ -640,8 +690,10 @@ model Resume {
   parsedText       String?
   atsReport        Json?
   extractedProfile Json?
+  design           Json?
   processingStatus ProcessingStatus @default(PENDING)
   createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now()) @updatedAt
 
   candidate            CandidateProfile                 @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   applications         Application[]
@@ -668,6 +720,7 @@ model SavedJob {
 // ------------------------------------------------------------
 
 model Job {
+  applicationFields Json @default("[]")
   id                     String                   @id @default(cuid())
   companyId              String
   createdById            String
@@ -692,6 +745,7 @@ model Job {
   minimumYearsExperience Int?
   employmentType         EmploymentType
   experienceLevel        ExperienceLevel
+  salaryVisible          Boolean                  @default(true)
   salaryMin              Int?
   salaryMax              Int?
   currency               String?
@@ -752,10 +806,72 @@ model JobSource {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
+  lastFailureAt DateTime?
+  lastErrorCode String?
+  lastHttpStatus Int?
+  lastDurationMs Int?
+  lastImported Int @default(0)
+  lastUpdated Int @default(0)
+  lastExpired Int @default(0)
+  lastRejected Int @default(0)
+  lastDuplicates Int @default(0)
+  syncRuns JobSourceSyncRun[]
+
   listings AggregatedJobSource[]
 }
 
+model JobSourceSyncRun {
+  id String @id @default(cuid())
+  sourceId String
+  source JobSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  status String
+  durationMs Int?
+  imported Int @default(0)
+  updated Int @default(0)
+  expired Int @default(0)
+  rejected Int @default(0)
+  duplicates Int @default(0)
+  errorCode String?
+  httpStatus Int?
+  @@index([sourceId, startedAt])
+}
+
+model SourceCompany {
+  id String @id @default(cuid())
+  identityKey String @unique
+  name String
+  website String?
+  logoUrl String?
+  industry String?
+  location String?
+  updatedAt DateTime @updatedAt
+  jobs AggregatedJob[]
+}
+
 model AggregatedJob {
+  sourceCompanyId String?
+  sourceCompany SourceCompany? @relation(fields: [sourceCompanyId], references: [id], onDelete: SetNull)
+  companyWebsite String?
+  companyIndustry String?
+  companyLocation String?
+  reference String?
+  niceToHave String[] @default([])
+  benefits String[] @default([])
+  languages String[] @default([])
+  education String[] @default([])
+  experienceMin Float?
+  experienceMax Float?
+  contractType String?
+  contractDuration String?
+  country String?
+  region String?
+  city String?
+  address String?
+  salaryPeriod String?
+  positions Int?
+  contentHash String?
   id               String              @id @default(cuid())
   dedupeKey        String              @unique
   title            String
@@ -790,6 +906,12 @@ model AggregatedJob {
 }
 
 model AggregatedJobSource {
+  status AggregatedJobStatus @default(OPEN)
+  missingSince DateTime?
+  contentHash String?
+  rawMetadata Json @default("{}")
+  normalizedData Json @default("{}")
+  applicationFields Json @default("[]")
   id                String                  @id @default(cuid())
   aggregatedJobId   String
   sourceId          String
@@ -847,15 +969,18 @@ model ExternalApplicationPreparation {
 // ------------------------------------------------------------
 
 model Application {
-  id                  String            @id @default(cuid())
+  consentAt DateTime?
+  id                  String                  @id @default(cuid())
   jobId               String
   candidateId         String
   resumeId            String?
+  sourceType          JobSourceType           @default(COMPANY_DIRECT)
+  applicationMethod   SourceApplicationMethod @default(NATIVE_EASYJOB)
   motivation          String?
   coverLetter         String?
   candidateSnapshot   Json?
   answers             Json?
-  status              ApplicationStatus @default(APPLIED)
+  status              ApplicationStatus       @default(APPLIED)
   aiMatchScore        Int?
   atsScore            Int?
   aiQualification     String?
@@ -865,21 +990,25 @@ model Application {
   potentialReason     String?
   strengths           String?
   missingRequirements String?
-  aiScreeningStatus   String            @default("PENDING")
+  aiScreeningStatus   String                  @default("PENDING")
   aiScreenedAt        DateTime?
   stageChangedAt      DateTime?
   stageChangedById    String?
-  stageChangeSource   String?           @default("SYSTEM")
+  stageChangeSource   String?                 @default("SYSTEM")
+  alignmentOverrideById String?
+  alignmentOverriddenAt DateTime?
+  alignmentOverrideReason String?
   matchExplanation    Json?
-  autoApplied         Boolean           @default(false)
+  autoApplied         Boolean                 @default(false)
   cvTextSnapshot      String?
-  appliedAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  appliedAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
   job            Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   candidate      CandidateProfile         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   resume         Resume?                  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
   stageChangedBy User?                    @relation("ApplicationStageChangedBy", fields: [stageChangedById], references: [id], onDelete: SetNull)
+  alignmentOverrideBy User?              @relation("ApplicationAlignmentOverrideBy", fields: [alignmentOverrideById], references: [id], onDelete: SetNull)
   events         ApplicationEvent[]
   notes          ApplicationNote[]
   interviews     Interview[]              @relation("InterviewApplication")
@@ -891,6 +1020,7 @@ model Application {
   @@index([jobId, status])
   @@index([appliedAt])
   @@index([status])
+  @@index([alignmentOverrideById])
 }
 
 model ApplicationEvent {
@@ -923,6 +1053,19 @@ model ApplicationNote {
 }
 
 model Interview {
+  timezone       String          @default("Africa/Tunis")
+  locationType   String          @default("EXTERNAL")
+  startedAt      DateTime?
+  endedAt        DateTime?
+  meetingProvider String?
+  meetingRoomId  String?         @unique
+  meetingUrl     String?
+  assistantEnabled Boolean       @default(false)
+  assistantNotes Json?
+  calendarSequence Int           @default(0)
+  reminderHourSentAt DateTime?
+  consents       InterviewConsent[]
+  transcriptSegments InterviewTranscriptSegment[]
   id             String          @id @default(cuid())
   applicationId  String
   jobId          String?
@@ -946,6 +1089,7 @@ model Interview {
   scheduledBy  User                   @relation("InterviewScheduledBy", fields: [scheduledById], references: [id], onDelete: Restrict)
   participants InterviewParticipant[]
   feedback     InterviewFeedback[]
+  brief        InterviewBrief?
 
   @@index([applicationId])
   @@index([startAt])
@@ -963,6 +1107,10 @@ model JobAssignment {
 }
 
 model InterviewParticipant {
+  attendanceStatus String @default("INVITED")
+  invitedAt DateTime?
+  acceptedAt DateTime?
+  declinedAt DateTime?
   interviewId String
   memberId    String
   interview   Interview     @relation(fields: [interviewId], references: [id], onDelete: Cascade)
@@ -973,6 +1121,8 @@ model InterviewParticipant {
 }
 
 model InterviewFeedback {
+  criteria       Json?
+  recommendation String?
   id             String    @id @default(cuid())
   interviewId    String
   authorId       String
@@ -1004,10 +1154,12 @@ model CandidateCommunication {
   id            String      @id @default(cuid())
   applicationId String
   senderId      String
+  senderType    String      @default("RECRUITER")
   subject       String
   body          String
   channel       String
   status        String      @default("PENDING")
+  readAt        DateTime?
   requestId     String      @unique
   createdAt     DateTime    @default(now())
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
@@ -1016,6 +1168,18 @@ model CandidateCommunication {
 }
 
 model RecruitmentOffer {
+  contractType  String?
+  salaryAmount  Decimal? @db.Decimal(14, 3)
+  salaryCurrency String @default("TND")
+  salaryPeriod  String @default("MONTH")
+  workMode      String?
+  location      String?
+  startDate     DateTime?
+  benefits      String[] @default([])
+  companyName   String?
+  sentAt        DateTime?
+  viewedAt      DateTime?
+  responseReason String?
   id            String      @id @default(cuid())
   applicationId String
   createdById   String
@@ -1029,6 +1193,72 @@ model RecruitmentOffer {
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId, status])
+}
+
+model InterviewBrief {
+  id                 String             @id @default(cuid())
+  interviewId        String             @unique
+  version            Int                @default(1)
+  candidateSnapshot  Json
+  jobSnapshot        Json
+    analysisSnapshot   Json
+    jobAnalysisVersion String?
+    candidateAnalysisVersion String?
+    strengths          Json
+  gaps               Json
+  checklist          Json?
+  generatedAt        DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  interview          Interview          @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  questions          InterviewQuestion[]
+}
+
+model InterviewQuestion {
+  id             String        @id @default(cuid())
+  briefId        String
+  question       String
+  category       String
+  skill          String?
+  priority       String         @default("MEDIUM")
+  sourceType     String
+  sourceReference String?
+  rationale      String
+  evidence       Json?
+  order          Int
+  covered        Boolean       @default(false)
+  recruiterNote  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  brief          InterviewBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
+
+  @@index([briefId, order])
+}
+
+model InterviewConsent {
+  interviewId String
+  userId String
+  acceptedAt DateTime @default(now())
+  revokedAt DateTime?
+  version String @default("1")
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  @@id([interviewId, userId])
+}
+
+model InterviewTranscriptSegment {
+  id              String   @id @default(cuid())
+  interviewId     String
+  participantId   String?
+  participantRole String
+  text            String
+  startedAt       DateTime
+  endedAt         DateTime
+  source          String   @default("FASTER_WHISPER")
+  confidence      Float?
+  createdAt       DateTime @default(now())
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId, startedAt])
 }
 
 // ------------------------------------------------------------
@@ -1054,6 +1284,54 @@ model Notification {
 // ------------------------------------------------------------
 // Audit
 // ------------------------------------------------------------
+
+model SupportTicket {
+  id               String   @id @default(cuid())
+  reference        String   @unique
+  ticketNumber     Int      @unique @default(autoincrement())
+  userId           String
+  subject          String
+  category         String
+  message          String?
+  status           String   @default("OPEN")
+  priority         String   @default("NORMAL")
+  lastMessageAt    DateTime @default(now())
+  assignedToId     String?
+  attachmentKey    String?
+  attachmentName   String?
+  attachmentMime   String?
+  attachmentSize   Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo User?            @relation("SupportAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages  SupportMessage[]
+
+  @@index([userId, lastMessageAt])
+  @@index([status, updatedAt])
+}
+
+model SupportMessage {
+  id             String   @id @default(cuid())
+  ticketId       String
+  senderId       String?
+  senderType     String   @default("USER")
+  message        String
+  attachmentKey  String?
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender User?   @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@index([ticketId, senderType, isRead])
+}
 
 model AuditLog {
   id         String   @id @default(cuid())
@@ -1119,6 +1397,7 @@ model Subscription {
   candidate CandidateProfile? @relation("CandidateSubscription", fields: [candidateId], references: [id], onDelete: Cascade)
   company   Company?          @relation("CompanySubscription", fields: [companyId], references: [id], onDelete: Cascade)
   payments  Payment[]
+  invoices  Invoice[]
 
   @@unique([provider, providerSubscriptionId])
   @@index([ownerType, candidateId])
@@ -1136,6 +1415,14 @@ model Payment {
   orderId                String?
   amountCents            Int
   currency               String        @default("TND")
+  /// Commercial reference amount in hundredths of TND.
+  baseAmountTndCents     Int?
+  /// Amount sent to the provider in the minor unit of `currency`.
+  paymentAmountMinor     Int?
+  /// Exchange rate used by the provider/quote (target currency per TND).
+  providerExchangeRate   Decimal?
+  /// Raw provider-converted amount in the provider's minor unit, when available.
+  providerConvertedAmount Int?
   billingCountry         String?
   status                 PaymentStatus @default(PENDING)
   invoiceUrl             String?
@@ -1146,11 +1433,53 @@ model Payment {
   expiresAt              DateTime?
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  invoice      Invoice?
 
   @@index([subscriptionId])
   @@index([provider, providerPaymentId])
   @@index([orderId])
   @@index([status])
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  number          String        @unique
+  paymentId       String        @unique
+  subscriptionId  String
+  ownerType       PlanType
+  companyId       String?
+  candidateId     String?
+  customerName    String
+  customerEmail   String?
+  customerAddress String?
+  planName        String
+  planPriceCents  Int
+  currency        String        @default("TND")
+  billingInterval BillingInterval
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  subtotalCents   Int
+  taxCents        Int           @default(0)
+  totalCents      Int
+  status          InvoiceStatus @default(PAID)
+  providerReference String?
+  pdfKey          String?
+  docxKey         String?
+  createdAt       DateTime      @default(now())
+
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  @@index([subscriptionId, createdAt])
+  @@index([companyId, createdAt])
+  @@index([candidateId, createdAt])
+}
+
+model InvoiceSequence {
+  id         Int      @id @default(1)
+  year       Int
+  nextNumber Int      @default(1)
+  updatedAt  DateTime @updatedAt
 }
 
 // Idempotency ledger for payment-provider webhook deliveries. Duplicate
@@ -1361,6 +1690,15 @@ model AiAnalysis {
 }
 
 model CareerSettings {
+  preferencesInitialized Boolean          @default(false)
+  approvalRequired Boolean @default(true)
+  unattendedConsentAt DateTime?
+  preferredResumeId String?
+  maxPerWeek Int @default(10)
+  targetTitles String[] @default([])
+  requiredSkills String[] @default([])
+  excludedKeywords String[] @default([])
+  experienceLevels String[] @default([])
   candidateId       String           @id
   emailAlerts       Boolean          @default(false)
   frequency         String           @default("DAILY")
@@ -1377,7 +1715,8 @@ model CareerSettings {
   contractTypes     String[]         @default([])
   excludedJobs      String[]         @default([])
   minimumSalary     Int?
-  salaryCurrency    String           @default("USD")
+  maximumSalary     Int?
+  salaryCurrency    String           @default("TND")
   approvedDraftId   String?
   autoConsentAt     DateTime?
   lastAlertAt       DateTime?
@@ -1392,9 +1731,19 @@ model CvDraft {
   targetJobId     String?
   sourceResumeId  String?
   content         String
+  document        Json?
   originalContent String
+  template        String           @default("classic")
+  fontSize        Int              @default(14)
+  version         Int              @default(1)
+  language        String           @default("fr")
+  targetRole      String?
+  revisions       CvDraftRevision[]
   beforeScore     Int?
   afterScore      Int?
+  atsReport       Json?
+  analysisStatus  String           @default("COMPLETED")
+  analyzedContentHash String?
   keywords        String[]         @default([])
   approvedAt      DateTime?
   createdAt       DateTime         @default(now())
@@ -1402,6 +1751,39 @@ model CvDraft {
   candidate       CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   @@index([candidateId, createdAt])
+}
+
+model CvDraftRevision {
+  id        String   @id @default(cuid())
+  draftId   String
+  version   Int
+  content   String
+  document  Json?
+  title     String
+  template  String
+  fontSize  Int
+  report    Json
+  createdAt DateTime @default(now())
+  draft     CvDraft  @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  @@unique([draftId, version])
+}
+
+model ExternalResearchCache {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  provider         String
+  queryType        String
+  normalizedQuery  String
+  resultJson       Json
+  fetchedAt        DateTime
+  expiresAt        DateTime
+  status           String
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([queryType, normalizedQuery])
+  @@index([expiresAt])
 }
 
 model CareerDelivery {

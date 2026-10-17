@@ -51,6 +51,25 @@ async def cv_analyze(payload: dict[str, Any], provider: AIProvider = Depends(get
         raise HTTPException(status_code=502, detail=f"AI provider error: {exc}") from exc
 
 
+@router.post('/cv/render-pdf')
+def cv_render_pdf(payload: dict[str, Any]) -> dict:
+    from app.cv_documents import render_cv
+    try:
+        return render_cv(str(payload.get('content', '')), str(payload.get('template', 'modern')), int(payload.get('fontSize', 14)), payload.get('html'), payload.get('css'), int(payload.get('margin', 42)))
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post('/cv/inspect-pdf')
+async def cv_inspect_pdf(file: UploadFile = File(...)) -> dict:
+    from app.cv_documents import inspect_pdf
+    data = await file.read(15 * 1024 * 1024 + 1)
+    try:
+        return inspect_pdf(data)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail='Could not inspect PDF') from exc
+
+
 @router.post("/cv/generate")
 async def cv_generate(payload: dict[str, Any], provider: AIProvider = Depends(get_provider)) -> dict[str, Any]:
     profile = payload.get("profile") or {}
@@ -70,6 +89,44 @@ async def cv_tailor(payload: dict[str, Any], provider: AIProvider = Depends(get_
         raise HTTPException(status_code=400, detail="Missing 'cv_text' or 'job'")
     try:
         return await _run(provider, "tailor_cv", str(cv_text), job)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"AI provider error: {exc}") from exc
+
+
+@router.post("/cv/translate")
+async def cv_translate(payload: dict[str, Any], provider: AIProvider = Depends(get_provider)) -> dict[str, Any]:
+    document = payload.get("document")
+    source_locale = str(payload.get("sourceLocale") or "")
+    target_locale = str(payload.get("targetLocale") or "")
+    allowed = {"fr-FR", "fr-CA", "en-CA", "en-US", "en-GB", "es-ES", "de-DE", "it-IT", "pt-PT", "pt-BR", "nl-NL", "ar-TN"}
+    language_by_locale = {locale: locale[:2] for locale in allowed}
+    source_language = str(payload.get("sourceLanguage") or source_locale[:2])
+    target_language = str(payload.get("targetLanguage") or target_locale[:2])
+    errors: dict[str, str] = {}
+    if not isinstance(document, dict):
+        errors["document"] = "must be an object"
+    if source_locale not in allowed:
+        errors["sourceLocale"] = "must be a supported locale code"
+    if target_locale not in allowed:
+        errors["targetLocale"] = "must be a supported locale code"
+    if source_locale in allowed and target_locale in allowed and source_locale == target_locale:
+        errors["targetLocale"] = "must differ from sourceLocale"
+    if source_locale in allowed and source_language != language_by_locale[source_locale]:
+        errors["sourceLanguage"] = "does not match sourceLocale"
+    if target_locale in allowed and target_language != language_by_locale[target_locale]:
+        errors["targetLanguage"] = "does not match targetLocale"
+    if errors:
+        logger.warning(
+            "Invalid CV translation request source=%s target=%s document_object=%s fields=%s",
+            source_locale,
+            target_locale,
+            isinstance(document, dict),
+            ",".join(errors),
+        )
+        raise HTTPException(status_code=400, detail={"error": "invalid_translation_request", "fields": errors})
+    try:
+        context = {"professionalDomain": payload.get("professionalDomain"), "seniority": payload.get("seniority")}
+        return await _run(provider, "translate_cv", document, source_locale, target_locale, context)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"AI provider error: {exc}") from exc
 

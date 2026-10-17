@@ -1,0 +1,1 @@
+# candidate-application-followup  ## Purpose Clarify application timeline, waiting time and next action.  ## Safety - Deterministic and self-hosted; no LLM, API key or paid SaaS is required. - Never invent candidate facts or make a hiring decision. - Candidate controls every CV change and every message.

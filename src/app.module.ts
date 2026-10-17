@@ -37,6 +37,9 @@ import { AiModule } from './ai/ai.module';
 import { HealthModule } from './health/health.module';
 import { loadConfig } from './config/configuration';
 import { CareerModule } from './career/career.module';
+import { SupportModule } from './support/support.module';
+import { ExternalResearchModule } from './external-research/external-research.module';
+import { EasyJobSkillsModule } from './skills/easyjob/easyjob-skills.module';
 
 const config = loadConfig();
 
@@ -98,6 +101,9 @@ const config = loadConfig();
     AiModule,
     HealthModule,
     CareerModule,
+    SupportModule,
+    ExternalResearchModule,
+    EasyJobSkillsModule,
   ],
 })
 export class AppModule {}

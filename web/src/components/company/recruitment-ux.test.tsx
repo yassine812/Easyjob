@@ -7,6 +7,7 @@ import { RecruiterHome } from './recruiter-home';
 import { workspaceApi, type WorkspaceOverview } from '@/lib/api/company-workspace';
 import { AnalysisProcessing } from '@/components/shared/analysis-processing';
 
+vi.mock('@/lib/i18n', () => ({ useI18n: () => ({ locale: 'fr' }) }));
 vi.mock('@/lib/i18n/ux', () => ({ useUxText: () => (key: string) => key }));
 vi.mock('@/lib/i18n/company', () => ({ useCompanyText: () => (key: string) => key }));
 vi.mock('@/hooks/use-auth', () => ({ useRole: () => ({ can: (_id: string, permission: string) => permission !== 'team.invite' }) }));
@@ -48,12 +49,13 @@ describe('Recruitment UX', () => {
     await waitFor(() => expect(workspaceApi.candidates).toHaveBeenLastCalledWith('company-a', expect.objectContaining({ skill: '', page: 1 })));
     expect(screen.getByLabelText('skill')).toHaveValue('');
   });
-  it('shows actionable real counts and keeps matching details collapsed', () => {
-    const data: WorkspaceOverview = { jobs: { PUBLISHED: 2, DRAFT: 1 }, stages: { APPLIED: 7 }, totalApplications: 10, analyzed: 6, distribution: {}, averageMatch: null, averageTimeToHireDays: null, averageTimeToInterviewDays: null, hiringRate: null, sources: { manual: 10, autoApply: 0 }, daily: [], applicationsByJob: [], recent: [], upcoming: [] };
+  it('shows actionable real counts without inventing unlocked intelligence', () => {
+    const data: WorkspaceOverview = { from: '2026-10-01', to: '2026-10-06', jobs: { PUBLISHED: 2, DRAFT: 1 }, stages: { APPLIED: 7 }, totalApplications: 10, analyzed: 6, distribution: {}, averageMatch: null, averageTimeToHireDays: null, averageTimeToInterviewDays: null, hiringRate: null, sources: { manual: 10, autoApply: 0 }, daily: [], applicationsByJob: [], recent: [], upcoming: [] };
     show(<RecruiterHome companyId="company-a" data={data} controls={null} loading={null} />);
     expect(screen.getByRole('link', { name: /reviewApplications\s*7/ })).toHaveAttribute('href', '/company/company-a/pipeline?status=APPLIED');
     expect(screen.queryByRole('link', { name: /reviewOffers/ })).not.toBeInTheDocument();
-    expect(screen.getByText('distribution').closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText('attentionToday')).toBeInTheDocument();
+    expect(screen.queryByText('applicationQuality')).not.toBeInTheDocument();
   });
   it('does not invent a percentage or processing stage for an analysis', () => {
     render(<AnalysisProcessing />);

@@ -359,16 +359,18 @@ export class BiometricService {
         this.recordFailure(key);
         throw new ServiceUnavailableException('Face login is temporarily unavailable. Please use your password.');
       }
-      // The scan itself was rejected (no face / low quality / liveness) — a
-      // generic authentication failure; we do not reveal why at the login step.
+      // Capture feedback is independent of whether this account exists.
+      // Identity failures below remain generic; no tokens are issued here.
       if (err instanceof FaceRejectedError) {
         this.recordFailure(key);
-        throw new UnauthorizedException('Face verification failed.');
+        const captureCodes = ['invalid_image', 'no_face', 'multiple_faces', 'low_quality', 'face_too_small', 'bad_angle', 'insufficient_frames', 'face_count_changed', 'face_moved', 'no_motion', 'liveness_failed'];
+        const reason = captureCodes.includes(err.code) ? err.code : 'low_quality';
+        throw new HttpException(`FACE_CAPTURE:${reason}`, HttpStatus.UNPROCESSABLE_ENTITY);
       }
       throw err;
     }
 
-    if (!user || user.status !== 'ACTIVE' || !user.emailVerifiedAt || !user.biometricCredential?.enabled) {
+    if (!user || user.status !== 'ACTIVE' || !user.biometricCredential?.enabled) {
       this.recordFailure(key);
       await this.audit.log({
         action: 'biometric.login_failed',
@@ -423,6 +425,15 @@ export class BiometricService {
         userAgent: meta.userAgent,
       });
       throw new UnauthorizedException('Face verification failed.');
+    }
+
+    // Reveal the required next step only after the live face matches. Keep
+    // email verification mandatory and never issue tokens for this state.
+    if (!user.emailVerifiedAt) {
+      throw new ForbiddenException({
+        code: 'EMAIL_VERIFICATION_REQUIRED',
+        message: 'Confirm your email before signing in with your face.',
+      });
     }
 
     // Success — issue the normal NestJS session.

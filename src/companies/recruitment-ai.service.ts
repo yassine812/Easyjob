@@ -27,6 +27,7 @@ export class RecruitmentAiService {
       job = { title: source.title, description: source.description, requirements: source.requirements, skills: source.skills.map(s => ({ name: s.skill.name, required: s.required })), experienceLevel: source.experienceLevel };
     }
     if (dto.applicationId) {
+      await this.entitlements.assertRecruitmentIntelligence(companyId);
       const app = await this.prisma.application.findFirst({ where: { id: dto.applicationId, job: { companyId }, ...(dto.jobId ? { jobId: dto.jobId } : {}) } });
       if (!app) throw new NotFoundException('Application not found');
       await this.access.assertApplicationPermission(userId, companyId, app.id, 'candidate.cv.view');

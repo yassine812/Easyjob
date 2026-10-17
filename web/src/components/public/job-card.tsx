@@ -1,13 +1,16 @@
 'use client';
 
+import { useI18n } from '@/lib/i18n';
+import { usePublicJobsText } from '@/lib/i18n/public-jobs';
 import Link from 'next/link';
 import { Building2, Clock, MapPin, Wifi } from 'lucide-react';
 import type { Job } from '@/types/api';
 import { Badge } from '@/components/ui/badge';
-import { formatRelative, formatSalary } from '@/lib/format';
+import { formatRelative, formatJobSalary } from '@/lib/format';
 import { EMPLOYMENT_TYPE_LABELS, EXPERIENCE_LEVEL_LABELS } from '@/lib/constants';
 
 export function JobCard({ job }: { job: Job }) {
+  const t = usePublicJobsText(), { locale } = useI18n();
   return (
     <Link
       href={`/jobs/${job.id}`}
@@ -18,10 +21,10 @@ export function JobCard({ job }: { job: Job }) {
           <h3 className="font-semibold group-hover:text-primary">{job.title}</h3>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Building2 className="size-3.5" />
-            {job.company?.commercialName ?? 'Company'}
+            {job.company?.commercialName ?? t('company')}
           </p>
         </div>
-        <Badge variant="secondary">{EMPLOYMENT_TYPE_LABELS[job.employmentType]}</Badge>
+        <Badge variant="secondary">{t(job.employmentType)}</Badge>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -32,17 +35,17 @@ export function JobCard({ job }: { job: Job }) {
         ) : null}
         {job.remote ? (
           <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-            <Wifi className="size-3.5" /> Remote
+            <Wifi className="size-3.5" /> {t('remote')}
           </span>
         ) : null}
-        <span>{EXPERIENCE_LEVEL_LABELS[job.experienceLevel]}</span>
+        <span>{t(job.experienceLevel)}</span>
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{formatSalary(job.salaryMin, job.salaryMax, job.currency ?? 'USD')}</p>
+        <p className="text-sm font-medium">{formatJobSalary(job.salaryMin, job.salaryMax, job.currency ?? 'TND', locale)}</p>
         {job.publishedAt ? (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="size-3" /> {formatRelative(job.publishedAt)}
+            <Clock className="size-3" /> {new Date(job.publishedAt).toLocaleDateString(locale)}
           </span>
         ) : null}
       </div>

@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { VERIFICATION_STATUS_LABELS } from '@/lib/constants';
+import { adminStatusLabel } from '@/lib/admin-labels';
 import { formatDateTime, formatFileSize } from '@/lib/format';
 
 export default function AdminVerificationsPage() {
@@ -59,11 +60,11 @@ export default function AdminVerificationsPage() {
   const approve = useMutation({
     mutationFn: (id: string) => adminApi.approveVerification(id),
     onSuccess: () => {
-      toast.success('Company verified — now ACTIVE');
+      toast.success('Entreprise vérifiée — maintenant ACTIVE');
       setDetailId(null);
       invalidate();
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not approve'),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Impossible d’approuver'),
   });
 
   const reject = useMutation({
@@ -74,12 +75,12 @@ export default function AdminVerificationsPage() {
       setReason('');
       invalidate();
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Could not reject'),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Impossible de refuser'),
   });
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Verifications" description="Review company verification submissions.">
+      <PageHeader title="Vérifications" description="Examiner les dossiers de vérification des entreprises.">
         <Select
           value={status}
           onValueChange={(v) => {
@@ -91,10 +92,10 @@ export default function AdminVerificationsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {Object.entries(VERIFICATION_STATUS_LABELS).map(([k, v]) => (
+            <SelectItem value="all">Tous les statuts</SelectItem>
+            {Object.entries(VERIFICATION_STATUS_LABELS).map(([k]) => (
               <SelectItem key={k} value={k}>
-                {v}
+                  {adminStatusLabel(k)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -105,17 +106,17 @@ export default function AdminVerificationsPage() {
         {verifications.isPending ? (
           <SkeletonRows rows={8} cols={5} />
         ) : verifications.isError ? (
-          <ErrorState message="Could not load verifications." retry={() => verifications.refetch()} />
+          <ErrorState message="Impossible de charger les vérifications." retry={() => verifications.refetch()} />
         ) : verifications.data && verifications.data.items.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Company</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Submitted</th>
-                    <th className="px-4 py-3">Docs</th>
+                    <th className="px-4 py-3">Entreprise</th>
+                    <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3">Soumis le</th>
+                    <th className="px-4 py-3">Documents</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -136,7 +137,7 @@ export default function AdminVerificationsPage() {
                                 : 'warning'
                           }
                         >
-                          {VERIFICATION_STATUS_LABELS[v.status]}
+                          {adminStatusLabel(v.status)}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
@@ -146,7 +147,7 @@ export default function AdminVerificationsPage() {
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => setDetailId(v.id)}>
-                            <Eye className="mr-1 size-3.5" /> Review
+                            <Eye className="mr-1 size-3.5" /> Examiner
                           </Button>
                           {v.status === 'UNDER_REVIEW' || v.status === 'PENDING' ? (
                             <>
@@ -156,7 +157,7 @@ export default function AdminVerificationsPage() {
                                 className="text-emerald-600 hover:text-emerald-600"
                                 onClick={() => approve.mutate(v.id)}
                               >
-                                <CheckCircle2 className="mr-1 size-3.5" /> Approve
+                                <CheckCircle2 className="mr-1 size-3.5" /> Approuver
                               </Button>
                               <Button
                                 variant="outline"
@@ -164,7 +165,7 @@ export default function AdminVerificationsPage() {
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => setRejectingId(v.id)}
                               >
-                                <XCircle className="mr-1 size-3.5" /> Reject
+                                <XCircle className="mr-1 size-3.5" /> Refuser
                               </Button>
                             </>
                           ) : null}
@@ -183,7 +184,7 @@ export default function AdminVerificationsPage() {
             />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No verifications found.</p>
+          <p className="text-sm text-muted-foreground">Aucune vérification trouvée.</p>
         )}
       </div>
 
@@ -191,20 +192,20 @@ export default function AdminVerificationsPage() {
       <Dialog open={!!detailId} onOpenChange={(o) => !o && setDetailId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Verification review</DialogTitle>
+            <DialogTitle>Revue de vérification</DialogTitle>
             <DialogDescription>
               {detail.data?.company?.commercialName} — {detail.data?.company?.legalName}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <div className="flex gap-2">
-              <Badge variant="secondary">Status: {VERIFICATION_STATUS_LABELS[detail.data?.status ?? 'PENDING']}</Badge>
+              <Badge variant="secondary">Statut : {adminStatusLabel(detail.data?.status ?? 'PENDING')}</Badge>
               {detail.data?.rejectionReason ? (
-                <Badge variant="destructive">Reason: {detail.data.rejectionReason}</Badge>
+                <Badge variant="destructive">Motif : {detail.data.rejectionReason}</Badge>
               ) : null}
             </div>
             <p>
-              <span className="text-muted-foreground">Registration identifier:</span>{' '}
+              <span className="text-muted-foreground">Identifiant d’enregistrement :</span>{' '}
               {detail.data?.company?.registrationIdentifier ?? '—'}
             </p>
             <div>
@@ -228,13 +229,13 @@ export default function AdminVerificationsPage() {
                   setRejectingId(detailId);
                 }}
               >
-                Reject
+                Refuser
               </Button>
               <Button
                 className="bg-emerald-600 hover:bg-emerald-600/90"
                 onClick={() => approve.mutate(detailId!)}
               >
-                Approve & activate
+                Approuver et activer
               </Button>
             </DialogFooter>
           ) : null}
@@ -245,21 +246,21 @@ export default function AdminVerificationsPage() {
       <Dialog open={!!rejectingId} onOpenChange={(o) => !o && setRejectingId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject verification</DialogTitle>
-            <DialogDescription>The company will see this reason.</DialogDescription>
+            <DialogTitle>Refuser la vérification</DialogTitle>
+            <DialogDescription>L’entreprise verra ce motif.</DialogDescription>
           </DialogHeader>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason (e.g. missing registration document)"
+            placeholder="Motif (ex. document d’enregistrement manquant)"
             maxLength={500}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectingId(null)}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" disabled={!reason.trim() || reject.isPending} onClick={() => reject.mutate()}>
-              {reject.isPending ? 'Rejecting…' : 'Reject verification'}
+              {reject.isPending ? 'Refus en cours…' : 'Refuser la vérification'}
             </Button>
           </DialogFooter>
         </DialogContent>

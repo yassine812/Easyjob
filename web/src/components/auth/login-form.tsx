@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { ArrowRight, ScanFace } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
+import { ApiError } from '@/lib/api/client';
 import { establishSession } from '@/lib/auth-session';
 import { getDashboardRoute } from '@/lib/permissions';
 import { useAuthStore } from '@/store/auth-store';
@@ -16,7 +17,6 @@ import { PageLoader } from '@/components/shared';
 
 import { useI18n } from '@/lib/i18n';
 import { useProductText } from '@/lib/i18n/product';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FaceVerification } from './face-verification';
@@ -54,6 +54,7 @@ export function LoginForm() {
     resolver: zodResolver(schema),
     defaultValues: { email: useAuthStore.getState().lastEmail ?? '', password: '' },
   });
+  const emailForFace = useWatch({ control: form.control, name: 'email' });
 
   const isSubmitting = form.formState.isSubmitting;
   useEffect(() => {
@@ -69,8 +70,10 @@ export function LoginForm() {
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
+    let credentialsAccepted = false;
     try {
       const { accessToken } = await authApi.login(values);
+      credentialsAccepted = true;
       if (navigationCancelled.current) return;
       const user = await establishSession(accessToken, values.email);
       if (navigationCancelled.current) return;
@@ -79,8 +82,17 @@ export function LoginForm() {
       toast.success(`${t.auth.welcomeBack}, ${user.name}`);
       navigationStarted.current = true;
       router.replace(pendingOnboardingRoute(user.email, getDashboardRoute(user)));
-    } catch {
-      if (!navigationCancelled.current) setError(copy('loginError'));
+    } catch (err) {
+      let message = 'loginServiceError';
+      if (err instanceof ApiError) {
+        if (err.status === 429) message = 'loginRateLimit';
+        else if (!credentialsAccepted && err.status === 401) {
+          message = err.message === 'Temporary password expired. Use forgot password.'
+            ? 'loginTemporaryExpired'
+            : err.message === 'Account is suspended' ? 'loginSuspended' : 'loginError';
+        }
+      }
+      if (!navigationCancelled.current) setError(copy(message));
     }
   };
 
@@ -91,10 +103,7 @@ export function LoginForm() {
   if (faceMode) {
     return (
       <div className="space-y-3">
-        <FaceVerification onUsePassword={() => setFaceMode(false)} />
-        <Button variant="ghost" className="w-full text-xs font-semibold" onClick={() => setFaceMode(false)}>
-          {t.face.signInWithPassword}
-        </Button>
+        <FaceVerification initialEmail={emailForFace} onUsePassword={() => setFaceMode(false)} />
       </div>
     );
   }

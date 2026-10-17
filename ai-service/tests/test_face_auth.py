@@ -98,11 +98,11 @@ def test_enroll_no_face():
     assert r.json()["detail"]["code"] == "no_face"
 
 
-def test_enroll_blank_frame_is_low_quality():
+def test_enroll_blank_frame_has_no_face():
     blank = np.full((400, 400, 3), 200, dtype=np.uint8)
     r = _post("/ai/face/enroll", _jpg(blank), _jpg(blank))
     assert r.status_code == 422
-    assert r.json()["detail"]["code"] == "low_quality"
+    assert r.json()["detail"]["code"] == "no_face"
 
 
 def test_enroll_multiple_faces():
@@ -118,7 +118,7 @@ def test_enroll_low_quality_blurred():
     blurred = cv2.GaussianBlur(face, (31, 31), 0)
     r = _post("/ai/face/enroll", _jpg(blurred), _jpg(_shift(blurred, 4)))
     assert r.status_code == 422
-    assert r.json()["detail"]["code"] == "low_quality"
+    assert r.json()["detail"]["code"] in {"low_quality", "no_face"}
 
 
 def test_enroll_face_too_small():
@@ -190,6 +190,74 @@ def test_embed_rejects_no_liveness():
     r = _post("/ai/face/embed", same, same)
     assert r.status_code == 422
     assert r.json()["detail"]["code"] == "no_motion"
+
+
+def test_embed_compares_detectable_blurred_face_but_enrollment_rejects_it():
+    face = _load("astronaut.png", 400)
+    blurred = cv2.GaussianBlur(face, (5, 5), 0)
+    a, b = _jpg(blurred), _jpg(_shift(blurred))
+    login = _post("/ai/face/embed", a, b)
+    assert login.status_code == 200, login.text
+    assert login.json()["quality"] == {"passed": False, "reasons": ["low_quality"]}
+    clear = _post("/ai/face/embed", _jpg(face), _jpg(_shift(face)))
+    assert clear.status_code == 200, clear.text
+    assert cosine_similarity(login.json()["embedding"], clear.json()["embedding"]) >= THRESHOLD
+    other = _load("einstein.jpg", 300)
+    different = _post("/ai/face/embed", _jpg(other), _jpg(_shift(other)))
+    assert different.status_code == 200, different.text
+    assert cosine_similarity(login.json()["embedding"], different.json()["embedding"]) < THRESHOLD
+    enrollment = _post("/ai/face/enroll", a, b)
+    assert enrollment.status_code == 422
+    assert enrollment.json()["detail"]["code"] == "low_quality"
+
+
+def test_embed_still_rejects_blurred_static_replay():
+    blurred = cv2.GaussianBlur(_load("astronaut.png", 400), (5, 5), 0)
+    same = _jpg(blurred)
+    r = _post("/ai/face/embed", same, same)
+    assert r.status_code == 422
+    assert r.json()["detail"]["code"] == "no_motion"
+
+
+def test_embed_still_rejects_blank_images():
+    blank = _jpg(np.full((400, 400, 3), 128, dtype=np.uint8))
+    r = _post("/ai/face/embed", blank, blank)
+    assert r.status_code == 422
+    assert r.json()["detail"]["code"] == "no_face"
+    assert "embedding" not in r.json()
+
+
+def test_yunet_recovers_blurry_face_when_haar_misses_without_bypassing_matching(monkeypatch):
+    from app.face import detector
+
+    face = _load("astronaut.png", 600)
+    other = _load("einstein.jpg", 300)
+    clear = _post("/ai/face/embed", _jpg(face), _jpg(_shift(face)))
+    different = _post("/ai/face/embed", _jpg(other), _jpg(_shift(other)))
+    assert clear.status_code == different.status_code == 200
+
+    class MissedFaces:
+        def detectMultiScale(self, *args, **kwargs):
+            return []
+
+    # Exercise the real bundled fallback after both legacy cascades miss.
+    monkeypatch.setattr(detector, "_cascade", MissedFaces())
+    monkeypatch.setattr(detector, "_profile_cascade", MissedFaces())
+    blurred = cv2.GaussianBlur(face, (11, 11), 0)
+    a, b = _jpg(blurred), _jpg(_shift(blurred))
+    result = _post("/ai/face/embed", a, b)
+    assert result.status_code == 200, result.text
+    assert result.json()["quality"] == {"passed": False, "reasons": ["low_quality"]}
+    assert cosine_similarity(result.json()["embedding"], clear.json()["embedding"]) >= THRESHOLD
+    assert cosine_similarity(result.json()["embedding"], different.json()["embedding"]) < THRESHOLD
+
+    static = _post("/ai/face/embed", a, a)
+    assert static.status_code == 422
+    assert static.json()["detail"]["code"] == "no_motion"
+    two = np.hstack([blurred, blurred])
+    multiple = _post("/ai/face/embed", _jpg(two), _jpg(_shift(two)))
+    assert multiple.status_code == 422
+    assert multiple.json()["detail"]["code"] == "multiple_faces"
 
 
 # ---------------------------------------------------------------------------

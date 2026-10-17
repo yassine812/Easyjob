@@ -1,6 +1,7 @@
 import './common/utils/env';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -10,10 +11,11 @@ import { requestContextMiddleware } from './common/request/request-context';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
     bufferLogs: false,
   });
+  app.useBodyParser('json', { type: ['application/json', 'application/webhook+json'] });
 
   app.use(requestContextMiddleware);
   app.use(helmet());

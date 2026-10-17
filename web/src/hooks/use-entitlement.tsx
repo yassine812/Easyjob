@@ -10,6 +10,7 @@ import { ArrowUpRight } from 'lucide-react';
 
 export interface Entitlement {
   planName: string;
+  displayName: string;
   planType: PlanType;
   subscriptionStatus: string | null;
   /** Feature flag / limit accessor. */
@@ -34,6 +35,7 @@ export function useEntitlement(ownerType: PlanType, companyId?: string): Entitle
   const features = (data?.plan.features ?? {}) as Record<string, unknown>;
   const status = data?.subscription?.status ?? null;
   const planName = data?.plan.name ?? 'FREE';
+  const displayName = data?.plan.displayName ?? ({ FREE: 'EasyJob Start', PRO: 'EasyJob Boost', PREMIUM: 'EasyJob Max', CAREER_AI: 'EasyJob Max' } as Record<string, string>)[planName] ?? planName;
 
   const feature = (key: string): unknown => features[key];
   const limit = (key: string): number | null => {
@@ -46,9 +48,9 @@ export function useEntitlement(ownerType: PlanType, companyId?: string): Entitle
   const limitBanner = (
     <Alert className="mb-6">
       <ArrowUpRight className="size-4" />
-      <AlertTitle>Free plan limits</AlertTitle>
+      <AlertTitle>{displayName} limits</AlertTitle>
       <AlertDescription className="flex items-center gap-2">
-        Some AI tools require the PRO plan.{' '}
+        Some AI tools require EasyJob Boost or EasyJob Max.{' '}
         <Link href={ownerType === 'CANDIDATE' ? '/candidate/subscription' : `/company/${companyId}/billing`} className="font-medium underline">
           Upgrade
         </Link>
@@ -58,6 +60,7 @@ export function useEntitlement(ownerType: PlanType, companyId?: string): Entitle
 
   return {
     planName,
+    displayName,
     planType: ownerType,
     subscriptionStatus: status,
     feature,

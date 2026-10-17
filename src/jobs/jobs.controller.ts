@@ -1,3 +1,4 @@
+import { JobDraftingClient } from './job-drafting.client';
 import {
   Body,
   Controller,
@@ -11,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { EmploymentType, ExperienceLevel, JobStatus } from '@prisma/client';
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -22,6 +23,7 @@ import { SearchService } from '../search/search.service';
 import { CreateJobDto, UpdateJobDto } from './dto/job.dto';
 import type { AuthRequest, CompanyContext } from '../common/types/auth';
 import type { RequestMeta } from '../companies/companies.service';
+import { JobAutofillDtoShape, JobAutofillService } from './job-creation.service';
 
 class SearchJobsQuery {
   @IsOptional()
@@ -84,8 +86,13 @@ class SearchJobsQuery {
 
 class CompanyJobsQuery {
   @IsOptional()
-  @IsEnum(JobStatus)
-  status?: JobStatus;
+  @IsIn(['active', 'paused', 'draft', 'closed', 'ACTIVE', 'SUSPENDED', ...Object.values(JobStatus)])
+  status?: string;
+
+  @IsOptional() @IsString() search?: string;
+  @IsOptional() @IsString() workMode?: string;
+  @IsOptional() @IsEnum(EmploymentType) employmentType?: EmploymentType;
+  @IsOptional() @IsIn(['newest', 'oldest', 'closingSoon', 'title']) sort?: string;
 
   @IsOptional()
   @Type(() => Number)
@@ -106,6 +113,8 @@ export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly searchService: SearchService,
+    private readonly taxonomy: JobDraftingClient,
+    private readonly autofill: JobAutofillService,
   ) {}
 
   @Public()
@@ -133,6 +142,19 @@ export class JobsController {
     return this.searchService.searchJobs(parsed);
   }
 
+  @Get('title-suggestions')
+  @ApiBearerAuth()
+  async titleSuggestions(@Query('q') query = '') {
+    return this.taxonomy.suggest(query);
+  }
+
+  @Post('autofill')
+  @ApiBearerAuth()
+  @CompanyPermissions('job.create')
+  async autofillJob(@Body() dto: JobAutofillDtoShape, @CompanyContextParam() company: CompanyContext) {
+    return this.autofill.build(company.companyId, dto);
+  }
+
   @Get('company/:companyId')
   @ApiBearerAuth()
   @CompanyPermissions('application.view')
@@ -146,7 +168,7 @@ export class JobsController {
 
   @Get('managed/:id')
   async managed(@Param('id') id: string, @CurrentUser('userId') userId: string) {
-    return this.jobsService.getById(id, userId);
+    return this.jobsService.getById(id, userId, true);
   }
 
   @Public()

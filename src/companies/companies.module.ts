@@ -9,11 +9,16 @@ import { RecruitmentAiService } from './recruitment-ai.service';
 import { RecruitmentAiController } from './recruitment-ai.controller';
 import { RecruitmentOffersService } from './recruitment-offers.service';
 import { RecruitmentOffersController } from './recruitment-offers.controller';
+import { CompanyDirectoryService } from './company-directory.service';
+import { OpenCorporatesProvider } from './providers/opencorporates.provider';
+import { GleifProvider } from './providers/gleif.provider';
+import { LocalCompanyIndexProvider } from './providers/local-company.provider';
+import { CompanyLogoProvider } from './providers/company-logo.provider';
 
 @Global()
 @Module({
   controllers: [CompaniesController, CompanyWorkspaceController, RecruitmentAiController, RecruitmentOffersController, CompanyLogoController],
-  providers: [CompaniesService, CompanyAccessService, CompanyWorkspaceService, RecruitmentAiService, RecruitmentOffersService],
-  exports: [CompaniesService, CompanyAccessService],
+  providers: [CompaniesService, CompanyAccessService, CompanyWorkspaceService, RecruitmentAiService, RecruitmentOffersService, CompanyDirectoryService, OpenCorporatesProvider, GleifProvider, LocalCompanyIndexProvider, CompanyLogoProvider],
+  exports: [CompaniesService, CompanyAccessService, CompanyDirectoryService],
 })
 export class CompaniesModule {}

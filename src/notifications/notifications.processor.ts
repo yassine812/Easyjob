@@ -38,6 +38,7 @@ export class NotificationsProcessor extends WorkerHost {
         to: input.email.to ?? (await this.userEmail(input.userId)),
         subject: input.email.subject,
         html: input.email.html,
+        attachments: input.email.attachments,
         dedupeKey: `email:${input.dedupeKey ?? `${input.type}:${input.userId}:${notification.id}`}`,
       });
     }

@@ -90,7 +90,7 @@ export class PermissionsGuard implements CanActivate {
         granted.add(rp.permission.name);
       }
     }
-    return required.some((perm) => granted.has(perm));
+    return required.some((perm) => granted.has(perm) || (perm === 'admin.dashboard' && granted.has('admin.analytics')) || (perm === 'admin.notifications' && granted.has('admin.audit')));
   }
 
   private async resolveCompanyContext(

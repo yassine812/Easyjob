@@ -8,12 +8,17 @@ export function resolveResumeUrl(url: string) {
 }
 
 export const resumesApi = {
+  rename: (id: string, name: string) => api.patch<Resume>(`/candidates/me/resumes/${id}`, { name }),
+  uploadPolicy: () => api.get<{ maxBytes: number }>('/candidates/me/resumes/upload-policy'),
   upload: (file: File) => {
     const form = new FormData();
     form.append('file', file);
     return api.post<Resume>('/candidates/me/resumes', undefined, { body: form });
   },
   list: () => api.get<Resume[]>('/candidates/me/resumes'),
+  versions: (id: string) => api.get<{ id: string; logicalCvId: string; version: number; current: boolean; createdAt: string; filename: string; score: number | null }[]>(`/candidates/me/resumes/${id}/versions`),
+  duplicate: (id: string) => api.post<Resume>(`/candidates/me/resumes/${id}/duplicate`, {}),
+  restore: (id: string, versionId: string) => api.post<Resume>(`/candidates/me/resumes/${id}/versions/${versionId}/restore`, {}),
   setPrimary: (id: string) =>
     api.post<{ success: boolean }>(`/candidates/me/resumes/${id}/primary`, {}),
   remove: (id: string) => api.delete<{ success: boolean }>(`/candidates/me/resumes/${id}`),

@@ -1,0 +1,15 @@
+EASYJOB — PITCH FONDATEUR
+
+État : texte prêt ; aucune vidéo animée générée.
+Texte : easyjob-pitch-fr.txt
+Langue : français.
+Durée visée : environ 2 min 30 à 2 min 50 à débit naturel ; durée finale à mesurer, maximum 180 secondes.
+Présentation : simple, fond neutre, cadrage buste, caméra fixe, éclairage doux, voix claire, sans musique nécessaire.
+Photo source : C:\Users\Yassine\Downloads\profile.jpg
+Photo de trois quarts : un résultat animé devra être contrôlé pour la fidélité du visage, les lunettes et les mouvements des lèvres.
+Voix : une photo ne fournit pas la voix du fondateur. Une voix de synthèse serait une voix distincte ; un enregistrement du fondateur peut servir de narration.
+Contenu : problème, solution, innovation, marché, modèle économique, potentiel de croissance, stade du produit et rôle du fondateur.
+Ne pas ajouter de diplômes, expérience professionnelle, traction, partenaires, financement ou chiffres non confirmés.
+Si animation synthétique : l’identifier comme telle dans la description de la vidéo. L’acceptation d’un avatar par le comité n’est pas établie ; un enregistrement réel permet au fondateur de présenter directement le projet.
+Livraison cible : MP4, format paysage, puis publication YouTube non répertoriée.
+Blocage observé : Runway gratuit sans modèles vidéo ; OpenArt solde nul. Aucun achat effectué.

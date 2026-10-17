@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 
 import cv2
 import numpy as np
@@ -24,6 +25,7 @@ logger = logging.getLogger("ai-service.face.embedding")
 MODEL_PATH = Path(__file__).parent / "models" / "openface.nn4.small2.v1.t7"
 # OpenFace expects a 96x96 aligned RGB crop normalized to [0, 1].
 INPUT_SIZE = 96
+_inference_lock = Lock()
 
 
 class EmbeddingUnavailableError(RuntimeError):
@@ -60,8 +62,10 @@ def embed_face(img: np.ndarray, box: tuple[int, int, int, int]) -> list[float]:
     net = _load_net()
     crop = _crop_face(img, box)
     blob = cv2.dnn.blobFromImage(crop, 1.0 / 255.0, (INPUT_SIZE, INPUT_SIZE), (0, 0, 0), swapRB=True)
-    net.setInput(blob)
-    out = net.forward()  # (1, 128)
+    # Health probes and concurrent requests must not overwrite a shared DNN input.
+    with _inference_lock:
+        net.setInput(blob)
+        out = net.forward()  # (1, 128)
     vec = out.reshape(-1).astype(np.float64)
     norm = float(np.linalg.norm(vec))
     if norm < 1e-8:

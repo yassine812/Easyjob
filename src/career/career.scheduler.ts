@@ -49,16 +49,16 @@ export class CareerScheduler {
     const since = settings.lastAlertAt?.getTime() || 0;
     const interval = settings.frequency === 'WEEKLY' ? 7 * 86400000 : settings.frequency === 'DAILY' ? 86400000 : 0;
     let alerts = settings.emailAlerts && Date.now() - since >= interval;
-    if (alerts) { try { await this.career.requireFeature(p.id, 'career.alerts'); } catch { alerts = false; } }
+    if (alerts) { try { await this.career.requireFeature(p.id, 'email_alerts'); } catch { alerts = false; } }
     let auto = settings.autoApply && !!settings.autoConsentAt;
-    if (auto) { try { await this.career.requireFeature(p.id, 'career.auto_apply'); } catch { auto = false; } }
+    if (auto) { try { await this.career.requireFeature(p.id, 'auto_apply'); } catch { auto = false; } }
     if (!alerts && !auto) return;
-    const draft = auto && settings.approvedDraftId ? await this.prisma.cvDraft.findFirst({ where: { id: settings.approvedDraftId, candidateId: p.id, approvedAt: { not: null } } }) : null;
+    const selectedResume = p.resumes.find(r => r.id === settings.preferredResumeId && r.mimeType === 'application/pdf');
     const jobs = await this.prisma.job.findMany({ where: { AND: [availableJobWhere(), { applications: { none: { candidateId: p.id } } }] }, include: careerJobInclude, orderBy: { publishedAt: 'desc' } });
-    const ranked = jobs.map(job => ({ job, match: matchCandidate({ ...p, resumes: draft ? [{ parsedText: draft.content }] : p.resumes }, job) })).sort((a, b) => (b.match.score ?? -1) - (a.match.score ?? -1));
+    const ranked = jobs.map(job => ({ job, match: matchCandidate({ ...p, resumes: selectedResume ? [selectedResume] : p.resumes }, job) })).sort((a, b) => (b.match.score ?? -1) - (a.match.score ?? -1));
     for (const { job, match } of ranked) {
       settings = await this.career.settings(userId);
-      const skippedReason = !matchesPreferences(job, settings) ? 'outsidePreferences' : match.score === null ? 'insufficientEvidence' : !draft ? 'approvedCvRequired' : match.score < settings.autoMinimumScore || !match.matchedSkills.length ? 'belowThreshold' : null;
+      const skippedReason = !matchesPreferences(job, settings) ? 'outsidePreferences' : match.score === null ? 'insufficientEvidence' : !selectedResume ? 'pdfCvRequired' : match.score < settings.autoMinimumScore || !match.matchedSkills.length ? 'belowThreshold' : null;
       if (auto && settings.autoApply && settings.autoConsentAt && skippedReason) {
         const key = { candidateId: p.id, jobId: job.id, kind: 'AUTO_APPLY' };
         const delivery = await this.prisma.careerDelivery.upsert({ where: { candidateId_jobId_kind: key }, create: { ...key, matchScore: match.score, status: 'SKIPPED', reason: skippedReason }, update: {} });
@@ -66,7 +66,7 @@ export class CareerScheduler {
       }
       if (!matchesPreferences(job, settings) || match.score === null) continue;
       if (alerts && settings.emailAlerts && match.score >= settings.minimumScore) {
-        await this.career.requireFeature(p.id, 'career.alerts');
+        await this.career.requireFeature(p.id, 'email_alerts');
         const key = { candidateId: p.id, jobId: job.id, kind: 'ALERT' };
         const delivery = await this.prisma.careerDelivery.upsert({ where: { candidateId_jobId_kind: key }, create: { ...key, matchScore: match.score }, update: {} });
         if (delivery.status !== 'SENT') {
@@ -79,18 +79,20 @@ export class CareerScheduler {
       }
       // Threshold, consent, preference version, approved draft and quota are checked again
       // inside the application transaction. A score based only on location is insufficient.
-      if (auto && draft && settings.autoApply && settings.autoConsentAt && settings.approvedDraftId === draft.id && match.score >= settings.autoMinimumScore && match.matchedSkills.length > 0) {
+      if (auto && selectedResume && settings.autoApply && settings.autoConsentAt && settings.preferredResumeId === selectedResume.id && match.score >= settings.autoMinimumScore && match.matchedSkills.length > 0) {
         const key = { candidateId: p.id, jobId: job.id, kind: 'AUTO_APPLY' };
         const delivery = await this.prisma.careerDelivery.upsert({ where: { candidateId_jobId_kind: key }, create: { ...key, matchScore: match.score }, update: {} });
         if (delivery.status === 'APPLIED') continue;
         try {
-          await this.career.requireFeature(p.id, 'career.auto_apply');
-          // Reorder reviewed paragraphs only; never generate unchecked candidate claims.
-          const blocks = draft.content.split(/\n\s*\n/);
-          const content = [blocks[0], ...blocks.slice(1).sort((a, b) => match.matchedSkills.filter(s => b.toLowerCase().includes(s.toLowerCase())).length - match.matchedSkills.filter(s => a.toLowerCase().includes(s.toLowerCase())).length)].join('\n\n');
-          const motivation = `I am applying for ${job.title}. My profile includes ${match.matchedSkills.join(', ')}. I would welcome the opportunity to discuss this position.`;
-          await this.applications.apply(userId, job.id, { motivation }, {}, { draftId: draft.id, settingsVersion: settings.updatedAt, cvText: content });
+          await this.career.requireFeature(p.id, 'auto_apply');
+          if (settings.approvalRequired || !settings.unattendedConsentAt || (Array.isArray(job.applicationFields) && job.applicationFields.length)) {
+            await this.prisma.careerDelivery.update({ where: { id: delivery.id }, data: { status: 'ACTION_REQUIRED', reason: 'Review the offer and required answers before submitting.' } });
+            if (delivery.status !== 'ACTION_REQUIRED') await this.notifications.create({ userId, type: 'AUTO_APPLICATION_REVIEW', title: 'Candidature à valider', message: job.title, data: { jobId: job.id, url: `/candidate/jobs/${job.id}?apply=1` }, dedupeKey: `auto-review-${p.id}-${job.id}` });
+            continue;
+          }
+          await this.applications.apply(userId, job.id, { resumeId: selectedResume.id, consent: true }, {}, { resumeId: selectedResume.id, settingsVersion: settings.updatedAt });
           await this.prisma.careerDelivery.update({ where: { id: delivery.id }, data: { status: 'APPLIED', reason: null } });
+          await this.notifications.create({ userId, type: 'AUTO_APPLICATION_CONFIRMED', title: 'Candidature envoyée', message: `${job.title} — ${job.company.commercialName}`, data: { jobId: job.id }, dedupeKey: `auto-application-${p.id}-${job.id}` });
         } catch (e) {
           // A notification failure after the commit must not label a submitted application as skipped.
           const applied = await this.prisma.application.findUnique({ where: { jobId_candidateId: { jobId: job.id, candidateId: p.id } }, select: { id: true } });

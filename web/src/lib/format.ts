@@ -37,13 +37,13 @@ export function formatMoney(cents: number | null | undefined, currency = 'TND', 
   if (cents === null || cents === undefined) return '—';
   try {
     // EasyJob stores plan amounts in hundredths. TND is normally rendered
-    // with three millime digits by Intl, which would turn 24.99 into 24,990.
+    // with three millime digits by Intl. The catalogue prices are stored in hundredths and rendered as whole dinar amounts when applicable.
     // Keep the product's prices readable and consistent with French pricing:
-    // 24,99 TND and 49,99 TND.
+    // Keep the commercial TND reference prices readable and consistent.
     const tndPrecision = currency.toUpperCase() === 'TND'
       ? cents === 0
         ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
-        : { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+        : { minimumFractionDigits: 0, maximumFractionDigits: 2 }
       : {};
     return new Intl.NumberFormat(locale, {
       style: 'currency',
@@ -62,6 +62,22 @@ export function formatSalary(min: number | null | undefined, max: number | null 
   if (min != null && max != null) return `${formatMoney(min, currency)} – ${formatMoney(max, currency)}`;
   if (min != null) return `From ${formatMoney(min, currency)}`;
   return `Up to ${formatMoney(max, currency)}`;
+}
+
+/** Job salaries are stored as whole units, unlike billing amounts which use cents. */
+export function formatSalaryRange(min: number | null | undefined, max: number | null | undefined, currency = 'TND', locale?: string): string {
+  if (min == null && max == null) return 'Not specified';
+  const code = currency.toUpperCase();
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const format = (value: number) => number.format(value);
+  if (min != null && max != null && min === max) return `${format(min)} ${code}`;
+  if (min != null && max != null) return `${format(min)} – ${format(max)} ${code}`;
+  if (min != null) return `From ${format(min)} ${code}`;
+  return `Up to ${format(max as number)} ${code}`;
+}
+
+export function formatJobSalary(min: number | null | undefined, max: number | null | undefined, currency = 'TND', locale?: string): string {
+  return formatSalaryRange(min, max, currency, locale);
 }
 
 export function formatFileSize(bytes: number): string {

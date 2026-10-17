@@ -1,0 +1,1 @@
+StatusUpdate(code=<Status.STARTING: 'STARTING'>, rank=None, queue_size=None, eta=None, success=None, time=datetime.datetime(2026, 10, 11, 9, 51, 32, 25027), progress_data=None, log=None, type='status')

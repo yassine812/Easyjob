@@ -80,6 +80,10 @@ export class FaceClient {
           } catch {
             /* keep the default */
           }
+          // Diagnostic code only: never log camera frames or embeddings.
+          const safeCodes = ['invalid_image', 'no_face', 'multiple_faces', 'low_quality', 'face_too_small', 'bad_angle', 'insufficient_frames', 'face_count_changed', 'face_moved', 'no_motion', 'liveness_failed'];
+          if (!safeCodes.includes(code)) code = 'low_quality';
+          this.logger.warn(`Face capture rejected: ${code}`);
           throw new FaceRejectedError(code);
         }
         throw new FaceServiceUnavailableError(

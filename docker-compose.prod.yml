@@ -84,7 +84,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       AI_SERVICE_URL: http://ai:8000
       AI_SERVICE_TIMEOUT_MS: ${AI_SERVICE_TIMEOUT_MS:-30000}
-      AI_API_KEY: ${AI_API_KEY:-}
+      AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-stripe}
       KONNECT_MODE: ${KONNECT_MODE:-sandbox}
       KONNECT_API_KEY: ${KONNECT_API_KEY:-}
@@ -124,7 +124,8 @@ services:
       - storage_data:/app/storage
     # Local debugging only — remove on a locked-down VPS or firewall these.
     ports:
-      - "127.0.0.1:3000:3000"
+      # Host 3000 belongs to the development frontend; local API uses 3002.
+      - "127.0.0.1:3003:3000"
 
   worker:
     build:
@@ -157,7 +158,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       AI_SERVICE_URL: http://ai:8000
       AI_SERVICE_TIMEOUT_MS: ${AI_SERVICE_TIMEOUT_MS:-30000}
-      AI_API_KEY: ${AI_API_KEY:-}
+      AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}
       BIOMETRIC_ENABLED: ${BIOMETRIC_ENABLED:-false}
       BIOMETRIC_ENCRYPTION_KEY: ${BIOMETRIC_ENCRYPTION_KEY:-}
       FACE_MATCH_THRESHOLD: ${FACE_MATCH_THRESHOLD:-0.5}
@@ -185,20 +186,29 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+      additional_contexts:
+        interview_models: ./.runtime
     restart: unless-stopped
     environment:
-      AI_PROVIDER: ${AI_PROVIDER:-rule_based}
-      AI_API_KEY: ${AI_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      AI_PROVIDER: rule_based
+      AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}
+      INTERVIEW_EMBEDDING_MODEL_PATH: /models/paraphrase-multilingual-MiniLM-L12-v2
+      INTERVIEW_ANALYSIS_WORKERS: ${INTERVIEW_ANALYSIS_WORKERS:-2}
+      INTERVIEW_SEMANTIC_TIMEOUT_MS: ${INTERVIEW_SEMANTIC_TIMEOUT_MS:-3000}
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
     # No ports published — only reachable by api/worker on the internal network.
+    mem_limit: 2g
+    cpus: 2.0
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)"]
       interval: 15s
       timeout: 5s
-      retries: 5
+      retries: 6
+      start_period: 90s
 
   web:
     build:

@@ -3,44 +3,9 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const plans = [
-  {
-    name: 'TRIAL', priceCents: 0, sortOrder: 1,
-    features: {
-      'team.members': 5, activeJobs: 3, 'ai.enabled': false, 'ai.analyses.monthly': 0,
-      'automation.enabled': false, 'assessments.enabled': false, 'analytics.enabled': false,
-      'interviews.enabled': false, 'advanced.search': false, 'advanced.permissions': false,
-      'audit.logs': false, 'billing.manage': true,
-    },
-  },
-  {
-    name: 'BUSINESS', priceCents: 14900, sortOrder: 2,
-    features: {
-      'team.members': 20, activeJobs: 20, 'ai.enabled': true, 'ai.analyses.monthly': 100,
-      'automation.enabled': true, 'assessments.enabled': true, 'analytics.enabled': true,
-      'interviews.enabled': true, 'advanced.search': true, 'advanced.permissions': false,
-      'audit.logs': false, 'billing.manage': true,
-    },
-  },
-  {
-    name: 'PRO', priceCents: 29900, sortOrder: 3,
-    features: {
-      'team.members': 50, activeJobs: 50, 'ai.enabled': true, 'ai.analyses.monthly': 1000,
-      'automation.enabled': true, 'assessments.enabled': true, 'analytics.enabled': true,
-      'interviews.enabled': true, 'advanced.search': true, 'advanced.permissions': true,
-      'audit.logs': false, 'billing.manage': true,
-    },
-  },
-  {
-    name: 'ENTERPRISE', priceCents: 89900, sortOrder: 4,
-    features: {
-      'team.members': 1000, activeJobs: 200, 'ai.enabled': true, 'ai.analyses.monthly': 10000,
-      'automation.enabled': true, 'assessments.enabled': true, 'analytics.enabled': true,
-      'interviews.enabled': true, 'advanced.search': true, 'advanced.permissions': true,
-      'audit.logs': true, 'billing.manage': true,
-    },
-  },
-];
+require('ts-node/register/transpile-only');
+const { COMPANY_PLAN_CATALOG } = require('../src/subscriptions/plan-catalog');
+const plans = Object.values(COMPANY_PLAN_CATALOG).map((plan, index) => ({ ...plan, sortOrder: index + 1 }));
 
 async function main() {
   await prisma.$transaction(async (tx) => {

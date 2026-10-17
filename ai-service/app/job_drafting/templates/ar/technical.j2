@@ -1,0 +1,6 @@
+{% import family_template as family with context %}{% import 'ar/_seniority.j2' as level with context %}
+بصفتك {{ narrative_title }}{% if company %} لدى {{ company }}{% endif %}، ستعمل على {{ family.scope() }}، بما يشمل {{ task_focus }}.
+
+ستعتمد على المهارات التالية: {{ skill_list }}. يجب أن تكون المخرجات موثقة وقابلة للتحقق والمراجعة والصيانة.
+
+{{ level.expectations() }}

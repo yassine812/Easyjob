@@ -24,7 +24,7 @@ export class EmailService {
     const jobId = safeJobId(message.dedupeKey ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await this.emailQueue.add(
       'send',
-      { to: message.to, subject: message.subject, html: message.html, text: message.text } satisfies EmailJobData,
+      { to: message.to, subject: message.subject, html: message.html, text: message.text, attachments: message.attachments } satisfies EmailJobData,
       {
         jobId,
         attempts: 5,

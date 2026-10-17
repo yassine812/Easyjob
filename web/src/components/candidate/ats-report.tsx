@@ -1,6 +1,9 @@
 'use client';
-import { ArrowUpRight, Check, ChevronDown, Download, FileSearch, FileText, Info, ListChecks, Sparkles, Target } from 'lucide-react';
+import { EasyJobFeatureMark } from '@/components/ui/easyjob-feature-mark';
+
+import { ArrowUpRight, Check, ChevronDown, Download, FileSearch, FileText, Info, ListChecks, Target } from 'lucide-react';
 import Link from 'next/link';
+import { ProfessionalAuditPanel } from './recruitment-evidence';
 import { Button } from '@/components/ui/button';
 import type { AtsCriterion, AtsReport, ProfileDetails } from '@/lib/api/career';
 import { useAtsText } from '@/lib/i18n/ats';
@@ -75,12 +78,14 @@ export function AtsPanel({ report, profile, onSelectJob, onImprove }: { report: 
   const score = report.score;
   const stats = [['words', report.wordCount], ['experience', metric('experience')], ['skills', metric('skills')]].filter(([, value]) => typeof value === 'number');
   return <section id="cv-diagnostic" aria-label={t('title')} className="scroll-mt-24 space-y-5">
+    <ProfessionalAuditPanel report={report} />
     <header className={`${box} overflow-hidden`}>
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6"><div className="flex-1"><p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><FileSearch className="size-4" aria-hidden="true" />{career('ats')}</p><h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2><p className="mt-2 text-sm text-muted-foreground">{t('subtitle')}</p><p className="mt-3 text-xs text-muted-foreground">{t('verified')} · <span className="font-semibold text-foreground">{passed}/{criteria.length}</span></p></div>
         <div className="flex w-full items-center justify-center rounded-xl border bg-muted/35 p-4 sm:w-44">{score === null ? <div><p className="text-xs font-medium text-muted-foreground">{t('score')}</p><p className="mt-2 text-sm font-semibold">{t('noScore')}</p></div> : <ScoreRing score={score} label={t('score')} />}</div>
       </div>
       {!!stats.length && <dl className="grid grid-cols-3 divide-x border-t bg-muted/20 rtl:divide-x-reverse">{stats.map(([key, value]) => <div key={key} className="min-w-0 px-3 py-4 text-center"><dt className="text-[11px] text-muted-foreground sm:text-xs">{t(String(key))}</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd></div>)}</dl>}
     </header>
+    <div id="cv-extracted-review" className="rounded-xl border bg-muted/20 px-4 py-3"><p className="text-xs leading-5 text-muted-foreground">{t('fileHelp')}</p><a href="#cv-extracted-review" className="mt-1 inline-block text-xs font-semibold text-primary underline-offset-4 hover:underline">{t('review')}</a></div>
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
       <section className={`${box} min-w-0 p-5 sm:p-6`} aria-label={t('priorities')}><div className="mb-2 flex items-center gap-2"><ListChecks className="size-4 text-red-600" aria-hidden="true" /><h3 className="font-semibold">{t('priorities')}</h3><span className="ms-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/50 dark:text-red-200">{priorities.length}</span></div><p className="mb-5 text-xs leading-5 text-muted-foreground">{t('priorityHelp')}</p><div className="space-y-3">{priorities.length ? priorities.map(item => <Improvement key={item.key} item={item} profile={profile} />) : <p className="rounded-xl bg-emerald-50 p-4 text-sm leading-6 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">{t(criteria.length && score !== null ? 'allPassed' : 'noScore')}</p>}</div></section>
       <div className="min-w-0 space-y-5">
@@ -91,7 +96,7 @@ export function AtsPanel({ report, profile, onSelectJob, onImprove }: { report: 
         </section>
       </div>
     </div>
-    <section className={`${box} ats-improve-card p-5 sm:p-6`} aria-label={t('improveCv')}><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-lg font-bold">{t('improveCv')}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t('improveCvHelp')}</p></div>{onImprove ? <button type="button" className="ats-improve-action" onClick={onImprove}><span className="ats-improve-action-label">{t('improveCvAction')}</span><span className="ats-improve-action-icons" aria-hidden="true"><Sparkles /><FileText /><Download /></span></button> : <Link href="/candidate/cv-builder" className="ats-improve-action"><span className="ats-improve-action-label">{t('improveCvAction')}</span><span className="ats-improve-action-icons" aria-hidden="true"><Sparkles /><FileText /><Download /></span></Link>}</div></section>
+    <section className={`${box} ats-improve-card p-5 sm:p-6`} aria-label={t('improveCv')}><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-lg font-bold">{t('improveCv')}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t('improveCvHelp')}</p></div>{onImprove ? <button type="button" className="ats-improve-action" onClick={onImprove}><span className="ats-improve-action-label">{t('improveCvAction')}</span><span className="ats-improve-action-icons" aria-hidden="true"><EasyJobFeatureMark /><FileText /><Download /></span></button> : <Link href="/candidate/cvs" className="ats-improve-action"><span className="ats-improve-action-label">{t('improveCvAction')}</span><span className="ats-improve-action-icons" aria-hidden="true"><EasyJobFeatureMark /><FileText /><Download /></span></Link>}</div></section>
     {!!report.formattingProblems.length && <aside className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 dark:border-amber-900 dark:bg-amber-950/15"><h3 className="mb-2 text-sm font-semibold">{t('textIssue')}</h3>{report.formattingProblems.map(issue => <p key={issue} className="mt-1 text-sm leading-6 text-muted-foreground">{issue === 'unreadable_characters' ? t('characters') : issue === 'insufficient_text' ? t('shortText') : career(issue)}</p>)}</aside>}
   </section>;
 }

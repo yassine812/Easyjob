@@ -1,6 +1,12 @@
+param([switch]$Managed)
 $ErrorActionPreference = 'Stop'
 $apiRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location -LiteralPath $apiRoot
+if (!$Managed) {
+  & node (Join-Path $PSScriptRoot 'local-services.cjs')
+  exit $LASTEXITCODE
+}
+$env:NODE_USE_SYSTEM_CA = '1'
 
 function Test-LocalApi {
   try {
@@ -21,6 +27,18 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not start PostgreSQL and Redis. Check th
 
 $apiListener = Get-NetTCPConnection -State Listen -LocalPort 3002 -ErrorAction SilentlyContinue
 if ($apiListener) {
+  # A previous supervisor/API may still be completing its startup. Give it a
+  # short grace period before treating the listener as a broken service; this
+  # avoids a false failure when npm run dev is launched twice during recovery.
+  $portDeadline = (Get-Date).AddSeconds(45)
+  while ((Get-Date) -lt $portDeadline) {
+    if (Test-LocalApi) {
+      Write-Output 'EasyJob API became healthy on http://localhost:3002.'
+      & (Join-Path $PSScriptRoot 'start-profile-services.ps1')
+      exit 0
+    }
+    Start-Sleep -Seconds 2
+  }
   throw 'Port 3002 is occupied but its health check failed. Inspect the existing API logs before restarting it.'
 }
 
@@ -39,7 +57,11 @@ if (Test-Path -LiteralPath $pidPath) {
 }
 
 if (!$apiProcess) {
-  if (!(Test-Path -LiteralPath 'dist/main.js')) {
+  $distMain = Get-Item -LiteralPath 'dist/main.js' -ErrorAction SilentlyContinue
+  $latestBackendSource = Get-ChildItem -LiteralPath (Join-Path $apiRoot 'src') -Recurse -File -Filter '*.ts' -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+  $backendNeedsBuild = !$distMain -or ($latestBackendSource -and $latestBackendSource.LastWriteTimeUtc -gt $distMain.LastWriteTimeUtc)
+  if ($backendNeedsBuild) {
+    Write-Output 'Backend sources are newer than dist; rebuilding the API before startup.'
     & npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' }
   }

@@ -1,31 +1,38 @@
-import React from 'react';
+'use client';
+
+import React, { useId } from 'react';
 
 export function EasyJobLoader({
   width = 220,
   height = 75,
   className = '',
+  label = 'EasyJob loading',
 }: {
   width?: number | string;
   height?: number | string;
   className?: string;
+  label?: string;
 }) {
+  const gradientId = `easyjob-gradient-${useId().replace(/:/g, '')}`;
   return (
     <div
       role="status"
-      aria-label="EasyJob loading"
+      aria-label={label}
+      aria-busy="true"
       className={`easyjob-loader flex items-center justify-center ${className}`}
       style={{ visibility: 'visible', opacity: 1 }}
     >
       <svg
+        aria-hidden="true"
         viewBox="0 0 340 100"
         width={width}
         height={height}
-        className="overflow-visible"
+        className="max-w-full overflow-visible"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id="easyjobGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#3F5FDE" />
             <stop offset="50%" stopColor="#5B73E8" />
             <stop offset="100%" stopColor="#4F46C8" />
@@ -51,7 +58,7 @@ export function EasyJobLoader({
         </g>
 
         {/* Animated Drawing Overlay (E -> a -> s -> y -> J -> o -> b) */}
-        <g stroke="url(#easyjobGradient)" strokeWidth="8.5" strokeLinecap="round" strokeLinejoin="round">
+        <g stroke={`url(#${gradientId})`} strokeWidth="8.5" strokeLinecap="round" strokeLinejoin="round">
           {/* E */}
           <path
             d="M 62 26 H 26 V 78 H 64 M 26 52 H 58"
@@ -94,16 +101,17 @@ export function EasyJobLoader({
 }
 
 export function EasyJobLoadingScreen({
-  text = 'Connecting opportunities...',
+  text,
 }: {
   text?: string;
 }) {
   return (
     <div className="easyjob-loading-screen bg-background text-foreground">
-      <EasyJobLoader width={220} height={75} />
-      <p className="mt-5 text-sm font-medium text-muted-foreground tracking-wide">
-        {text}
-      </p>
+      <EasyJobLoader width={220} height={75} label={text} />
     </div>
   );
+}
+
+export function EasyJobLoading({ label, className = '' }: { label?: string; className?: string }) {
+  return <div className={`flex min-h-28 items-center justify-center py-6 ${className}`}><EasyJobLoader label={label} /></div>;
 }

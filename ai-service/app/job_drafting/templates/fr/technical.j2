@@ -1,0 +1,6 @@
+{% import family_template as family with context %}{% import 'fr/_seniority.j2' as level with context %}
+En tant que {{ narrative_title }}{% if company %} chez {{ company }}{% endif %}, vous interviendrez sur {{ family.scope() }}. Le travail portera notamment sur {{ task_focus }}.
+
+{% if technical %}Les compétences mobilisées comprendront {{ skill_list }}. Les réalisations devront être vérifiables, documentées et conçues pour faciliter leur maintenance.{% else %}Vous mobiliserez {{ skill_list }} pour structurer vos analyses et vos livrables, en explicitant les hypothèses et les résultats attendus.{% endif %}
+
+{{ level.expectations() }}

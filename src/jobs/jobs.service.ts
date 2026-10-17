@@ -1,3 +1,5 @@
+import { removeSkillRequirements, publicJobSalary } from './job-content';
+import { availableJobWhere } from './job-availability';
 import {
   BadRequestException,
   ConflictException,
@@ -6,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
-import { JobStatus, Prisma } from '@prisma/client';
+import { EmploymentType, JobStatus, Prisma } from '@prisma/client';
 import slugify from 'slugify';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccessService } from '../companies/company-access.service';
@@ -18,6 +20,7 @@ import { paginate, resolvePagination } from '../common/utils/pagination';
 import { isPast } from '../common/utils/dates';
 import { CreateJobDto, UpdateJobDto } from './dto/job.dto';
 import type { RequestMeta } from '../companies/companies.service';
+import { JobQualityValidator } from './job-creation.service';
 
 const JOB_SELECT = {
   id: true,
@@ -29,10 +32,12 @@ const JOB_SELECT = {
   description: true,
   responsibilities: true,
   requirements: true,
+  applicationFields: true,
   location: true,
   contractType: true, languages: true, remote: true, domain: true, workMode: true, educationRequirement: true, minimumYearsExperience: true,
   employmentType: true,
   experienceLevel: true,
+  salaryVisible: true,
   salaryMin: true,
   salaryMax: true,
   currency: true,
@@ -46,6 +51,12 @@ const JOB_SELECT = {
   skills: { include: { skill: true } },
 } satisfies Prisma.JobSelect;
 
+const COMPANY_JOB_SELECT = {
+  ...JOB_SELECT,
+  applications: { select: { status: true } },
+  _count: { select: { interviews: true } },
+} satisfies Prisma.JobSelect;
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -57,11 +68,19 @@ export class JobsService {
     private readonly events: EventEmitter2,
   ) {}
 
+  private normalizeSalary(dto: { salaryMin?: number | null; salaryMax?: number | null; currency?: string }) {
+    if (dto.salaryMin != null && dto.salaryMax != null && dto.salaryMax < dto.salaryMin) {
+      throw new BadRequestException('Maximum salary must be greater than or equal to minimum salary');
+    }
+    return dto.currency?.toUpperCase() ?? 'TND';
+  }
+
   async create(userId: string, companyId: string, dto: CreateJobDto, meta: RequestMeta) {
     await this.access.assertPermission(userId, companyId, 'job.create');
     await this.entitlements.assertCompanyLimit(companyId, 'activeJobs');
 
     const slug = await this.uniqueJobSlug(companyId, dto.title);
+    const currency = this.normalizeSalary(dto);
 
     const job = await this.prisma.$transaction(async (tx) => {
       const created = await tx.job.create({
@@ -73,15 +92,17 @@ export class JobsService {
           slug,
           description: dto.description.trim(),
           responsibilities: dto.responsibilities ?? [],
-          requirements: dto.requirements ?? [],
+          requirements: removeSkillRequirements(dto.requirements ?? [], dto.skills ?? []),
+          applicationFields: dto.applicationFields ? JSON.parse(JSON.stringify(dto.applicationFields)) : [],
           location: dto.location ?? null,
           contractType: dto.contractType || null, languages: dto.languages || [], remote: dto.workMode ? dto.workMode === 'REMOTE' : dto.remote ?? false,
           domain: dto.domain?.trim() || null, workMode: dto.workMode, educationRequirement: dto.educationRequirement?.trim() || null, minimumYearsExperience: dto.minimumYearsExperience,
           employmentType: dto.employmentType,
           experienceLevel: dto.experienceLevel,
+          salaryVisible: dto.salaryVisible ?? true,
           salaryMin: dto.salaryMin ?? null,
           salaryMax: dto.salaryMax ?? null,
-          currency: dto.currency ?? null,
+          currency,
           status: 'DRAFT',
           expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
         },
@@ -118,9 +139,12 @@ export class JobsService {
   async update(userId: string, jobId: string, dto: UpdateJobDto, meta: RequestMeta) {
     const job = await this.loadJob(jobId);
     await this.access.assertPermission(userId, job.companyId, 'job.update');
-    if (['PUBLISHED', 'EXPIRED', 'CLOSED'].includes(job.status)) {
+    if (['EXPIRED', 'CLOSED'].includes(job.status)) {
       throw new BadRequestException(`Jobs in status ${job.status} cannot be edited`);
     }
+    const salaryMin = dto.salaryMin === undefined ? job.salaryMin : dto.salaryMin;
+    const salaryMax = dto.salaryMax === undefined ? job.salaryMax : dto.salaryMax;
+    const currency = this.normalizeSalary({ salaryMin, salaryMax, currency: dto.currency ?? job.currency ?? 'TND' });
 
     const data: Prisma.JobUpdateInput = {
       ...(['APPROVED', 'PAUSED'].includes(job.status) ? { status: 'DRAFT' as const, approvedAt: null, approvedBy: { disconnect: true } } : {}),
@@ -128,7 +152,8 @@ export class JobsService {
       department: dto.department, benefits: dto.benefits, preferredEducation: dto.preferredEducation, preferredLanguages: dto.preferredLanguages, positions: dto.positions, interviewProcess: dto.interviewProcess,
       description: dto.description?.trim() ?? undefined,
       responsibilities: dto.responsibilities ?? undefined,
-      requirements: dto.requirements ?? undefined,
+      requirements: dto.skills ? removeSkillRequirements(dto.requirements ?? job.requirements, dto.skills) : dto.requirements,
+      applicationFields: dto.applicationFields ? JSON.parse(JSON.stringify(dto.applicationFields)) : undefined,
       location: dto.location ?? undefined,
       contractType: dto.contractType === undefined ? undefined : dto.contractType || null, languages: dto.languages, remote: dto.workMode ? dto.workMode === 'REMOTE' : dto.remote ?? undefined,
       domain: dto.domain === undefined ? undefined : dto.domain.trim() || null, workMode: dto.workMode,
@@ -136,10 +161,11 @@ export class JobsService {
       minimumYearsExperience: dto.minimumYearsExperience,
       employmentType: dto.employmentType ?? undefined,
       experienceLevel: dto.experienceLevel ?? undefined,
-      salaryMin: dto.salaryMin ?? undefined,
-      salaryMax: dto.salaryMax ?? undefined,
-      currency: dto.currency ?? undefined,
-      expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+      salaryVisible: dto.salaryVisible,
+      salaryMin: dto.salaryMin,
+      salaryMax: dto.salaryMax,
+      currency: dto.currency === undefined ? undefined : currency,
+      expiresAt: dto.expiresAt === undefined ? undefined : dto.expiresAt ? new Date(dto.expiresAt) : null,
     };
 
     await this.prisma.$transaction(async (tx) => {
@@ -176,6 +202,10 @@ export class JobsService {
   async submit(userId: string, jobId: string, meta: RequestMeta) {
     const job = await this.loadJob(jobId);
     await this.access.assertPermission(userId, job.companyId, 'job.update');
+    const qualityWarnings = new JobQualityValidator().validate(job);
+    if (qualityWarnings.length) {
+      throw new BadRequestException({ code: 'JOB_QUALITY_INVALID', warnings: qualityWarnings });
+    }
     if (!['DRAFT', 'REJECTED'].includes(job.status)) {
       throw new BadRequestException(`Only DRAFT or REJECTED jobs can be submitted (current: ${job.status})`);
     }
@@ -198,6 +228,10 @@ export class JobsService {
   async publish(userId: string, jobId: string, meta: RequestMeta) {
     const job = await this.loadJob(jobId);
     await this.access.assertPermission(userId, job.companyId, 'job.publish');
+    const qualityWarnings = new JobQualityValidator().validate(job);
+    if (qualityWarnings.length) {
+      throw new BadRequestException({ code: 'JOB_QUALITY_INVALID', warnings: qualityWarnings });
+    }
     if (!['APPROVED', 'PAUSED'].includes(job.status)) {
       throw new BadRequestException('Only approved jobs can be published');
     }
@@ -261,7 +295,7 @@ export class JobsService {
       workMode: (job.workMode || (job.remote ? 'REMOTE' : 'ONSITE')) as CreateJobDto['workMode'],
       contractType: job.contractType ?? undefined, languages: job.languages, educationRequirement: job.educationRequirement ?? undefined, minimumYearsExperience: job.minimumYearsExperience ?? undefined,
       employmentType: job.employmentType, experienceLevel: job.experienceLevel, salaryMin: job.salaryMin ?? undefined,
-      salaryMax: job.salaryMax ?? undefined, currency: job.currency ?? undefined,
+      salaryMax: job.salaryMax ?? undefined, salaryVisible: job.salaryVisible, currency: job.currency ?? undefined,
       skills: skills.map(item => ({ name: item.skill.name, required: item.required, level: item.level })),
     }, meta);
   }
@@ -345,14 +379,15 @@ export class JobsService {
     return { id: updated.id, status: updated.status };
   }
 
-  async getById(jobId: string, userId?: string) {
+  async getById(jobId: string, userId?: string, managed = false) {
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
       select: JOB_SELECT,
     });
     if (!job) throw new NotFoundException('Job not found');
     const publicCompany = await this.prisma.company.findFirst({ where: { id: job.companyId, status: 'ACTIVE', verification: { status: 'VERIFIED' } }, select: { id: true } });
-    if (job.status !== 'PUBLISHED' || !publicCompany || (job.expiresAt && job.expiresAt <= new Date())) {
+    const publiclyAvailable = await this.prisma.job.findFirst({ where: { id: jobId, ...availableJobWhere() }, select: { id: true } });
+    if (!publiclyAvailable || !publicCompany) {
       if (!userId) throw new NotFoundException('Job not found');
       try {
         await this.access.assertJobPermission(userId, job.companyId, job.id, 'application.view');
@@ -360,17 +395,68 @@ export class JobsService {
         throw new NotFoundException('Job not found');
       }
     }
-    return job;
+    if (managed && userId) {
+      await this.access.assertJobPermission(userId, job.companyId, job.id, 'application.view');
+      return job;
+    }
+    return publicJobSalary(job);
   }
 
-  async listCompanyJobs(userId: string, companyId: string, query: { page?: number; limit?: number; status?: JobStatus }) {
+  async listCompanyJobs(userId: string, companyId: string, query: { page?: number; limit?: number; status?: string; search?: string; workMode?: string; employmentType?: EmploymentType; sort?: string }) {
     await this.access.assertMembership(userId, companyId);
     const { page, limit, skip, take } = resolvePagination(query);
-    const where: Prisma.JobWhereInput = { ...(await this.access.jobScope(userId, companyId)), ...(query.status ? { status: query.status } : {}) };
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.job.findMany({ where, select: JOB_SELECT, orderBy: { createdAt: 'desc' }, skip, take }),
+    const statusMap: Record<string, JobStatus[]> = {
+      active: ['PUBLISHED', 'APPROVED'],
+      published: ['PUBLISHED'],
+      approved: ['APPROVED'],
+      paused: ['PAUSED'],
+      suspended: ['PAUSED'],
+      draft: ['DRAFT', 'PENDING_APPROVAL'],
+      pending_approval: ['PENDING_APPROVAL'],
+      closed: ['CLOSED', 'EXPIRED', 'REJECTED'],
+      expired: ['EXPIRED'],
+      rejected: ['REJECTED'],
+    };
+    const normalizedStatus = query.status?.trim().toLowerCase();
+    const statusValues = normalizedStatus ? statusMap[normalizedStatus] ?? [normalizedStatus.toUpperCase() as JobStatus] : undefined;
+    const where: Prisma.JobWhereInput = {
+      ...(await this.access.jobScope(userId, companyId)),
+      ...(statusValues ? { status: { in: statusValues } } : {}),
+      ...(query.search ? { title: { contains: query.search, mode: 'insensitive' } } : {}),
+      ...(query.workMode ? { workMode: query.workMode } : {}),
+      ...(query.employmentType ? { employmentType: query.employmentType } : {}),
+    };
+    const orderBy = query.sort === 'oldest' ? { createdAt: 'asc' as const }
+      : query.sort === 'closingSoon' ? { expiresAt: 'asc' as const }
+        : query.sort === 'title' ? { title: 'asc' as const }
+          : { createdAt: 'desc' as const };
+    const [rawItems, total] = await this.prisma.$transaction([
+      this.prisma.job.findMany({ where, select: COMPANY_JOB_SELECT, orderBy, skip, take }),
       this.prisma.job.count({ where }),
     ]);
+    const jobIds = rawItems.map(job => job.id);
+    const applicationScope = await this.access.applicationScope(userId, companyId);
+    const visibleApplications = jobIds.length ? await this.prisma.application.findMany({
+      where: { ...applicationScope, jobId: { in: jobIds } },
+      select: { jobId: true, status: true },
+    }) : [];
+    const applicationsByJob = new Map<string, { status: string }[]>();
+    for (const application of visibleApplications) applicationsByJob.set(application.jobId, [...(applicationsByJob.get(application.jobId) ?? []), application]);
+    const interviewScope = await this.access.interviewScope(userId, companyId);
+    const visibleInterviews = jobIds.length ? await this.prisma.interview.groupBy({
+      by: ['jobId'], where: { ...interviewScope, jobId: { in: jobIds } }, _count: { _all: true },
+    }) : [];
+    const items = rawItems.map(({ applications: _applications, _count: _count, ...job }) => {
+      const applications = applicationsByJob.get(job.id) ?? [];
+      return {
+        ...job,
+        _count: { applications: applications.length, interviews: visibleInterviews.find(row => row.jobId === job.id)?._count._all ?? 0 },
+        applicationMetrics: {
+          new: applications.filter(application => application.status === 'APPLIED').length,
+          shortlisted: applications.filter(application => application.status === 'SHORTLISTED').length,
+        },
+      };
+    });
     return paginate(items, total, page, limit);
   }
 
@@ -423,7 +509,7 @@ export class JobsService {
   }
 
   private async loadJob(jobId: string) {
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    const job = await this.prisma.job.findUnique({ where: { id: jobId }, include: { skills: { include: { skill: true } } } });
     if (!job) throw new NotFoundException('Job not found');
     return job;
   }

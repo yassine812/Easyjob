@@ -1,0 +1,1 @@
+{% macro collaboration() -%}{% if collaboration_choice == 0 %}You will work with {{ family.collaboration() }} to clarify needs, plan integrations and follow the outcomes of delivered work.{% else %}Alongside {{ family.collaboration() }}, you will share constraints, document decisions and monitor the quality of deliverables.{% endif %}{%- endmacro %}

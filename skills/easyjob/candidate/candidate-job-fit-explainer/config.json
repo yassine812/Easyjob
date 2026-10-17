@@ -1,0 +1,7 @@
+{
+  "name": "candidate-job-fit-explainer",
+  "provider": "easyjob-deterministic",
+  "version": "1.0.0",
+  "paidDependency": false,
+  "confirmationRequired": false
+}

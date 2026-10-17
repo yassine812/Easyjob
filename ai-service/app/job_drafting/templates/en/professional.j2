@@ -1,0 +1,6 @@
+{% import family_template as family with context %}{% import 'en/_company_context.j2' as employer with context %}{% import 'en/_seniority.j2' as level with context %}{% import 'en/_collaboration.j2' as team with context %}
+{{ employer.introduction() }}
+
+Your scope will cover {{ family.scope() }}. {{ level.expectations() }}
+
+{{ team.collaboration() }}

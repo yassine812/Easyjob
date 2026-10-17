@@ -1,0 +1,44 @@
+.combobox { position: relative; min-width: 0; }
+.results { position: absolute; inset-inline: 0; top: calc(100% + 5px); z-index: 30; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--popover); box-shadow: 0 12px 30px #0003; max-height: 300px; overflow-y: auto; }
+.results button { display: block; width: 100%; text-align: start; padding: 10px 12px; border-radius: 6px; font-size: 13px; overflow-wrap: anywhere; }
+.results button[aria-selected=true] { background: var(--accent); color: var(--accent-foreground); }
+.trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--primary); padding: 4px 0; border-radius: 4px; }
+.trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.labelRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.dialog[data-slot='dialog-content'] { display: flex; flex-direction: column; width: min(1060px, calc(100vw - 48px)); max-width: 1060px; max-height: 82dvh; overflow: hidden; top: 50%; bottom: auto; left: 50%; translate: -50% -50%; padding: 0; gap: 0; border-radius: 18px; }
+.dialog[data-scope=description], .dialog[data-scope=responsibilities], .dialog[data-scope=skills] { width: min(740px, calc(100vw - 48px)); }
+.dialogHeader { padding: 22px 26px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.dialogHeader h2 { font-size: 22px; letter-spacing: -.025em; margin: 7px 0 5px; }
+.eyebrow { display: flex; align-items: center; gap: 7px; color: var(--primary); font-size: 11px; font-weight: 600; }
+.dialogBody { padding: 20px 24px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.draftGrid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; gap: 16px; }
+.dialog:not([data-scope=all]) .draftGrid { display: block; }
+.supportingSections { display: grid; min-width: 0; gap: 14px; }
+.sectionCard { border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; background: var(--card); }
+.sectionCard[data-included=true] { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.cardHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.cardHeader h3 { font-weight: 600; font-size: 14px; }
+.include { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted-foreground); }
+.selectionSummary { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted-foreground); margin-bottom: 12px; }
+.selectionSummary button { color: var(--primary); padding: 2px 0; }
+.skillGroup + .skillGroup { margin-top: 16px; }
+.skillGroup h4 { font-size: 11px; font-weight: 500; color: var(--muted-foreground); margin-bottom: 8px; }
+.replacementNotice { font-size: 11px; color: var(--primary); padding-top: 12px; line-height: 1.5; }
+.loading { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 180px; color: var(--muted-foreground); }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 12px; }
+.tabs button[aria-pressed=true] { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); border-color: var(--primary); }
+.description { white-space: pre-wrap; padding: 18px 0 0; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.choices { display: grid; gap: 12px; }
+.choices h3 { font-weight: 600; }
+.choice { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.choice > button { flex-shrink: 0; margin-top: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chips button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: 12px; }
+.chips button[aria-pressed=true] { color: var(--primary); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.chips button:focus-visible, .selectionSummary button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding: 16px 24px; flex-shrink: 0; }
+.actions > div { display: flex; gap: 8px; margin-inline-start: auto; }
+.hint { font-size: 12px; color: var(--muted-foreground); }
+@media(max-width: 800px) { .draftGrid { grid-template-columns: minmax(0, 1fr); } }
+@media(max-width: 600px) { .dialog[data-slot='dialog-content'] { width: calc(100vw - 20px); max-height: 92dvh; } .dialogHeader { padding: 18px 18px 14px; } .dialogBody { padding: 14px; } .actions { padding: 12px 16px; } .sectionCard { padding: 12px; } .tabs button { flex: 1; padding: 7px 5px; } }

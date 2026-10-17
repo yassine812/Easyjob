@@ -6,6 +6,7 @@ import { FaceEnrollment } from './face-enrollment';
 import { FaceStatusCard } from './face-status';
 import { LoginForm } from './login-form';
 import { useAuthStore } from '@/store/auth-store';
+import { ApiError } from '@/lib/api/client';
 import { makeUser } from '@/test/factories';
 import { I18nProvider } from '@/lib/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -99,7 +100,75 @@ describe('FaceVerification', () => {
     await user.click(screen.getByRole('button', { name: /continue/i }));
 
     await waitFor(() => expect(faceStartMock).toHaveBeenCalledWith('c@test.dev'));
-    expect(await screen.findByText(/allow camera access/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /camera permission/i })).toBeInTheDocument();
+  });
+
+  it('reports an offline server without claiming the face failed or asking for the email again', async () => {
+    faceStartMock.mockRejectedValueOnce(new ApiError(0, 'Network error'))
+      .mockResolvedValueOnce({ challengeId: 'recovered' });
+    renderWithI18n(<FaceVerification initialEmail="c@test.dev" onUsePassword={vi.fn()} />);
+
+    expect(await screen.findByText(/server cannot be reached/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/account email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/face verification failed/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /camera permission/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+    expect(await screen.findByRole('button', { name: /camera permission/i })).toBeInTheDocument();
+    expect(faceStartMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens the camera directly for a remembered email', async () => {
+    useAuthStore.getState().setLastEmail('c@test.dev');
+    faceStartMock.mockResolvedValue({ challengeId: 'remembered' });
+    renderWithI18n(<FaceVerification onUsePassword={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: /camera permission/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/account email/i)).not.toBeInTheDocument();
+    expect(faceStartMock).toHaveBeenCalledWith('c@test.dev');
+  });
+
+  it('retries a rejected scan with a fresh challenge without repeating the email', async () => {
+    faceStartMock.mockResolvedValueOnce({ challengeId: 'first' }).mockResolvedValueOnce({ challengeId: 'second' });
+    faceVerifyMock.mockRejectedValue(new ApiError(401, 'Face verification failed.'));
+    renderWithI18n(<FaceVerification initialEmail="c@test.dev" onUsePassword={vi.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: /camera permission/i }));
+    expect(await screen.findByText(/face verification failed/i)).toBeInTheDocument();
+    expect(faceStartMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByLabelText(/account email/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /camera permission/i }));
+    await waitFor(() => expect(faceVerifyMock).toHaveBeenCalledTimes(2));
+    expect(faceVerifyMock.mock.calls.map(args => args[1])).toEqual(['first', 'second']);
+  });
+
+  it('directs a recognized face to email confirmation without creating a session', async () => {
+    faceStartMock.mockResolvedValue({ challengeId: 'unverified' });
+    faceVerifyMock.mockRejectedValue(new ApiError(403, 'Confirm your email before signing in with your face.', {
+      statusCode: 403, message: 'Confirm your email before signing in with your face.', error: 'ForbiddenException',
+    }));
+    renderWithI18n(<FaceVerification initialEmail="c@test.dev" onUsePassword={vi.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: /camera permission/i }));
+    expect(await screen.findByText(/your face is recognized/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /confirm my email/i }));
+    expect(push).toHaveBeenCalledWith('/verify-email?send=1');
+    expect(useAuthStore.getState().lastEmail).toBe('c@test.dev');
+    expect(useAuthStore.getState().accessToken).toBeFalsy();
+    expect(meMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['no_motion', /images are too similar/i],
+    ['no_face', /no face detected/i],
+    ['low_quality', /blurry or unusable/i],
+    ['face_too_small', /move closer/i],
+  ])('explains rejected capture %s without calling it an identity mismatch', async (code, message) => {
+    faceStartMock.mockResolvedValue({ challengeId: 'capture-check' });
+    faceVerifyMock.mockRejectedValue(new ApiError(422, `FACE_CAPTURE:${code}`));
+    renderWithI18n(<FaceVerification initialEmail="c@test.dev" onUsePassword={vi.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: /camera permission/i }));
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.queryByText(/face verification failed/i)).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+    expect(meMock).not.toHaveBeenCalled();
   });
 
   it('shows a generic error when the account does not exist (anti-enumeration)', async () => {
@@ -141,7 +210,7 @@ describe('FaceVerification', () => {
 
     await user.type(screen.getByLabelText(/account email/i), 'c@test.dev');
     await user.click(screen.getByRole('button', { name: /continue/i }));
-    await waitFor(() => expect(screen.getByText(/allow camera access/i)).toBeInTheDocument());
+    expect(await screen.findByRole('button', { name: /camera permission/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /use password instead/i }));
 
     expect(onUsePassword).toHaveBeenCalled();
@@ -244,6 +313,18 @@ describe('LoginForm face option', () => {
     renderWithI18n(<LoginForm />);
     await user.click(screen.getByRole('button', { name: /sign in with face/i }));
     expect(screen.getByLabelText(/account email/i)).toBeInTheDocument();
+  });
+
+  it('starts the camera flow with the email already entered on the login form', async () => {
+    faceStartMock.mockResolvedValue({ challengeId: 'login-challenge', expiresAt: '2026-01-01' });
+    const user = userEvent.setup();
+    renderWithI18n(<LoginForm />);
+    await user.type(screen.getByLabelText(/Email/i), 'c@test.dev');
+    await user.click(screen.getByRole('button', { name: /sign in with face/i }));
+
+    await waitFor(() => expect(faceStartMock).toHaveBeenCalledWith('c@test.dev'));
+    expect(screen.queryByLabelText(/account email/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /camera permission/i })).toBeInTheDocument();
   });
 });
 

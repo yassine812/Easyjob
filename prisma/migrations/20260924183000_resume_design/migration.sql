@@ -1,0 +1,1 @@
+ALTER TABLE "Resume" ADD COLUMN "design" JSONB;

@@ -35,9 +35,21 @@ export const PERMISSIONS = [
   'admin.companies',
   'admin.verifications',
   'admin.jobs',
-  'admin.analytics',
+  'admin.dashboard',
   'admin.subscriptions',
   'admin.audit',
+  'admin.billing',
+  'admin.plans',
+  'admin.notifications',
+  'admin.support',
+  'admin.system',
+  'admin.platform_admins',
+  'admin.company_manage',
+  'admin.user_manage',
+  'admin.job_moderate',
+  'admin.support_manage',
+  'admin.billing_manage',
+  'admin.plan_manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

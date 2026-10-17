@@ -1,0 +1,20 @@
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { usersApi } from '@/lib/api/users';
+import { ErrorState, PageHeader, SkeletonRows } from '@/components/shared';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { formatDate, formatMoney } from '@/lib/format';
+
+export default function PlatformAdminUserDetailPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const query = useQuery({ queryKey: ['platform-admin-user', params.id], queryFn: () => usersApi.adminGet(params.id), enabled: Boolean(params.id) });
+  if (query.isPending) return <SkeletonRows rows={5} cols={4} />;
+  if (query.isError || !query.data) return <ErrorState message="Impossible de charger cet utilisateur." retry={() => query.refetch()} />;
+  const user = query.data;
+  const subscription = user.subscription;
+  return <div className="mx-auto max-w-5xl"><Button variant="ghost" className="mb-4" onClick={() => router.push('/platform-admin/users')}>← Utilisateurs</Button><PageHeader title={user.name} description={`${user.email} · inscrit le ${formatDate(user.createdAt)}`}><Badge variant={user.status === 'ACTIVE' ? 'success' : 'destructive'}>{user.status}</Badge></PageHeader><div className="mt-6 flex gap-1 border-b"><Button variant="ghost" className="rounded-none border-b-2 border-primary">Abonnement</Button></div><section className="mt-8 rounded-xl border bg-card p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-muted-foreground">{subscription?.source === 'COMPANY' ? 'Plan de l’entreprise' : 'Plan candidat'}</p><p className="mt-1 text-xl font-semibold">{subscription?.plan.name ?? 'Aucun abonnement'}</p>{subscription?.plan && <p className="text-sm text-muted-foreground">{formatMoney(subscription.plan.priceCents, subscription.plan.currency)} · {subscription.plan.billingInterval === 'YEARLY' ? 'annuel' : 'mensuel'}</p>}{subscription?.organization && <p className="mt-1 text-xs text-muted-foreground">{subscription.organization}</p>}</div><Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'outline'}>{subscription?.status ?? '—'}</Badge></div>{subscription && <><dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><div><dt className="text-muted-foreground">Début</dt><dd className="font-medium">{subscription.currentPeriodStart ? formatDate(subscription.currentPeriodStart) : '—'}</dd></div><div><dt className="text-muted-foreground">Renouvellement / expiration</dt><dd className="font-medium">{subscription.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : '—'}</dd></div><div><dt className="text-muted-foreground">Jours restants</dt><dd className="font-medium">{subscription.remainingDays ?? '—'}</dd></div><div><dt className="text-muted-foreground">Auto-renew</dt><dd className="font-medium">{subscription.canceledAt ? 'Non' : 'Oui'}</dd></div></dl><div className="mt-8"><h2 className="font-semibold">Historique de facturation</h2><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[560px] text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="py-2">Référence</th><th className="py-2">Montant</th><th className="py-2">Statut</th><th className="py-2">Date</th><th className="py-2">PDF</th></tr></thead><tbody>{(subscription.payments ?? []).map(payment => <tr key={payment.id} className="border-t"><td className="py-3 font-mono text-xs">{payment.providerPaymentId ?? payment.id}</td><td className="py-3">{formatMoney(payment.amountCents, payment.currency)}</td><td className="py-3"><Badge variant={payment.status === 'SUCCEEDED' ? 'success' : payment.status === 'FAILED' ? 'destructive' : 'outline'}>{payment.status}</Badge></td><td className="py-3 text-muted-foreground">{formatDate(payment.paidAt ?? payment.createdAt)}</td><td className="py-3">{payment.invoiceUrl ? <a className="text-primary underline" href={payment.invoiceUrl} target="_blank" rel="noreferrer">Télécharger</a> : '—'}</td></tr>)}</tbody></table></div></div></>}</section></div>;
+}

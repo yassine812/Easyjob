@@ -7,6 +7,7 @@ export interface EmailMessage {
   subject: string;
   html: string;
   text?: string;
+  attachments?: { filename: string; content: string; contentType: string }[];
 }
 
 export abstract class EmailProvider {
@@ -68,6 +69,7 @@ export class SmtpEmailProvider extends EmailProvider {
       subject: message.subject,
       html: message.html,
       text: message.text,
+      attachments: message.attachments,
     });
   }
 }

@@ -7,6 +7,22 @@ import '../common/utils/env';
 export type StorageProvider = 'local' | 's3';
 export type EmailProvider = 'console' | 'smtp';
 export type PaymentProvider = 'dev' | 'stripe' | 'konnect';
+export interface ExternalResearchConfig {
+  enabled: boolean;
+  agentReachEnabled: boolean;
+  command: string;
+  reaEnabled: boolean;
+  reaCommand: string;
+  reaArgs: string[];
+  reaBrowserExecutable?: string;
+  reaTimeoutMs: number;
+  timeoutMs: number;
+  maxRetries: number;
+  circuitBreakerFailures: number;
+  circuitBreakerCooldownMs: number;
+  allowedSources: string[];
+  ttlDays: { company: number; technology: number; github: number; rssHours: number };
+}
 
 export interface AppConfig {
   env: string;
@@ -49,7 +65,20 @@ export interface AppConfig {
     from: string;
     smtp: { host: string; port: number; secure: boolean; user: string; pass: string };
   };
+  support?: {
+    email: string;
+  };
   ai: { baseUrl: string; timeoutMs: number; apiKey?: string };
+  externalResearch?: ExternalResearchConfig;
+  languageTool?: { url?: string; apiKey?: string; timeoutMs: number };
+  skills?: {
+    enabled: boolean;
+    transcriptionEnabled: boolean;
+    vadEnabled: boolean;
+    liveAssistantEnabled: boolean;
+    followupEnabled: boolean;
+    coverageEnabled: boolean;
+  };
   biometric: {
     enabled: boolean;
     encryptionKey: string;
@@ -66,6 +95,8 @@ export interface AppConfig {
     provider: PaymentProvider;
     devWebhookSecret: string;
     konnect?: {
+      enabled?: boolean;
+      apiBaseUrl?: string;
       apiKey: string;
       receiverWalletId: string;
       mode: 'sandbox' | 'live';
@@ -77,6 +108,12 @@ export interface AppConfig {
       webhookSecret?: string;
       priceMap: Record<string, string>;
     };
+  };
+  billing?: {
+    country: string;
+    currency: 'TND';
+    fxRatesUrl?: string;
+    allowedCurrencies: Array<'TND' | 'EUR' | 'USD'>;
   };
   logLevel: string;
   runWorkers: boolean;
@@ -153,10 +190,47 @@ export function loadConfig(): AppConfig {
         pass: process.env.SMTP_PASS ?? '',
       },
     },
+    support: {
+      email: process.env.SUPPORT_EMAIL ?? '',
+    },
     ai: {
       baseUrl: process.env.AI_SERVICE_URL ?? 'http://localhost:8000',
       timeoutMs: int(process.env.AI_SERVICE_TIMEOUT_MS, 30000),
       apiKey: process.env.AI_API_KEY || undefined,
+    },
+    externalResearch: {
+      enabled: bool(process.env.EXTERNAL_RESEARCH_ENABLED, false),
+      agentReachEnabled: bool(process.env.AGENT_REACH_ENABLED, false),
+      command: process.env.AGENT_REACH_COMMAND ?? 'agent-reach',
+      reaEnabled: bool(process.env.REA_ENABLED, false),
+      reaCommand: process.env.REA_COMMAND ?? 'rea',
+      reaArgs: commaList(process.env.REA_ARGS, []),
+      reaBrowserExecutable: process.env.REA_BROWSER_EXECUTABLE || undefined,
+      reaTimeoutMs: Math.min(120000, Math.max(5000, int(process.env.REA_TIMEOUT_MS, 30000))),
+      timeoutMs: int(process.env.EXTERNAL_RESEARCH_TIMEOUT_MS, 15000),
+      maxRetries: Math.min(2, Math.max(0, int(process.env.EXTERNAL_RESEARCH_MAX_RETRIES, 2))),
+      circuitBreakerFailures: Math.max(1, int(process.env.EXTERNAL_RESEARCH_CIRCUIT_FAILURES, 3)),
+      circuitBreakerCooldownMs: Math.max(1000, int(process.env.EXTERNAL_RESEARCH_CIRCUIT_COOLDOWN_MS, 60000)),
+      allowedSources: commaList(process.env.EXTERNAL_RESEARCH_ALLOWED_SOURCES, ['web', 'github', 'rss']),
+      ttlDays: {
+        company: Math.max(1, int(process.env.EXTERNAL_RESEARCH_COMPANY_TTL_DAYS, 7)),
+        technology: Math.max(1, int(process.env.EXTERNAL_RESEARCH_TECH_TTL_DAYS, 14)),
+        github: Math.max(1, int(process.env.EXTERNAL_RESEARCH_GITHUB_TTL_DAYS, 3)),
+        rssHours: Math.max(1, int(process.env.EXTERNAL_RESEARCH_RSS_TTL_HOURS, 3)),
+      },
+    },
+    languageTool: {
+      url: process.env.LANGUAGE_TOOL_URL || undefined,
+      apiKey: process.env.LANGUAGE_TOOL_API_KEY || undefined,
+      timeoutMs: int(process.env.LANGUAGE_TOOL_TIMEOUT_MS, 8000),
+    },
+    skills: {
+      enabled: bool(process.env.EASYJOB_SKILLS_ENABLED, true),
+      transcriptionEnabled: bool(process.env.INTERVIEW_TRANSCRIPTION_ENABLED, false),
+      vadEnabled: bool(process.env.INTERVIEW_VAD_ENABLED, true),
+      liveAssistantEnabled: bool(process.env.INTERVIEW_LIVE_ASSISTANT_ENABLED, true),
+      followupEnabled: bool(process.env.INTERVIEW_FOLLOWUP_ENABLED, true),
+      coverageEnabled: bool(process.env.INTERVIEW_SKILL_COVERAGE_ENABLED, true),
     },
     biometric: {
       // Feature flag — off by default until validated in staging.
@@ -177,6 +251,8 @@ export function loadConfig(): AppConfig {
       provider: (process.env.PAYMENT_PROVIDER as PaymentProvider) ?? 'dev',
       devWebhookSecret: process.env.DEV_WEBHOOK_SECRET ?? 'dev-webhook-secret',
       konnect: {
+        enabled: bool(process.env.KONNECT_ENABLED, false),
+        apiBaseUrl: process.env.KONNECT_API_BASE_URL || undefined,
         webhookUrl: process.env.KONNECT_WEBHOOK_URL,
         apiKey: process.env.KONNECT_API_KEY ?? '',
         receiverWalletId: process.env.KONNECT_RECEIVER_WALLET_ID ?? '',
@@ -199,6 +275,12 @@ export function loadConfig(): AppConfig {
           company_enterprise_yearly: process.env.STRIPE_PRICE_MAP_COMPANY_ENTERPRISE_YEARLY ?? '',
         },
       },
+    },
+    billing: {
+      country: process.env.BILLING_COUNTRY ?? 'TN',
+      currency: 'TND',
+      fxRatesUrl: process.env.FX_RATES_URL || undefined,
+      allowedCurrencies: ['TND', 'EUR', 'USD'],
     },
     logLevel: process.env.LOG_LEVEL ?? 'info',
     runWorkers: bool(process.env.RUN_WORKERS, false),

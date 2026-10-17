@@ -14,6 +14,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "start:worker": "node dist/worker-main.js",
+    "start:external-research-worker": "node dist/external-research-worker-main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.ts\" --fix",
@@ -28,11 +29,18 @@
     "test:cov": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
     "release:check": "node scripts/release-check.cjs",
+    "admin:create": "node scripts/create-platform-admin.cjs",
     "admin:grant": "node scripts/bootstrap-admin.cjs",
     "demo:offers": "node scripts/add-test-offers.cjs",
+    "demo:recruiter": "node scripts/seed-recruiter-demo.cjs",
+    "demo:recruiter:max": "node scripts/seed-recruiter-demo.cjs --max-plan",
+    "demo:recruiter:reset": "node scripts/seed-recruiter-demo.cjs --reset",
+    "analysis:backfill": "node scripts/recompute-application-analysis.cjs --missing-potential",
     "demo:real-offers": "node scripts/add-real-offers.cjs",
+    "repair:job-text": "ts-node scripts/repair-job-text-encoding.ts",
     "pricing:candidates": "node scripts/update-candidate-pricing.cjs",
-    "pricing:companies": "node scripts/update-company-pricing.cjs"
+    "pricing:companies": "node scripts/update-company-pricing.cjs",
+    "external-research:doctor": "node scripts/agent-reach-doctor.cjs"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -62,6 +70,7 @@
     "dotenv": "^17.4.2",
     "helmet": "^7.2.0",
     "ioredis": "^5.4.1",
+    "livekit-server-sdk": "^2.19.1",
     "nodemailer": "^10.0.3",
     "prisma": "^5.22.0",
     "reflect-metadata": "^0.2.2",

@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $profileRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location -LiteralPath $profileRoot
+$env:NODE_USE_SYSTEM_CA = '1'
 $profileRuntime = Join-Path $profileRoot '.runtime'
 New-Item -ItemType Directory -Path $profileRuntime -Force | Out-Null
 # Keep internal service credentials in the child process environment, out of logs.
@@ -15,7 +16,7 @@ if (!$profileEnv.PSObject.Properties.Name.Contains('AI_PROVIDER')) {
 }
 
 function Test-Extractor {
-  try { return (Invoke-RestMethod 'http://127.0.0.1:8000/health' -TimeoutSec 3).status -eq 'ok' } catch { return $false }
+  try { return (Invoke-RestMethod 'http://127.0.0.1:8000/health/face' -TimeoutSec 15).status -eq 'ok' } catch { return $false }
 }
 if (!(Test-Extractor)) {
   if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) { throw 'Port 8000 is occupied but the CV extractor is unhealthy.' }
@@ -38,10 +39,36 @@ if (Test-Path -LiteralPath $workerPidPath) {
     $existing = Get-CimInstance Win32_Process -Filter "ProcessId=$previousId"
     if ($existing -and $existing.Name -eq 'node.exe' -and $existing.CommandLine.Contains($workerEntry)) {
       Write-Output 'CV extractor is healthy and the CV worker is already running.'
-      exit 0
+      $cvProcess = Get-Process -Id $previousId
     }
   }
 }
-$cvProcess = Start-Process -FilePath (Get-Command node).Source -ArgumentList ('"' + $workerEntry + '"') -WorkingDirectory $profileRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $profileRuntime 'cv-worker.log') -RedirectStandardError (Join-Path $profileRuntime 'cv-worker.error.log') -PassThru
-Set-Content -LiteralPath $workerPidPath -Value $cvProcess.Id
-Write-Output 'CV extractor is healthy; CV worker launched. Readiness is logged in .runtime/cv-worker.log.'
+if (!$cvProcess) {
+  $cvProcess = Start-Process -FilePath (Get-Command node).Source -ArgumentList ('"' + $workerEntry + '"') -WorkingDirectory $profileRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $profileRuntime 'cv-worker.log') -RedirectStandardError (Join-Path $profileRuntime 'cv-worker.error.log') -PassThru
+  Set-Content -LiteralPath $workerPidPath -Value $cvProcess.Id
+  Write-Output 'CV extractor is healthy; CV worker launched. Readiness is logged in .runtime/cv-worker.log.'
+}
+
+# The API enqueues password-reset and other transactional emails in BullMQ.
+# Keep the queue consumer running alongside the CV worker so local recovery
+# requests are delivered instead of remaining stuck in Redis.
+$emailWorkerEntry = Join-Path $profileRoot 'dist/worker-main.js'
+if (!(Test-Path -LiteralPath $emailWorkerEntry)) { throw 'Run npm run build to compile the email worker first.' }
+$emailWorkerPidPath = Join-Path $profileRuntime 'worker.pid'
+$emailWorkerProcess = $null
+if (Test-Path -LiteralPath $emailWorkerPidPath) {
+  $previousId = (Get-Content -LiteralPath $emailWorkerPidPath -Raw).Trim()
+  if ($previousId -match '^\d+$') {
+    $existing = Get-CimInstance Win32_Process -Filter "ProcessId=$previousId"
+    if ($existing -and $existing.Name -eq 'node.exe' -and $existing.CommandLine.Contains($emailWorkerEntry)) {
+      $emailWorkerProcess = Get-Process -Id $previousId
+    }
+  }
+}
+if (!$emailWorkerProcess) {
+  $emailWorkerProcess = Start-Process -FilePath (Get-Command node).Source -ArgumentList ('"' + $emailWorkerEntry + '"') -WorkingDirectory $profileRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $profileRuntime 'worker.log') -RedirectStandardError (Join-Path $profileRuntime 'worker.error.log') -PassThru
+  Set-Content -LiteralPath $emailWorkerPidPath -Value $emailWorkerProcess.Id
+  Write-Output 'BullMQ worker launched for transactional emails and background jobs.'
+} else {
+  Write-Output 'BullMQ worker is already running.'
+}

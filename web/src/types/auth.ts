@@ -25,4 +25,15 @@ export type Permission =
   | 'admin.jobs'
   | 'admin.analytics'
   | 'admin.subscriptions'
-  | 'admin.audit';
+  | 'admin.audit'
+  | 'admin.billing'
+  | 'admin.plans'
+  | 'admin.support'
+  | 'admin.system'
+  | 'admin.platform_admins'
+  | 'admin.company_manage'
+  | 'admin.user_manage'
+  | 'admin.job_moderate'
+  | 'admin.support_manage'
+  | 'admin.billing_manage'
+  | 'admin.plan_manage';

@@ -1,13 +1,17 @@
+import { publicJobSalary } from '../jobs/job-content';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { CandidateVisibility, SkillLevel } from '@prisma/client';
+import { CandidateVisibility, EmploymentType, Prisma, SkillLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompanyAccessService } from '../companies/company-access.service';
+import { CompanyDirectoryService } from '../companies/company-directory.service';
+import { EntitlementService } from '../entitlements/entitlement.service';
 import type { CompanyContext } from '../common/types/auth';
 import {
   AddSkillDto,
   EducationDto,
   ExperienceDto,
   JobPreferenceDto,
+  ApplyProfileCompletionDto,
   SaveJobDto,
   UpdateCandidateProfileDto,
 } from './dto/candidate.dto';
@@ -17,6 +21,8 @@ export class CandidatesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: CompanyAccessService,
+    private readonly companyDirectory: CompanyDirectoryService,
+    private readonly entitlements: EntitlementService,
   ) {}
 
   private async profileOfUser(userId: string) {
@@ -45,11 +51,17 @@ export class CandidatesService {
     return {
       ...this.profileDto(profile),
       savedJobs,
+      profileCompletion: this.profileCompletion(profile),
+      easyjobAnalysis: this.easyjobAnalysis(profile),
     };
   }
 
   async updateProfile(userId: string, dto: UpdateCandidateProfileDto) {
-    await this.ensureProfile(userId);
+    const profile = await this.ensureProfile(userId);
+    const professionalData = profile.professionalData && typeof profile.professionalData === 'object' && !Array.isArray(profile.professionalData)
+      ? profile.professionalData as Record<string, unknown>
+      : {};
+    const languages = dto.languages?.map((language) => language.trim()).filter(Boolean);
     await this.prisma.candidateProfile.update({
       where: { userId },
       data: {
@@ -61,6 +73,15 @@ export class CandidatesService {
         visibility: dto.visibility ?? undefined,
         remotePreference: dto.remotePreference ?? undefined,
         employmentTypePreference: dto.employmentTypePreference ?? undefined,
+        // Do not overwrite extracted CV data unless the candidate has chosen
+        // to save a language list in the profile editor.
+        professionalData: languages === undefined ? undefined : {
+          ...professionalData,
+          languages,
+          // cv-prefill recognises this marker and will retain confirmed data
+          // on a later CV upload instead of replacing it automatically.
+          method: 'candidate_reviewed',
+        } as Prisma.InputJsonValue,
       },
     });
     return this.profileDto(await this.profileOfUser(userId));
@@ -92,10 +113,19 @@ export class CandidatesService {
 
   async addExperience(userId: string, dto: ExperienceDto) {
     const profile = await this.ensureProfile(userId);
+    if (!dto.companyId && !dto.companyProvider) {
+      await this.companyDirectory.rememberManualCompany(dto.companyName, dto.countryCode, dto.location, dto.companyWebsite);
+    }
     return this.prisma.experience.create({
       data: {
         candidateId: profile.id,
         companyName: dto.companyName,
+        companyId: dto.companyId ?? null,
+        companyLogoUrl: dto.companyLogoUrl ?? null,
+        companyWebsite: dto.companyWebsite ?? null,
+        companyProvider: dto.companyProvider ?? null,
+        location: dto.location ?? null,
+        countryCode: dto.countryCode ?? null,
         title: dto.title,
         description: dto.description ?? null,
         startDate: new Date(dto.startDate),
@@ -111,10 +141,19 @@ export class CandidatesService {
       where: { id: experienceId, candidateId: profile.id },
     });
     if (!experience) throw new NotFoundException('Experience not found');
+    if (!dto.companyId && !dto.companyProvider) {
+      await this.companyDirectory.rememberManualCompany(dto.companyName, dto.countryCode, dto.location, dto.companyWebsite);
+    }
     return this.prisma.experience.update({
       where: { id: experienceId },
       data: {
         companyName: dto.companyName,
+        companyId: dto.companyId ?? null,
+        companyLogoUrl: dto.companyLogoUrl ?? null,
+        companyWebsite: dto.companyWebsite ?? null,
+        companyProvider: dto.companyProvider ?? null,
+        location: dto.location ?? null,
+        countryCode: dto.countryCode ?? null,
         title: dto.title,
         description: dto.description ?? null,
         startDate: new Date(dto.startDate),
@@ -197,11 +236,11 @@ export class CandidatesService {
   async listSavedJobs(userId: string) {
     const profile = await this.ensureProfile(userId);
     const saved = await this.prisma.savedJob.findMany({
-      where: { candidateId: profile.id, job: { status: { in: ['PUBLISHED', 'CLOSED', 'EXPIRED'] }, company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } } } },
+      where: { candidateId: profile.id, job: { status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } },
       include: { job: { include: { skills: { include: { skill: true } }, applications: { where: { candidateId: profile.id }, select: { id: true } }, company: { select: { id: true, commercialName: true, slug: true } } } } },
       orderBy: { createdAt: 'desc' },
     });
-    return saved.map(item => { const { applications, ...job } = item.job; return { ...item, job, applied: applications.length > 0 }; });
+    return saved.map(item => { const { applications, ...job } = item.job; return { ...item, job: publicJobSalary(job), applied: applications.length > 0 }; });
   }
 
   async getJobPreferences(userId: string) {
@@ -305,6 +344,7 @@ export class CandidatesService {
     educations?: unknown[];
     resumes?: unknown[];
     jobPreference?: unknown;
+    professionalData?: unknown;
   }) {
     return {
       id: profile.id,
@@ -319,6 +359,7 @@ export class CandidatesService {
       visibility: profile.visibility,
       remotePreference: profile.remotePreference,
       employmentTypePreference: profile.employmentTypePreference,
+      professionalData: profile.professionalData ?? null,
       createdAt: profile.createdAt,
       updatedAt: profile.updatedAt,
       skills: profile.skills?.map((s) => ({ id: s.skill.id, name: s.skill.name, level: s.level })) ?? [],
@@ -328,4 +369,166 @@ export class CandidatesService {
       jobPreference: profile.jobPreference ?? null,
     };
   }
+
+  async searchCompanies(userId: string, query: string, countryCode?: string) {
+    await this.ensureProfile(userId);
+    const response = await this.companyDirectory.search(query, countryCode);
+    return {
+      results: response.results.map((company) => ({
+        ...company,
+        logoUrl: company.logoUrl ?? null,
+        location: [company.city, company.countryName].filter(Boolean).join(', ') || null,
+      })),
+      providerAvailable: response.providerAvailable,
+    };
+  }
+
+  /**
+   * Produces reviewable, CV-grounded suggestions for fields that are still
+   * incomplete. It never fabricates work mode, contract, salary or mobility.
+   */
+  async profileCompletionSuggestions(userId: string) {
+    const profile = await this.profileOfUser(userId);
+    await this.entitlements.assertCan({ ownerType: 'CANDIDATE', ownerId: profile.id }, 'career.builder');
+    const completion = this.profileCompletion(profile);
+    const existingLanguages = this.profileLanguages(profile);
+    const languageSuggestions = existingLanguages.map(language => this.languageLabel(language)).filter(Boolean);
+    const roleSuggestions = uniqueStrings([
+      profile.headline ?? '',
+      ...profile.experiences.map(experience => experience.title),
+    ]).slice(0, 4);
+    const preference = profile.jobPreference;
+
+    return {
+      missingFields: completion.missingFields,
+      suggestions: {
+        languages: completion.items.languages ? [] : languageSuggestions,
+        targetRoles: preference?.jobTitle ? [] : roleSuggestions,
+        location: preference?.location || !profile.location ? null : profile.location,
+      },
+      needsCandidateInput: {
+        workArrangement: preference?.remote == null,
+        contractType: preference?.employmentType == null,
+      },
+    };
+  }
+
+  /** Saves only selections explicitly accepted in the completion preview. */
+  async applyProfileCompletion(userId: string, dto: ApplyProfileCompletionDto) {
+    const profile = await this.profileOfUser(userId);
+    await this.entitlements.assertCan({ ownerType: 'CANDIDATE', ownerId: profile.id }, 'career.builder');
+
+    await this.prisma.$transaction(async tx => {
+      if (dto.languages !== undefined) {
+        const previous = profile.professionalData && typeof profile.professionalData === 'object' && !Array.isArray(profile.professionalData)
+          ? profile.professionalData as Record<string, unknown>
+          : {};
+        const languages = dto.languages.map(language => language.trim()).filter(Boolean);
+        await tx.candidateProfile.update({
+          where: { id: profile.id },
+          data: { professionalData: { ...previous, languages, method: 'candidate_reviewed' } as Prisma.InputJsonValue },
+        });
+      }
+
+      const preferenceData = {
+        jobTitle: dto.jobTitle?.trim() || undefined,
+        location: dto.location?.trim() || undefined,
+        remote: dto.remote,
+        employmentType: dto.employmentType,
+        keywords: dto.keywords?.map(keyword => keyword.trim()).filter(Boolean),
+      };
+      if (Object.values(preferenceData).some(value => value !== undefined)) {
+        await tx.jobPreference.upsert({
+          where: { candidateId: profile.id },
+          create: { candidateId: profile.id, ...preferenceData },
+          update: preferenceData,
+        });
+      }
+    });
+    return this.getMyProfile(userId);
+  }
+
+  private profileLanguages(profile: { professionalData?: unknown }) {
+    const data = profile.professionalData as { languages?: unknown; sections?: { languages?: unknown } } | null;
+    const languages = data?.languages ?? data?.sections?.languages;
+    return Array.isArray(languages) ? languages.filter(Boolean) : [];
+  }
+
+  private languageLabel(language: unknown): string {
+    if (typeof language === 'string') return language.trim();
+    if (language && typeof language === 'object' && 'name' in language) {
+      const item = language as { name?: unknown; level?: unknown };
+      return [typeof item.name === 'string' ? item.name.trim() : '', typeof item.level === 'string' ? item.level.trim() : '']
+        .filter(Boolean)
+        .join(' · ');
+    }
+    return '';
+  }
+
+  private profileCompletion(profile: {
+    headline: string | null; bio: string | null; location: string | null;
+    skills?: unknown[]; experiences?: unknown[]; educations?: unknown[];
+    resumes?: unknown[]; jobPreference?: unknown; professionalData?: unknown;
+  }) {
+    const items = {
+      headline: Boolean(profile.headline?.trim()),
+      summary: Boolean(profile.bio?.trim()),
+      experience: Boolean(profile.experiences?.length),
+      education: Boolean(profile.educations?.length),
+      skills: Boolean(profile.skills?.length),
+      languages: Boolean(this.profileLanguages(profile).length),
+      jobPreferences: Boolean(profile.jobPreference),
+      resume: Boolean(profile.resumes?.length),
+    };
+    const score = Math.round(Object.values(items).filter(Boolean).length / Object.keys(items).length * 100);
+    return { score, items, missingFields: Object.entries(items).filter(([, present]) => !present).map(([key]) => key) };
+  }
+
+  /**
+   * A live, objective profile-quality score. It deliberately ignores a photo,
+   * name, age, gender and every other personal or protected attribute.
+   */
+  private easyjobAnalysis(profile: {
+    headline: string | null; bio: string | null; location: string | null;
+    skills?: unknown[];
+    experiences?: Array<{ description?: string | null; startDate?: Date | null; endDate?: Date | null; current?: boolean }>;
+    educations?: Array<{ institution?: string | null; degree?: string | null; field?: string | null }>;
+    resumes?: Array<{ parsedText?: string | null; processingStatus?: string }>;
+    jobPreference?: { jobTitle?: string | null; location?: string | null; remote?: boolean | null; employmentType?: EmploymentType | null } | null;
+    professionalData?: unknown;
+  }) {
+    const languages = this.profileLanguages(profile);
+    const experiences = profile.experiences ?? [];
+    const educations = profile.educations ?? [];
+    const resumes = profile.resumes ?? [];
+    const preference = profile.jobPreference;
+    const identity = (profile.headline?.trim() ? 5 : 0) + (profile.bio?.trim() ? 7 : 0) + (profile.location?.trim() ? 3 : 0);
+    const experienceDescriptions = experiences.filter(item => Boolean(item.description?.trim())).length;
+    const experienceDates = experiences.filter(item => Boolean(item.startDate) && (Boolean(item.endDate) || item.current === true)).length;
+    const educationDetails = educations.filter(item => Boolean(item.institution?.trim()) && Boolean(item.degree?.trim() || item.field?.trim())).length;
+    const preferenceFields = [preference?.jobTitle, preference?.location, preference?.remote, preference?.employmentType]
+      .filter(value => value !== undefined && value !== null && value !== '').length;
+    const scoreBreakdown = {
+      professionalIdentity: identity,
+      experience: experiences.length ? Math.min(25, 8 + Math.min(7, experiences.length * 2) + Math.min(5, experienceDescriptions * 2) + Math.min(5, experienceDates * 2)) : 0,
+      skills: Math.min(20, (profile.skills?.length ?? 0) * 2),
+      education: educations.length ? Math.min(10, 5 + Math.min(5, educationDetails * 3)) : 0,
+      languages: Math.min(10, languages.length * 5),
+      jobPreferences: Math.round(preferenceFields / 4 * 10),
+      resume: resumes.some(item => item.parsedText?.trim() || item.processingStatus === 'COMPLETED') ? 10 : 0,
+    };
+    const profileStrength = Math.min(100, Object.values(scoreBreakdown).reduce((total, value) => total + value, 0));
+    return {
+      profileStrength,
+      scoreBreakdown,
+      skillsCount: profile.skills?.length ?? 0,
+      experienceCount: experiences.length,
+      educationCount: educations.length,
+      languagesCount: languages.length,
+    };
+  }
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.map(value => value.trim()).filter(Boolean))];
 }

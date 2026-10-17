@@ -2,12 +2,13 @@ import { api } from './client';
 import { qs } from './client';
 import type { CurrentSubscription, Plan, PlanType } from '@/types/api';
 
-/** Matches the backend CheckoutDto: planId, ownerType, companyId?, billingCountry?. */
+/** Matches the backend CheckoutDto: planId, ownerType, companyId?, billingCountry?, currency?. */
 export interface CheckoutInput {
   planId: string;
   ownerType: PlanType;
   companyId?: string;
   billingCountry?: string;
+  currency?: 'TND' | 'EUR' | 'USD';
 }
 
 export interface CancelSubscriptionInput {
@@ -18,6 +19,10 @@ export interface PaymentStatusResult {
   id?: string;
   status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED' | string;
   amountCents?: number;
+  baseAmountTndCents?: number | null;
+  paymentAmountMinor?: number | null;
+  providerExchangeRate?: number | string | null;
+  providerConvertedAmount?: number | null;
   currency?: string;
   provider?: string;
   billingCountry?: string;
@@ -28,7 +33,7 @@ export interface PaymentStatusResult {
 }
 
 export const billingApi = {
-  quote: (planId: string, billingCountry: string) => api.get<{ amountCents: number; currency: string; provider: string }>(`/subscriptions/quote${qs({ planId, billingCountry })}`),
+  quote: (planId: string, currency: 'TND' | 'EUR' | 'USD' = 'TND', billingCountry?: string) => api.get<{ amountCents: number; amountMinor: number; currency: string; provider: string; baseAmountTndCents?: number; exchangeRate?: number }>(`/subscriptions/quote${qs({ planId, currency, billingCountry })}`),
   plans: (type?: PlanType) => api.get<Plan[]>(`/plans${qs({ type })}`, { auth: false }),
   currentSubscription: (ownerType: PlanType, companyId?: string) =>
     api.get<CurrentSubscription>(

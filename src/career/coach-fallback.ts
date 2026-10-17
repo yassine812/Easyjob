@@ -7,8 +7,23 @@ export function guidedCoach(input: Record<string, unknown>): Record<string, unkn
   const title = job.title || (fr ? 'ce poste' : ar ? 'هذا المنصب' : 'this role');
   const pick = (f: string, e: string, a: string) => fr ? f : ar ? a : e;
   if (input.action === 'questions') {
-    const specific = input.interviewType === 'TECHNICAL' && skills.length
+    if (input.interviewType === 'CODING') {
+      const mobile = skills.some(s => /react|javascript|typescript/i.test(s));
+      return { method: 'guided_practice', questions: [
+        mobile ? pick('Implémente un composant de liste filtrable : affiche les éléments reçus, ajoute un champ de recherche et gère la liste vide. Explique ton raisonnement et ajoute un test.', 'Implement a filterable list component: render supplied items, add a search field and handle an empty list. Explain your reasoning and add a test.', 'نفذ مكون قائمة قابلة للتصفية مع بحث وحالة القائمة الفارغة. اشرح تفكيرك وأضف اختباراً.') : pick('Implémente une fonction qui regroupe une liste de transactions par catégorie et calcule chaque total. Définis les entrées et sorties et ajoute des tests, dont une liste vide.', 'Implement a function that groups transactions by category and computes each total. Define inputs and outputs and add tests, including an empty list.', 'نفذ دالة تجمع المعاملات حسب الفئة وتحسب الإجماليات. حدد المدخلات والمخرجات وأضف اختبارات بما فيها قائمة فارغة.'),
+        pick('Modifie ta solution pour gérer les entrées invalides sans interrompre le traitement des données valides. Écris le code et les tests correspondants.', 'Modify your solution to handle invalid inputs without interrupting valid data processing. Write the code and corresponding tests.', 'عدل حلك للتعامل مع المدخلات غير الصالحة دون تعطيل البيانات الصالحة. اكتب الكود والاختبارات.'),
+      ] };
+    }
+    const cv = String((input.candidate as { text?: string } | undefined)?.text ?? '');
+    const evidence = cv.split(/\r?\n/).filter(line => line.length > 35 && line.length < 300 && skills.some(s => line.toLowerCase().includes(s.toLowerCase()))).slice(0, 2);
+    const specific = ['TECHNICAL', 'CODING'].includes(String(input.interviewType)) && skills.length
       ? skills.map(s => pick(`Pour ${title}, explique une décision prise avec ${s}, les alternatives et la façon de valider ton choix.`, `For ${title}, explain a decision using ${s}, alternatives and how you validated it.`, `بالنسبة إلى ${title}، اشرح قراراً باستخدام ${s} والبدائل وكيف تحققت منه.`))
+      : input.interviewType === 'SYSTEM_DESIGN'
+        ? [pick(`Pour ${title}, comment concevrais-tu une solution qui reste fiable quand le nombre d’utilisateurs augmente ?`, `For ${title}, how would you design a solution that remains reliable as usage grows?`, `بالنسبة إلى ${title}، كيف تصمم حلاً موثوقاً مع ازدياد عدد المستخدمين؟`)]
+        : input.interviewType === 'MANAGERIAL'
+          ? [pick('Raconte une situation où tu as coordonné un travail collectif et clarifié les priorités.', 'Describe a situation where you coordinated a team effort and clarified priorities.', 'صف موقفاً نسقت فيه عملاً جماعياً وحددت الأولويات.')]
+          : input.interviewType === 'CASE_STUDY'
+            ? [pick(`Pour ${title}, comment analyserais-tu un problème métier avant de proposer une solution ?`, `For ${title}, how would you analyse a business problem before proposing a solution?`, `بالنسبة إلى ${title}، كيف تحلل مشكلة تجارية قبل اقتراح حل؟`)]
       : [input.interviewType === 'SITUATIONAL'
         ? pick(`Pour ${title}, deux priorités urgentes entrent en conflit. Comment décides-tu et communiques-tu ton choix ?`, `For ${title}, two urgent priorities conflict. How would you decide and communicate?`, `في ${title}، كيف تتعامل مع أولويتين عاجلتين متعارضتين؟`)
         : input.interviewType === 'BEHAVIORAL'
@@ -17,6 +32,7 @@ export function guidedCoach(input: Record<string, unknown>): Record<string, unkn
     return { method: 'guided_practice', questions: [
       pick(`Présente ton parcours en 90 secondes pour ${title}. Quelle expérience est la plus pertinente ?`, `Introduce yourself in 90 seconds for ${title}. Which experience is most relevant?`, `قدّم مسيرتك في 90 ثانية لمنصب ${title}. ما الخبرة الأكثر صلة؟`),
       ...specific,
+      ...evidence.map(quote => pick(`Ton CV indique « ${quote.trim()} ». Pour ${title}, explique ton action personnelle, une difficulté rencontrée et le résultat que tu peux attester.`, `Your CV states “${quote.trim()}”. For ${title}, explain your own contribution, one challenge and the outcome you can substantiate.`, `تذكر سيرتك «${quote.trim()}». لمنصب ${title}، اشرح مساهمتك وتحدياً واجهته والنتيجة التي تستطيع إثباتها.`)),
       ...(job.description ? [pick(`Dans cette offre, quelle mission te paraît la plus difficile ? Comment l’aborderais-tu pendant tes 30 premiers jours ?`, 'Which responsibility in this job description is most challenging? How would you approach it in your first 30 days?', 'ما أصعب مسؤولية في هذا العرض وكيف ستتعامل معها خلال أول 30 يوماً؟')] : []),
       pick('Choisis un projet réel : situation, responsabilité, action personnelle, résultat et leçon apprise.', 'Choose a real project: situation, responsibility, your action, outcome and lesson.', 'اختر مشروعاً حقيقياً: الموقف والمسؤولية وإجراءك والنتيجة والدرس.'),
       pick('Que sais-tu de cette entreprise à partir de sources vérifiables ? Que voudrais-tu confirmer avec le recruteur ?', 'What do you know about this company from verifiable sources? What would you confirm with the recruiter?', 'ماذا تعرف عن الشركة من مصادر موثوقة وما الذي ستتحقق منه مع مسؤول التوظيف؟'),

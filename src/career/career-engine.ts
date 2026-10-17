@@ -1,5 +1,7 @@
 import { cvSkillItems, splitCvCertifications, splitCvEducations, splitCvExperiences, splitCvLanguages } from './cv-experience';
 import { cvEmails, cvExcerpts, cvPhones, cvWordCount, quantifiedCvEvidence } from './cv-diagnostics';
+import { professionalCvAudit } from './professional-cv-audit';
+import { requirementEvidence } from './recruitment-evidence';
 /** Auditable, evidence-based estimates. Missing evidence is never invented. */
 export const normalize = (value: string) => value.normalize('NFKC').toLocaleLowerCase().trim();
 export const unique = (values: string[]) => [...new Set(values.map(v => v.trim()).filter(Boolean))];
@@ -79,7 +81,18 @@ export function atsReport(text: string, keywords: string[] = [], selectedTarget?
     { key: 'experience', weight: 15, passed: sectionWords('experience') > 0, priority: 'high', metrics: { count: parsed.experiences.length }, evidence: cvExcerpts(parsed.experiences.map(entry => parsed.sections.experience.find(line => entry.title && line.includes(entry.title)) || entry.description[0] || '').filter(Boolean)) },
     { key: 'education', weight: 15, passed: sectionWords('education') > 0, priority: 'medium', metrics: { count: parsed.sections.education.filter(line => cvWordCount(line) > 0).length }, evidence: cvExcerpts(parsed.sections.education) },
     { key: 'readable_length', weight: 5, passed: count >= 150 && count <= 1200, priority: 'low', metrics: { count, minimum: 150, maximum: 1200 }, evidence: [] },
-    { key: 'quantified_evidence', weight: 5, passed: quantitative.metrics.outcomeCount > 0, priority: 'medium', ...quantitative },
+    // Scope indicators remain explicitly classified as `scope`. A vague
+    // "built ... across N" statement is not enough by itself, while concrete
+    // delivery/deployment evidence still counts and can be improved later by
+    // adding a verified outcome.
+    {
+      key: 'quantified_evidence',
+      weight: 5,
+      passed: quantitative.metrics.outcomeCount > 0
+        || (quantitative.metrics.scopeCount > 0 && quantitative.evidence.some(item => !/\bacross\b/i.test(item))),
+      priority: 'medium',
+      ...quantitative,
+    },
   ];
   const targetKeywords = [...new Map(keywords.map(keyword => [normalize(keyword), keyword.trim()])).values()].filter(Boolean);
   const missingKeywords = targetKeywords.filter(k => !containsFact(text, k));
@@ -94,6 +107,7 @@ export function atsReport(text: string, keywords: string[] = [], selectedTarget?
         : 95;
   return {
     score: count ? Math.min(qualityCap, rawScore) : null,
+    audit: professionalCvAudit(text, parsed, criteria, targetKeywords, matchedKeywords),
     criteria,
     strengths: criteria.filter(c => c.passed).map(c => c.key),
     suggestions: criteria.filter(c => !c.passed).map(c => c.key),
@@ -120,23 +134,35 @@ export interface CareerJob {
   skills: { skill: { name: string }; required: boolean }[];
   company?: { industry?: string | null };
 }
+// Basic coverage is available on free plans; detailed evidence is entitlement-gated.
+const titleStopWords = new Set(['and', 'the', 'for', 'with', 'from', 'dans', 'pour', 'avec', 'chez', 'les', 'des', 'une', 'un', 'sur', 'et', 'de', 'du', 'en', 'au', 'aux', 'd', 'l']);
+function titleKeywords(title: string): string[] {
+  return unique(normalize(title).split(/[^\p{L}\p{N}]+/u).filter(word => word.length >= 3 && !titleStopWords.has(word)));
+}
 export function candidateText(candidate: CareerCandidate) {
-  return [candidate.headline, candidate.bio, ...candidate.skills.map(s => s.skill?.name ?? s.name),
+  return [candidate.headline, candidate.bio, candidate.yearsExperience == null ? null : `${candidate.yearsExperience} years experience`, ...candidate.skills.map(s => s.skill?.name ?? s.name),
     ...(candidate.experiences ?? []).map(e => `${e.title} ${e.description ?? ''}`),
     ...(candidate.educations ?? []).map(e => `${e.degree ?? ''} ${e.field ?? ''}`),
     typeof candidate.professionalData === 'string' ? candidate.professionalData : JSON.stringify(candidate.professionalData ?? {}),
-    ...(candidate.resumes ?? []).map(r => r.parsedText)].filter(Boolean).join('\n');
+    candidate.resumes?.[0]?.parsedText].filter(Boolean).join('\n');
 }
 export function matchCandidate(candidate: CareerCandidate, job: CareerJob) {
+  const coverage = requirementEvidence(job, candidate.resumes?.[0]?.parsedText ?? '', candidateText({ ...candidate, resumes: [] }));
   const evidence = candidateText(candidate);
   const sections = (candidate.professionalData as { sections?: Record<string, string[]> } | null)?.sections;
   const defined = candidate.skills.length > 0 || (candidate.resumes ?? []).some(r => !!r.parsedText?.trim()) || !!candidate.bio?.trim() || !!candidate.headline?.trim() || !!candidate.experiences?.length || !!candidate.educations?.length || Object.values(sections ?? {}).some(lines => lines.some(line => !!line.trim()));
-  const matchedSkills = job.skills.filter(s => containsFact(evidence, s.skill.name)).map(s => s.skill.name);
-  const missingSkills = job.skills.filter(s => !containsFact(evidence, s.skill.name)).map(s => s.skill.name);
+  const matchedSkills = job.skills.filter(s => coverage.requirements.some(r => normalize(r.label) === normalize(s.skill.name) && r.status === 'EXPLICITLY_SUPPORTED')).map(s => s.skill.name);
+  const missingSkills = job.skills.filter(s => !matchedSkills.includes(s.skill.name)).map(s => s.skill.name);
+  const titleTerms = titleKeywords(job.title);
+  const matchedTitleTerms = titleTerms.filter(term => containsFact(evidence, term));
   const dimensions: { key: string; score: number | null; weight: number; evidence: string[] }[] = [];
   const add = (key: string, score: number | null, weight: number, facts: string[]) => dimensions.push({ key, score, weight, evidence: facts });
   const skillWeight = job.skills.reduce((n, s) => n + (s.required ? 2 : 1), 0);
   add('skills', skillWeight ? Math.round(100 * job.skills.reduce((n, s) => n + (matchedSkills.includes(s.skill.name) ? s.required ? 2 : 1 : 0), 0) / skillWeight) : null, 40, matchedSkills);
+  // Public job sources often provide only a title. In that case the title is
+  // the only reliable job signal available, so use its lexical overlap with
+  // the candidate profile instead of pretending that no analysis is possible.
+  if (!job.skills.length) add('titleMatch', titleTerms.length ? Math.round(100 * matchedTitleTerms.length / titleTerms.length) : null, 40, matchedTitleTerms);
   const requiredYears = job.minimumYearsExperience ?? null;
   // Explicit experience only: dates are not summed because concurrent jobs can overlap.
   const years = candidate.yearsExperience;
@@ -160,32 +186,56 @@ export function matchCandidate(candidate: CareerCandidate, job: CareerJob) {
   const requirements = [...job.requirements, ...(job.languages || [])].filter(r => r.trim());
   const covered = requirements.filter(r => containsFact(evidence, r));
   add('requirements', requirements.length ? Math.round(covered.length / requirements.length * 100) : null, 15, covered);
-  const active = dimensions.filter(d => d.score !== null);
-  const score = !defined || !active.length ? null : Math.round(active.reduce((n, d) => n + d.score! * d.weight, 0) / active.reduce((n, d) => n + d.weight, 0));
+  const score = defined ? coverage.score : null;
   const classification = score === null ? 'NOT_ANALYZED' : score >= 85 ? 'STRONG' : score >= 70 ? 'GOOD' : score >= 45 || matchedSkills.length > 0 && score >= 30 ? 'POTENTIAL' : 'WEAK';
-  return { score, classification, matchedSkills, missingSkills, dimensions,
+  // Growth potential is a deterministic recommendation signal, not a hiring
+  // decision. It rewards documented adjacent/transferable evidence while
+  // keeping the current match score and missing requirements visible.
+  const transferable = coverage.counts.TRANSFERABLE ?? 0;
+  const partial = coverage.counts.PARTIALLY_SUPPORTED ?? 0;
+  const explicit = coverage.counts.EXPLICITLY_SUPPORTED ?? 0;
+  const requiredEvidence = coverage.requirements.length;
+  const growthPotentialScore = score === null ? null : Math.min(100, Math.round(
+    (explicit * 100 + partial * 65 + transferable * 40) / Math.max(1, requiredEvidence),
+  ));
+  const growthPotential = growthPotentialScore === null ? null
+    : growthPotentialScore >= 65 ? 'HIGH'
+      : growthPotentialScore >= 35 ? 'MEDIUM' : 'LOW';
+  return { score, classification, matchedSkills, matchedTitleTerms, missingSkills, dimensions, evidenceAnalysis: coverage,
     unverifiedRequirements: requirements.filter(r => !covered.includes(r)),
-    method: 'evidence_coverage_v1', estimated: true,
+    growthPotential, growthPotentialScore,
+    growthPotentialReasons: coverage.requirements.filter(r => ['TRANSFERABLE', 'PARTIALLY_SUPPORTED'].includes(r.status)).map(r => r.label),
+    method: 'evidence_coverage_v2', estimated: true,
     potentialEvidence: classification === 'POTENTIAL' ? matchedSkills : [],
-    summary: matchedSkills.length ? `Verified skill overlap: ${matchedSkills.join(', ')}. ${missingSkills.length} listed skills not evidenced.` : 'No listed skill overlap verified. Review the requirements and add evidence to your profile.',
+    summary: matchedSkills.length || matchedTitleTerms.length
+      ? `Profile overlap found${matchedSkills.length ? ` in skills: ${matchedSkills.join(', ')}` : ''}${matchedTitleTerms.length ? ` and title terms: ${matchedTitleTerms.join(', ')}` : ''}. ${missingSkills.length} listed skills not evidenced.`
+      : 'No profile overlap verified. Review the requirements and add evidence to your profile.',
   };
 }
 export interface CareerPreferences {
+  targetTitles?: string[]; requiredSkills?: string[]; excludedKeywords?: string[]; experienceLevels?: string[];
   contractTypes?: string[];
   domains: string[]; locations: string[]; workModes: string[]; excludedCompanies: string[]; excludedJobTypes: string[];
-  employmentTypes?: string[]; excludedJobs?: string[]; minimumSalary?: number | null; salaryCurrency?: string;
+  employmentTypes?: string[]; excludedJobs?: string[]; minimumSalary?: number | null; maximumSalary?: number | null; salaryCurrency?: string;
 }
 export function matchesPreferences(job: CareerJob & { id?: string; salaryMin?: number | null; salaryMax?: number | null; currency?: string | null }, settings: CareerPreferences): boolean {
-  return (!settings.domains.length || settings.domains.some(d => normalize(d) === normalize(job.domain || job.company?.industry || '')))
+  const body = normalize(`${job.title} ${job.description || ''}`);
+  const currencyMatches = job.currency?.toUpperCase() === (settings.salaryCurrency || 'TND').toUpperCase();
+  const salaryFloor = job.salaryMax ?? job.salaryMin;
+  const salaryCeiling = job.salaryMin ?? job.salaryMax;
+  return (!settings.targetTitles?.length || settings.targetTitles.some(title => normalize(job.title).includes(normalize(title))))
+    && (!settings.requiredSkills?.length || settings.requiredSkills.every(skill => body.includes(normalize(skill)) || job.skills.some(s => normalize(s.skill?.name || '') === normalize(skill))))
+    && (!settings.excludedKeywords?.length || !settings.excludedKeywords.some(keyword => body.includes(normalize(keyword))))
+    && (!settings.experienceLevels?.length || settings.experienceLevels.includes(job.experienceLevel || ''))
+    && (!settings.domains.length || settings.domains.some(d => normalize(d) === normalize(job.domain || job.company?.industry || '')))
     && (!settings.locations.length || settings.locations.some(l => normalize(job.location || '').includes(normalize(l))))
     && (!settings.workModes.length || settings.workModes.includes(job.workMode || (job.remote ? 'REMOTE' : 'ONSITE')))
     && !settings.excludedCompanies.includes(job.companyId) && !settings.excludedJobTypes.includes(job.employmentType)
       && (!settings.employmentTypes?.length || settings.employmentTypes.includes(job.employmentType))
-      && (!settings.contractTypes?.length || settings.contractTypes.includes(job.contractType || ''))
+    && (!settings.contractTypes?.length || settings.contractTypes.includes(job.contractType || ''))
     && (!job.id || !settings.excludedJobs?.includes(job.id))
-    && (settings.minimumSalary == null || ((job.salaryMax ?? job.salaryMin) != null
-      && (job.salaryMax ?? job.salaryMin)! >= settings.minimumSalary
-      && job.currency?.toUpperCase() === (settings.salaryCurrency || 'USD').toUpperCase()));
+    && (settings.minimumSalary == null || (salaryFloor != null && salaryFloor >= settings.minimumSalary && currencyMatches))
+    && (settings.maximumSalary == null || (salaryCeiling != null && salaryCeiling <= settings.maximumSalary && currencyMatches));
 }
 export function renderProfile(candidate: CareerCandidate & { user: { name: string; email: string }; phone?: string | null }) {
   const extra = candidate.professionalData as { sections?: Record<string, string[]> } | null;

@@ -1,0 +1,16 @@
+name: easyjob-meeting
+services:
+  media:
+    image: livekit/livekit-server:v1.13.8
+    network_mode: host
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes:
+      - ./livekit.production.yaml:/etc/livekit.yaml:ro
+      - ./certs:/certs:ro
+    depends_on: [redis]
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${MEETING_REDIS_PASSWORD:?Set a private Redis password}"]
+    ports: ["127.0.0.1:6379:6379"]

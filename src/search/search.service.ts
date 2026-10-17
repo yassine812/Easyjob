@@ -1,3 +1,5 @@
+import { publicJobSalary } from '../jobs/job-content';
+import { availableJobWhere } from '../jobs/job-availability';
 import { Injectable } from '@nestjs/common';
 import { EmploymentType, ExperienceLevel, JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,6 +31,7 @@ const JOB_SEARCH_SELECT = {
   remote: true,
   employmentType: true,
   experienceLevel: true,
+  salaryVisible: true,
   salaryMin: true,
   salaryMax: true,
   currency: true,
@@ -68,7 +71,7 @@ export class SearchService {
       this.prisma.job.count({ where }),
     ]);
 
-    return paginate(items, total, page, limit);
+    return paginate(items.map(publicJobSalary), total, page, limit);
   }
 
   /**
@@ -88,12 +91,12 @@ export class SearchService {
     }) : [];
     const ranks = new Map(ids.map((id, index) => [id, index]));
     items.sort((a, b) => ranks.get(a.id)! - ranks.get(b.id)!);
-    return paginate(items.slice(skip, skip + take), items.length, page, limit);
+    return paginate(items.slice(skip, skip + take).map(publicJobSalary), items.length, page, limit);
   }
   private buildWhere(query: JobSearchQuery): Prisma.JobWhereInput {
     const keyword = query.keyword?.trim();
     return {
-      AND: [{ company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } } }, { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
+      AND: [availableJobWhere()],
       ...(query.status ? { status: query.status } : { status: JobStatus.PUBLISHED }),
       ...(keyword
         ? {
@@ -110,6 +113,7 @@ export class SearchService {
       ...(query.remote !== undefined ? { remote: query.remote } : {}),
       ...(query.employmentType ? { employmentType: query.employmentType } : {}),
       ...(query.experienceLevel ? { experienceLevel: query.experienceLevel } : {}),
+      ...((query.salaryMin !== undefined || query.salaryMax !== undefined) ? { salaryVisible: true } : {}),
       ...(query.salaryMin !== undefined ? { salaryMax: { gte: query.salaryMin } } : {}),
       ...(query.salaryMax !== undefined ? { salaryMin: { lte: query.salaryMax } } : {}),
       ...(query.skills && query.skills.length > 0

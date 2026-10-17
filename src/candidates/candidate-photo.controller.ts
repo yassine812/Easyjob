@@ -17,15 +17,15 @@ export class CandidatePhotoController {
   @Get()
   async read(@CurrentUser('userId') userId: string) {
     const p = await this.profile(userId);
-    if (!p.photoKey) return { url: null };
+    if (!p.photoKey) return { avatar_url: null };
     // A database pointer can outlive a local storage file after a reset or
     // manual cleanup. Do not hand the browser a signed URL for a missing file.
     try {
       await this.storage.getBytes(p.photoKey);
-      return { url: await this.storage.presignedGet(p.photoKey) };
+      return { avatar_url: await this.storage.presignedGet(p.photoKey) };
     } catch {
       await this.prisma.candidateProfile.updateMany({ where: { id: p.id, photoKey: p.photoKey }, data: { photoKey: null } });
-      return { url: null };
+      return { avatar_url: null };
     }
   }
   @Post()
@@ -47,7 +47,7 @@ export class CandidatePhotoController {
     }
     catch (err) { await this.storage.delete(key); throw err; }
     if (p.photoKey) await this.storage.delete(p.photoKey);
-    return { url: await this.storage.presignedGet(key) };
+    return { avatar_url: await this.storage.presignedGet(key) };
   }
   @Delete()
   async remove(@CurrentUser('userId') userId: string) {

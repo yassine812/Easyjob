@@ -16,6 +16,8 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
     fileParallelism: false,
+    pool: 'forks',
+    maxWorkers: 1,
   },
 });
 

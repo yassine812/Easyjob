@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../files/storage.service';
 import { AiClient } from './ai-client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { atsReport, extractProfile, matchCandidate } from '../career/career-engine';
+import { prefillFromCv } from '../career/cv-prefill';
 
 @Processor(QUEUES.AI)
 @Injectable()
@@ -95,7 +97,11 @@ export class AiProcessor extends WorkerHost {
       });
     }
 
-    const result = await this.aiClient.analyzeCv({ text, filename: resume.filename });
+    const report = atsReport(text);
+    // Materialise only data present in the CV once its extraction succeeds.
+    // prefillFromCv preserves values the candidate has already entered.
+    await this.prisma.$transaction(tx => prefillFromCv(tx, resume.candidateId, extractProfile(text)));
+    const result = { ...report, overall_score: report.score, ats_compatibility: report.score, improvement_suggestions: report.suggestions, estimated: true };
     await this.prisma.aiAnalysis.update({
       where: { id: analysisId },
       data: {
@@ -119,9 +125,12 @@ export class AiProcessor extends WorkerHost {
   private async handleMatch(analysisId: string, input: Record<string, unknown>): Promise<void> {
     const candidateId = String(input.candidateId);
     const jobId = String(input.jobId);
-    const candidate = await this.buildCandidatePayload(candidateId);
-    const job = await this.buildJobPayload(jobId);
-    const result = await this.aiClient.match(candidate, job);
+    const candidate = await this.prisma.candidateProfile.findUnique({ where: { id: candidateId }, include: { skills: { include: { skill: true } }, experiences: true, educations: true, resumes: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }], take: 1 } } });
+    const job = await this.prisma.job.findUnique({ where: { id: jobId }, include: { skills: { include: { skill: true } }, company: { select: { industry: true } } } });
+    if (!candidate || !job) throw new Error('Candidate or job not found');
+    const fit = matchCandidate(candidate, job);
+    const dimension = (key: string) => fit.dimensions.find(d => d.key === key)?.score ?? null;
+    const result = { ...fit, overall_match: fit.score, skill_match: dimension('skills'), experience_match: dimension('experience'), location_match: dimension('location'), seniority_match: dimension('seniority'), reasoning: fit.summary };
     await this.prisma.aiAnalysis.update({
       where: { id: analysisId },
       data: {
@@ -142,7 +151,7 @@ export class AiProcessor extends WorkerHost {
       where: { jobId_candidateId: { jobId, candidateId } },
       include: { job: { select: { companyId: true } } },
     });
-    if (application) {
+    if (application && result.overall_match != null) {
       this.events.emit('candidate.match_score_updated', {
         applicationId: application.id,
         jobId,
