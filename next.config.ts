@@ -9,7 +9,9 @@ const nextConfig: NextConfig = {
   // The repo root contains the backend's package-lock.json; pin Turbopack to
   // the frontend workspace so it doesn't misdetect the workspace root.
   turbopack: {
-    root: __dirname,
+    // next.config.ts is evaluated as an ES module in Next 16, so __dirname is
+    // unavailable. The npm script always runs from the frontend workspace.
+    root: process.cwd(),
   },
   // Standalone output so the production Docker image is self-contained.
   output: "standalone",
