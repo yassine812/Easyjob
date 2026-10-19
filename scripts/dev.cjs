@@ -2,6 +2,7 @@ const { spawn } = require('node:child_process');
 const { spawnSync } = require('node:child_process');
 const http = require('node:http');
 const path = require('node:path');
+const fs = require('node:fs');
 
 const host = 'localhost';
 const configuredPort = Number(process.env.WEB_PORT || process.env.PORT || 3000);
@@ -105,7 +106,19 @@ async function main() {
     return;
   }
 
-  const nextBin = path.join(__dirname, '..', 'node_modules', 'next', 'dist', 'bin', 'next');
+  // Prefer the root install, but fall back to the complete frontend install.
+  // A partially interrupted npm install can leave root/node_modules/next as an
+  // empty directory while web/node_modules/next remains usable.
+  const nextCandidates = [
+    path.join(__dirname, '..', 'node_modules', 'next', 'dist', 'bin', 'next'),
+    path.join(__dirname, '..', 'web', 'node_modules', 'next', 'dist', 'bin', 'next'),
+  ];
+  const nextBin = nextCandidates.find(candidate => fs.existsSync(candidate));
+  if (!nextBin) {
+    console.error('Next.js is not installed. Run npm install from the project root.');
+    process.exitCode = 1;
+    return;
+  }
   // Webpack is used for the local dev server because Turbopack's PostCSS
   // worker can remain hung while evaluating the large global stylesheet.
   // Production builds continue to use Next's default Turbopack pipeline.
