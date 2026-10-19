@@ -113,7 +113,10 @@ async function main() {
     path.join(__dirname, '..', 'node_modules', 'next', 'dist', 'bin', 'next'),
     path.join(__dirname, '..', 'web', 'node_modules', 'next', 'dist', 'bin', 'next'),
   ];
-  const nextBin = nextCandidates.find(candidate => fs.existsSync(candidate));
+  const nextBin = nextCandidates.find(candidate =>
+    fs.existsSync(candidate) &&
+    fs.existsSync(path.join(path.dirname(candidate), '..', 'server', 'require-hook.js')),
+  );
   if (!nextBin) {
     console.error('Next.js is not installed. Run npm install from the project root.');
     process.exitCode = 1;
