@@ -1,0 +1,11 @@
+{
+  "name": "easyjob-web-command-wrapper",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix .. run dev",
+    "build": "npm --prefix .. run build",
+    "start": "npm --prefix .. run start",
+    "lint": "npm --prefix .. run lint",
+    "test": "npm --prefix .. run test"
+  }
+}
