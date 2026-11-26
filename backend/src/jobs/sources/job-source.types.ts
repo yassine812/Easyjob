@@ -99,6 +99,10 @@ export interface ExternalJobSearchResult {
   /** Only an explicit complete snapshot may reconcile missing records. */
   complete?: boolean;
   rejected?: number;
+  /** Non-fatal employer-level failures; persisted in the synchronization history. */
+  warnings?: string[];
+  /** Authoritative complete employer snapshots. Failed/partial employers must be omitted. */
+  completedScopes?: Array<{ prefix: string; presentIds: string[] }>;
 }
 
 export interface JobSourceAdapter {
@@ -111,6 +115,8 @@ export interface JobSourceAdapter {
   getSourceInfo?(): { evidenceUrl: string; integrationStatus: string; method: string };
   authenticate?(): Promise<JobSourceHealth>;
   fetchJobDetails?(externalId: string): Promise<ExternalJobListing | null>;
+  /** Opt-in bounded detail revalidation for paginated feeds. Null must mean confirmed 404. */
+  readonly revalidationBatchSize?: number;
   normalizeJob?(raw: unknown): ExternalJobListing | null;
   getCompany?(job: ExternalJobListing): { name: string | null; website: string | null };
   getCompanyLogo?(job: ExternalJobListing): string | null;

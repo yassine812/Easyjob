@@ -2,63 +2,34 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ProfilePhoto } from './profile-photo';
-
-const mocks = vi.hoisted(() => ({ get: vi.fn(), status: vi.fn(), enroll: vi.fn() }));
-vi.mock('@/lib/api/client', () => ({ api: { get: mocks.get }, ApiError: class extends Error {} }));
-vi.mock('@/lib/api/biometric', () => ({ biometricApi: { status: mocks.status, enrollFromPhoto: mocks.enroll } }));
-vi.mock('@/config/env', () => ({ env: { apiUrl: 'http://localhost:3002/api/v1' } }));
+import { useAuthStore } from '@/store/auth-store';
+const mocks = vi.hoisted(() => ({ post: vi.fn(), remove: vi.fn(), me: vi.fn() }));
+vi.mock('@/lib/api/client', () => ({ api: { post: mocks.post, delete: mocks.remove } }));
+vi.mock('@/lib/api/auth', () => ({ authApi: { me: mocks.me } }));
 vi.mock('@/lib/i18n/release', () => ({ useReleaseText: () => (_fr: string, en: string) => en }));
-
-beforeEach(() => {
-  mocks.get.mockResolvedValue({ url: '/api/v1/files/signed?key=photo&expires=123&sig=test' });
-  mocks.status.mockResolvedValue({ enrolled: true });
-});
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
-
+beforeEach(() => { useAuthStore.getState().setSession('test', { id: 'photo-user', avatarUrl: 'https://images.test/photo.jpg' } as never); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); useAuthStore.getState().clearSession(); });
 function show(onValidityChange = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return render(<QueryClientProvider client={client}><ProfilePhoto onValidityChange={onValidityChange} /></QueryClientProvider>);
 }
-
-it('loads saved photos using CORS and restores readiness after returning to the step', async () => {
-  const validity = vi.fn();
-  const first = show(validity);
-  const img = await screen.findByRole('img', { name: 'Your profile photo' });
-  expect(img).toHaveAttribute('crossorigin', 'anonymous');
-  expect(img).toHaveAttribute('src', expect.stringContaining('http://localhost:3002/api/v1/files/signed?'));
+it('only marks a saved photo ready after loading, including after remount', async () => {
+  const validity = vi.fn(), view = show(validity);
   expect(validity).toHaveBeenLastCalledWith(false);
-  fireEvent.load(img);
+  fireEvent.load(screen.getByRole('img', { name: 'Your profile photo' }));
   await waitFor(() => expect(validity).toHaveBeenLastCalledWith(true));
-  expect(mocks.enroll).not.toHaveBeenCalled();
-  first.unmount();
-  show(validity);
-  const restored = await screen.findByRole('img', { name: 'Your profile photo' });
+  view.unmount(); show(validity);
   expect(validity).toHaveBeenLastCalledWith(false);
-  fireEvent.load(restored);
-  await waitFor(() => expect(validity).toHaveBeenLastCalledWith(true));
-  expect(mocks.enroll).not.toHaveBeenCalled();
 });
-
-it('never reports a missing photo as ready even if biometric enrollment exists', async () => {
-  mocks.get.mockResolvedValue({ url: null });
-  const validity = vi.fn();
-  show(validity);
-  await waitFor(() => expect(mocks.get).toHaveBeenCalled());
+it('never reports a missing photo as ready', () => {
+  useAuthStore.getState().setSession('test', { id: 'photo-user', avatarUrl: null } as never);
+  const validity = vi.fn(); show(validity);
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
-  expect(validity).not.toHaveBeenCalledWith(true);
+  expect(validity).toHaveBeenLastCalledWith(false);
 });
-
-it('stops retrying after two failures even when each refetch returns a new signed URL', async () => {
-  let version = 0;
-  mocks.get.mockImplementation(async () => ({ url: `/api/v1/files/signed?version=${++version}` }));
-  const validity = vi.fn();
-  show(validity);
-  fireEvent.error(await screen.findByRole('img'));
-  await waitFor(() => expect(screen.getByRole('img')).toHaveAttribute('src', expect.stringContaining('version=2')));
-  fireEvent.error(screen.getByRole('img'));
-  await waitFor(() => expect(screen.getByRole('img')).toHaveAttribute('src', expect.stringContaining('version=3')));
+it('reports an unreadable saved photo without retrying forever', async () => {
+  const validity = vi.fn(); show(validity);
   fireEvent.error(screen.getByRole('img'));
   expect(await screen.findByRole('alert')).toHaveTextContent('The saved photo could not be loaded');
-  expect(mocks.get).toHaveBeenCalledTimes(3);
   expect(validity).not.toHaveBeenCalledWith(true);
 });

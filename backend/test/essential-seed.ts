@@ -68,25 +68,14 @@ const PLANS = [
 /** Seeds roles, permissions and plans (system data) — called after each truncation. */
 export async function seedEssential(prisma: PrismaClient): Promise<void> {
   const permissionIds = new Map<string, string>();
-  for (const name of PERMISSIONS) {
-    const permission = await prisma.permission.upsert({
-      where: { name },
-      create: { name },
-      update: {},
-    });
-    permissionIds.set(name, permission.id);
-  }
+  await prisma.permission.createMany({ data: PERMISSIONS.map(name => ({ name })), skipDuplicates: true });
+  for (const permission of await prisma.permission.findMany()) permissionIds.set(permission.name, permission.id);
   for (const [roleName, permissions] of Object.entries(ROLE_PERMISSIONS)) {
     const role = await prisma.role.upsert({ where: { name: roleName }, create: { name: roleName }, update: {} });
-    for (const permission of permissions) {
-      const pid = permissionIds.get(permission);
-      if (!pid) continue;
-      await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: role.id, permissionId: pid } },
-        create: { roleId: role.id, permissionId: pid },
-        update: {},
-      });
-    }
+    await prisma.rolePermission.createMany({
+      data: permissions.flatMap(permission => { const permissionId = permissionIds.get(permission); return permissionId ? [{ roleId: role.id, permissionId }] : []; }),
+      skipDuplicates: true,
+    });
   }
   for (const plan of PLANS) {
     await prisma.plan.upsert({

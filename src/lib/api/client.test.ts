@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, apiFetch, qs, tryRefresh } from './client';
 import { useAuthStore } from '@/store/auth-store';
+import { env } from '@/config/env';
 
-const apiUrl = 'http://localhost:3000/api/v1';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -50,7 +50,7 @@ describe('api client', () => {
     await api.get('/jobs');
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe(`${apiUrl}/jobs`);
+    expect(String(url)).toBe(`${env.apiUrl}/jobs`);
     expect((init?.headers as Headers).get('Authorization')).toBe('Bearer token-1');
     expect((init as RequestInit).credentials).toBe('include');
     expect((init as RequestInit).method).toBe('GET');

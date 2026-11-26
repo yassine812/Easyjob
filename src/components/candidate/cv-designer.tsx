@@ -32,7 +32,7 @@ const subscribeToClient = () => () => {};
 export function BuildingCv() {
   const tr = useReleaseText();
   return <section role="status" aria-live="polite" className="flex flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-8 sm:flex-row">
-    <Image src="/images/coach/easyjob-builder.png" width={220} height={270} className="h-64 w-auto object-contain" alt={tr('Ton coach EasyJob en tenue d’ouvrier', 'Your EasyJob coach in construction gear', 'مدرب EasyJob بملابس البناء')} />
+    <Image src="/images/coach/easyjob-builder.png?v=original-9146880" width={220} height={270} className="h-64 w-auto object-contain" alt={tr('Ton coach EasyJob en tenue d’ouvrier', 'Your EasyJob coach in construction gear', 'مدرب EasyJob بملابس البناء')} />
     <div className="max-w-sm"><span className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs text-primary"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />EasyJob</span><h2 className="text-2xl font-semibold">{tr('Nous construisons ton CV.', 'We’re building your CV.', 'نحضّروا في سيرتك الذاتية.')}</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">{tr('Je retravaille la présentation à partir du CV choisi. Tu pourras vérifier et modifier chaque proposition avant de l’enregistrer.', 'I’m reworking the selected CV. You can review and edit every suggestion before saving it.', 'نحسّن السيرة المختارة. تنجّم تراجع وتعدّل كل اقتراح قبل الحفظ.')}</p></div>
   </section>;
 }

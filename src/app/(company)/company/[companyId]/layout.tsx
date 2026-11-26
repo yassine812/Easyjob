@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useRole } from '@/hooks/use-auth';
 import { RequireCompanyMember } from '@/components/shared/guards';
 import { AppShell, type NavItem } from '@/components/layout/app-shell';
+import { Logo } from '@/components/layout/logo';
 
 import { useI18n } from '@/lib/i18n';
 import { Building2 } from 'lucide-react';
@@ -46,6 +47,8 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
   ];
 
   const sidebarHeader = (
+    <div className="space-y-3">
+    <Logo href={`/company/${companyId}/dashboard`} size="sm" className="px-2" />
     <div className="flex items-center gap-3 px-2 py-1">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#4F46E5] text-white font-bold shadow-md shadow-indigo-500/25">
         <Building2 className="size-5" />
@@ -59,6 +62,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
         </p>
         {!entitlement.loading && <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold text-primary">{entitlement.isPaid && <Crown className="size-3 shrink-0" />}<span className="truncate">{entitlement.displayName}</span></span>}
       </div>
+    </div>
     </div>
   );
 

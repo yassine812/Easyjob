@@ -10,5 +10,7 @@ describe('Workspace navigation matching', () => {
     expect(isNavActive('/company/a/jobs/job-1', { href: '/company/a/jobs' })).toBe(true);
     expect(isNavActive('/company/ab/jobs', { href: '/company/a/jobs' })).toBe(false);
     expect(isNavActive('/candidate/jobs-other', { href: '/candidate/jobs' })).toBe(false);
+    expect(isNavActive('/platform-admin/users', { href: '/platform-admin' })).toBe(false);
+    expect(isNavActive('/platform-admin', { href: '/platform-admin' })).toBe(true);
   });
 });

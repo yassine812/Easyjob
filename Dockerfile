@@ -14,10 +14,14 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
 ARG NEXT_PUBLIC_FRONTEND_URL
+ARG NEXT_PUBLIC_PARLOR_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL \
-    NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL
-RUN npm run build
+    NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL \
+    NEXT_PUBLIC_PARLOR_URL=$NEXT_PUBLIC_PARLOR_URL
+# Webpack is the stable production compiler for this monorepo; Turbopack's
+# production worker can stall while evaluating the 100+ route app in Docker.
+RUN npm run build -- --webpack
 
 # ---- runner ----
 FROM node:24-alpine AS runner

@@ -22,7 +22,7 @@ import { ApplicationMessageDto } from './dto/application.dto';
 import type { RequestMeta } from '../companies/companies.service';
 import { atsReport, matchCandidate, matchesPreferences } from '../career/career-engine';
 import { StorageService } from '../files/storage.service';
-import { isLocalTestJob } from '../jobs/job-availability';
+import { availableJobWhere, isLocalTestJob } from '../jobs/job-availability';
 import { applicationQuality } from '../career/application-quality';
 import { mergePlanFeatures } from '../subscriptions/plan-catalog';
 import { DEFAULT_THRESHOLDS, recruitmentClassification, type RecruitmentClassification } from '../companies/recruitment-metrics';
@@ -143,7 +143,7 @@ export class ApplicationsService {
       throw new BadRequestException('This job is not accepting applications');
     }
     if (!isLocalTestJob(job) && ['OFFRE DE DÉMONSTRATION', 'OFFRE DE TEST', 'Source officielle et candidature :', 'Source et candidature :'].some(marker => job.description?.includes(marker))) throw new BadRequestException('This legacy imported or demonstration offer does not accept native applications');
-    if (job.company.status !== 'ACTIVE' || job.company.verification?.status !== 'VERIFIED') throw new BadRequestException('Company is not verified');
+    if (job.company.status !== 'ACTIVE') throw new BadRequestException('Company is not active');
     if (job.expiresAt && job.expiresAt.getTime() < Date.now()) {
       throw new BadRequestException('This job has expired');
     }
@@ -202,7 +202,7 @@ export class ApplicationsService {
         if (await tx.application.count({ where: { candidateId: profile.id, autoApplied: true, appliedAt: { gte: midnight } } }) >= Math.min(settings.maxPerDay, Number(features?.['career.auto_apply.daily_limit']) || 3)) throw new BadRequestException('Daily Auto Apply limit reached (UTC)');
         const weekStart = new Date(midnight); weekStart.setUTCDate(weekStart.getUTCDate() - (weekStart.getUTCDay() + 6) % 7);
         if (await tx.application.count({ where: { candidateId: profile.id, autoApplied: true, appliedAt: { gte: weekStart } } }) >= Math.min(settings.maxPerWeek, Number(features?.['career.auto_apply.weekly_limit']) || 10)) throw new BadRequestException('Weekly Auto Apply limit reached (UTC)');
-        const currentJob = await tx.job.findFirst({ where: { id: job.id, status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
+        const currentJob = await tx.job.findFirst({ where: { id: job.id, ...availableJobWhere() } });
         if (!currentJob) throw new BadRequestException('Job is no longer available');
 
       }

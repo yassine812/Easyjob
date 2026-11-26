@@ -504,7 +504,7 @@ export class SubscriptionsService {
       throw new ForbiddenException('You do not own this subscription');
     }
 
-    if (!['ACTIVE', 'TRIALING'].includes(subscription.status)) throw new BadRequestException('Subscription is not active');
+    if (!['ACTIVE', 'TRIALING', 'PAST_DUE'].includes(subscription.status)) throw new BadRequestException('Subscription is not active');
     if (!subscription.currentPeriodEnd) throw new BadRequestException('Contact support to close a subscription without an end date');
     if (subscription.canceledAt) return { success: true, message: 'Cancellation already scheduled', effectiveAt: subscription.currentPeriodEnd };
 

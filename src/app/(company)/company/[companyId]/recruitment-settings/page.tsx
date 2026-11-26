@@ -1,1 +1,5 @@
-export { WorkspaceSettings as default } from '@/components/company/workspace-settings';
+import { WorkspaceSettings } from '@/components/company/workspace-settings';
+
+export default function RecruitmentSettingsPage() {
+  return <WorkspaceSettings />;
+}

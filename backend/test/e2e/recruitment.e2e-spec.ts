@@ -1,3 +1,4 @@
+import { applicationPayload } from '../helpers';
 import { companyFixture } from '../helpers';
 import { authHeader, closeTestApp, createTestApp, createVerifiedUser } from '../helpers';
 
@@ -16,11 +17,10 @@ describe('EasyJob recruitment workflow (isolated database)', () => {
     otherCandidate = await createVerifiedUser(ctx, 'Candidate Two', 'candidate-two@product.test');
     const company = await companyFixture(ctx, hr.accessToken, { legalName: 'Product Test Company', commercialName: 'Product Test Company' });
     expect(company.status).toBe(201); companyId = company.body.id;
-    await ctx.prisma.company.update({ where: { id: companyId }, data: { status: 'ACTIVE', verification: { update: { status: 'VERIFIED' } } } });
     const job = await ctx.http.post('/api/v1/jobs').set(authHeader(hr.accessToken)).set('X-Company-Id', companyId).send({ title: 'Python Developer', description: 'Build reliable Python APIs with our engineering team.', domain: 'Software', skills: [{ name: 'Python', required: true }], employmentType: 'FULL_TIME', contractType: 'CDI', languages: ['French'], experienceLevel: 'MID', workMode: 'REMOTE', location: 'France', salaryMin: 40000, salaryMax: 60000, currency: 'EUR' });
     expect(job.status).toBe(201); jobId = job.body.id;
     await ctx.prisma.job.update({ where: { id: jobId }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
-    const apply = await ctx.http.post(`/api/v1/jobs/${jobId}/apply`).set(authHeader(candidate.accessToken)).send({ motivation: 'I would like to discuss this role.' });
+    const apply = await ctx.http.post(`/api/v1/jobs/${jobId}/apply`).set(authHeader(candidate.accessToken)).send(await applicationPayload(ctx, candidate.accessToken, { motivation: 'I would like to discuss this role.' }));
     expect(apply.status).toBe(201); applicationId = apply.body.id;
   });
   afterAll(async () => { if (ctx) await closeTestApp(ctx); });

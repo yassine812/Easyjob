@@ -21,6 +21,16 @@
 name: startup-starter-prod
 
 services:
+  # Named volumes are mounted after the image is built, so the image-time
+  # /app/storage ownership is otherwise replaced by root-owned volume
+  # metadata. Initialize it once before the unprivileged API/worker start.
+  storage-init:
+    image: alpine:3.20
+    restart: "no"
+    command: ["sh", "-c", "mkdir -p /app/storage && chown -R 1000:1000 /app/storage"]
+    volumes:
+      - storage_data:/app/storage
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -85,8 +95,30 @@ services:
       AI_SERVICE_URL: http://ai:8000
       AI_SERVICE_TIMEOUT_MS: ${AI_SERVICE_TIMEOUT_MS:-30000}
       AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}
+      MIROFISH_ENABLED: ${MIROFISH_ENABLED:-false}
+      MIROFISH_URL: ${MIROFISH_URL:-http://mirofish:5001}
+      MIROFISH_TIMEOUT_MS: ${MIROFISH_TIMEOUT_MS:-30000}
+      MIROFISH_SIMULATION_ID: ${MIROFISH_SIMULATION_ID:-}
+      MIROFISH_AGENT_ID: ${MIROFISH_AGENT_ID:-0}
+      JOB_SOURCE_JOBOPS_ENABLED: ${JOB_SOURCE_JOBOPS_ENABLED:-false}
+      # Candidate marketplace contains only jobs published by EasyJob companies.
+      # Set JOB_CATALOG_MODE=EXTERNAL_ENABLED deliberately to re-enable imported feeds.
+      JOB_CATALOG_MODE: ${JOB_CATALOG_MODE:-PLATFORM_ONLY}
+      JOB_SOURCE_COMPANY_DIRECT_ENABLED: ${JOB_SOURCE_COMPANY_DIRECT_ENABLED:-false}
+      JOB_SOURCE_COMPANY_DIRECT_MAX_PAGES: ${JOB_SOURCE_COMPANY_DIRECT_MAX_PAGES:-10}
+      JOB_SOURCE_TANITJOBS_ENABLED: ${JOB_SOURCE_TANITJOBS_ENABLED:-false}
+      JOB_SOURCE_TANITJOBS_MAX_PAGES: ${JOB_SOURCE_TANITJOBS_MAX_PAGES:-250}
+      JOB_SOURCE_TANITJOBS_REQUEST_INTERVAL_MS: ${JOB_SOURCE_TANITJOBS_REQUEST_INTERVAL_MS:-1000}
+      JOB_SOURCE_JOBOPS_URL: ${JOB_SOURCE_JOBOPS_URL:-http://jobops:3001}
+      JOB_SOURCE_JOBOPS_QUERY: ${JOB_SOURCE_JOBOPS_QUERY:-software engineer}
+      JOB_SOURCE_JOBOPS_SEARCH_TERMS: ${JOB_SOURCE_JOBOPS_SEARCH_TERMS:-}
+      JOB_SOURCE_JOBOPS_MAX_PAGES: ${JOB_SOURCE_JOBOPS_MAX_PAGES:-3}
+      JOB_SOURCE_JOBOPS_PAGE_SIZE: ${JOB_SOURCE_JOBOPS_PAGE_SIZE:-50}
+      JOB_SOURCE_JOBOPS_TIMEOUT_MS: ${JOB_SOURCE_JOBOPS_TIMEOUT_MS:-15000}
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-stripe}
+      KONNECT_ENABLED: ${KONNECT_ENABLED:-false}
       KONNECT_MODE: ${KONNECT_MODE:-sandbox}
+      KONNECT_API_BASE_URL: ${KONNECT_API_BASE_URL:-}
       KONNECT_API_KEY: ${KONNECT_API_KEY:-}
       KONNECT_RECEIVER_WALLET_ID: ${KONNECT_RECEIVER_WALLET_ID:-}
       KONNECT_WEBHOOK_URL: ${KONNECT_WEBHOOK_URL:-}
@@ -120,6 +152,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
     volumes:
       - storage_data:/app/storage
     # Local debugging only — remove on a locked-down VPS or firewall these.
@@ -132,6 +166,12 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "scripts/job-sources-health.cjs"]
+      interval: 5m
+      timeout: 15s
+      start_period: 15m
+      retries: 3
     command: ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/worker-main.js"]
     environment:
       <<: *api_environment
@@ -181,18 +221,24 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+      storage-init:
+        condition: service_completed_successfully
 
   ai:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-      additional_contexts:
-        interview_models: ./.runtime
     restart: unless-stopped
     environment:
-      AI_PROVIDER: rule_based
+      AI_PROVIDER: ${AI_PROVIDER:-rule_based}
       AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_COACH_MODEL: ${OPENAI_COACH_MODEL:-}
+      OPENAI_RESEARCH_MODEL: ${OPENAI_RESEARCH_MODEL:-}
       INTERVIEW_EMBEDDING_MODEL_PATH: /models/paraphrase-multilingual-MiniLM-L12-v2
+      FASTER_WHISPER_MODEL_PATH: /models/faster-whisper-small
       INTERVIEW_ANALYSIS_WORKERS: ${INTERVIEW_ANALYSIS_WORKERS:-2}
       INTERVIEW_SEMANTIC_TIMEOUT_MS: ${INTERVIEW_SEMANTIC_TIMEOUT_MS:-3000}
       HF_HUB_OFFLINE: "1"
@@ -204,26 +250,104 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=256m
     healthcheck:
+      # Liveness stays available while the bundled embedding/speech models load.
+      # A healthy container must also be ready to serve real interview analysis.
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)"]
       interval: 15s
       timeout: 5s
-      retries: 6
-      start_period: 90s
+      retries: 12
+      start_period: 180s
 
   web:
     build:
-      context: ./web
+      context: ..
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
         NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-${NEXT_PUBLIC_API_URL:-}}
         NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL:-${NEXT_PUBLIC_API_URL:-}}
+        NEXT_PUBLIC_PARLOR_URL: ${NEXT_PUBLIC_PARLOR_URL:?NEXT_PUBLIC_PARLOR_URL is required}
     restart: unless-stopped
     depends_on:
       - api
     # Local debugging only — remove on a locked-down VPS or firewall these.
     ports:
       - "127.0.0.1:3001:3000"
+
+  # Unified live interview sidecar. The web app and Parlor are started by the
+  # same compose command; Caddy exposes Parlor on PARLOR_DOMAIN.
+  parlor:
+    build:
+      context: ../deploy/parlor
+      dockerfile: Dockerfile
+      args:
+        PARLOR_REF: ${PARLOR_REF:-da1ddf1f3e1a7ea04f69df24e98541ab5c402ccf}
+        LLAMA_CPP_VERSION: ${LLAMA_CPP_VERSION:-b11815}
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+      MODEL: ${PARLOR_MODEL:-e2b}
+      LLAMA_CTX: ${PARLOR_CONTEXT_SIZE:-8192}
+      LLAMA_THREADS: ${PARLOR_THREADS:-2}
+      LLAMA_WARMUP: ${PARLOR_WARMUP:-false}
+      HF_HOME: /models/huggingface
+      TRANSFORMERS_CACHE: /models/huggingface
+    volumes:
+      - parlor_models:/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5)"]
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 180s
+
+  # Integrated MiroFish swarm recruiter. The profile is enabled by default in
+  # the production env templates; the application still has a local fallback.
+  mirofish:
+    profiles: ["mirofish"]
+    image: ghcr.io/666ghj/mirofish:latest
+    restart: unless-stopped
+    environment:
+      LLM_API_KEY: ${MIROFISH_LLM_API_KEY:-}
+      LLM_BASE_URL: ${MIROFISH_LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL_NAME: ${MIROFISH_LLM_MODEL_NAME:-gpt-4o-mini}
+      ZEP_API_KEY: ${MIROFISH_ZEP_API_KEY:-}
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5001
+    volumes:
+      - mirofish_uploads:/app/backend/uploads
+    expose:
+      - "5001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health', timeout=5)"]
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 120s
+
+  # Integrated JobOps sidecar. EasyJob imports listings read-only and preserves
+  # original apply URLs. The profile is enabled by default in production.
+  jobops:
+    profiles: ["jobops"]
+    image: ghcr.io/dakheera47/job-ops:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      PYTHON_PATH: /usr/bin/python3
+      CODEX_HOME: /app/codex-home
+    volumes:
+      - jobops_data:/app/data
+      - jobops_codex_home:/app/codex-home
+      - jobops_tectonic_cache:/root/.cache/Tectonic
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # Local staging email catcher (SMTP 1025 / UI 8025). In a real deployment
   # replace EMAIL_PROVIDER=dev-smtp with a production SMTP provider and remove
@@ -239,6 +363,8 @@ services:
     restart: unless-stopped
     environment:
       STAGING_DOMAIN: ${STAGING_DOMAIN:?STAGING_DOMAIN is required}
+      PARLOR_DOMAIN: ${PARLOR_DOMAIN:?PARLOR_DOMAIN is required}
+      CADDY_TLS: ${CADDY_TLS:-}
     ports:
       - "80:80"
       - "443:443"
@@ -251,6 +377,7 @@ services:
     depends_on:
       - web
       - api
+      - parlor
 
 volumes:
   postgres_data:
@@ -258,3 +385,8 @@ volumes:
   storage_data:
   caddy_data:
   caddy_config:
+  parlor_models:
+  mirofish_uploads:
+  jobops_data:
+  jobops_codex_home:
+  jobops_tectonic_cache:

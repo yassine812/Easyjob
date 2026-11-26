@@ -85,7 +85,7 @@ describe('Account-Type Resolution and Role-Based Routing', () => {
     const user = await establishSession('admin-token', 'boss@platform.dev');
 
     expect(resolveAccountType(user)).toBe('admin');
-    expect(getDashboardRoute(user)).toBe('/admin/dashboard');
+    expect(getDashboardRoute(user)).toBe('/platform-admin');
   });
 
   it('Test 4: Candidate account type cannot access company routes', () => {

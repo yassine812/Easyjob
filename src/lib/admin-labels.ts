@@ -5,6 +5,7 @@ const labels: Record<string, string> = {
   EXPIRED: 'Expirée', CLOSED: 'Fermée', TRIALING: 'Essai', PAST_DUE: 'Impayé', CANCELED: 'Annulé',
   SUCCEEDED: 'Réussi', PROCESSING: 'En traitement', COMPLETED: 'Terminé', FAILED: 'Échec', OPEN: 'Ouvert',
   IN_PROGRESS: 'En cours', WAITING_USER: 'En attente de l’utilisateur', RESOLVED: 'Résolu',
+  FREE: 'Gratuit',
 };
 
 /**

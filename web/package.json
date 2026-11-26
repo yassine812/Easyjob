@@ -6,6 +6,9 @@
     "build": "npm --prefix .. run build",
     "start": "npm --prefix .. run start",
     "lint": "npm --prefix .. run lint",
-    "test": "npm --prefix .. run test"
+    "test": "npm --prefix .. run test",
+    "parlor:setup": "npm --prefix .. run parlor:setup",
+    "parlor:start": "npm --prefix .. run parlor:start",
+    "parlor:status": "npm --prefix .. run parlor:status"
   }
 }

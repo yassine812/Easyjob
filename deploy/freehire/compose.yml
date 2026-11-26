@@ -1,0 +1,67 @@
+name: easyjob-freehire
+x-app: &app
+  image: easyjob-freehire:local
+  build:
+    context: ../../.runtime/freehire-upstream
+    dockerfile: ../../deploy/freehire/Dockerfile
+  environment:
+    DATABASE_URL: postgres://freehire:${FREEHIRE_DB_PASSWORD:?Run scripts/freehire.cjs setup}@db:5432/freehire?sslmode=disable
+    REDIS_URL: redis://redis:6379/0
+    JWT_SECRET: ${FREEHIRE_JWT_SECRET:?Run scripts/freehire.cjs setup}
+    PORT: "8080"
+    FRONTEND_ORIGIN: http://localhost:3000
+    MEILI_KEY: ""
+    LLM_API_KEY: ""
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: freehire
+      POSTGRES_PASSWORD: ${FREEHIRE_DB_PASSWORD:?Run scripts/freehire.cjs setup}
+      POSTGRES_DB: freehire
+    volumes:
+      - freehire-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freehire -d freehire"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    entrypoint: ["/app/migrate"]
+    restart: "no"
+  freehire-api:
+    <<: *app
+    ports:
+      - "127.0.0.1:${FREEHIRE_PORT:-8085}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+  collector:
+    <<: *app
+    # Only explicitly added boards are crawled. No upstream multi-million-row catalogue.
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while true; do /app/ingest greenhouse; sleep 86400; done"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+volumes:
+  freehire-db:

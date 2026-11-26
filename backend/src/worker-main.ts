@@ -9,6 +9,7 @@
  */
 import { config as loadDotenv } from 'dotenv';
 import { Logger } from '@nestjs/common';
+import { writeFileSync } from 'node:fs';
 
 loadDotenv();
 process.env.RUN_WORKERS = 'true';
@@ -21,6 +22,10 @@ const { NestFactory } = require('@nestjs/core');
 async function bootstrapWorker(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, { abortOnError: false });
   app.enableShutdownHooks();
+  const startedAt = Date.now();
+  const heartbeat = () => writeFileSync('/tmp/easyjob-worker-heartbeat.json', JSON.stringify({ pid: process.pid, at: Date.now(), startedAt }));
+  // A health probe can distinguish an initialized worker from a sleeping/crashed process.
+  if (process.platform !== 'win32') { heartbeat(); setInterval(heartbeat, 30000).unref(); }
   Logger.log('Startup Starter worker started (BullMQ consumers active)', 'Worker');
 }
 

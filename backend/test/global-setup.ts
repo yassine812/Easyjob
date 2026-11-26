@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 /**
  * Runs before the e2e test suite. Applies all Prisma migrations to the test
@@ -11,7 +11,7 @@ export default async function globalSetup(): Promise<void> {
     'postgresql://postgres:postgres@localhost:5432/startup_starter_test?schema=public';
   if (!/_test(?:_[0-9]+)?$/.test(new URL(databaseUrl).pathname.slice(1))) throw new Error('Refusing to migrate a non-test database in E2E');
   if (!process.env.REDIS_URL || new URL(process.env.REDIS_URL).port !== '6399') throw new Error('E2E requires dedicated Redis on port 6399');
-  execSync('npx prisma migrate deploy', {
+  execFileSync(process.execPath, [require.resolve('prisma/build/index.js'), 'migrate', 'deploy'], {
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: 'inherit',
   });

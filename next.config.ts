@@ -38,7 +38,9 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    // reactCompiler is enabled by create-next-app; keep as-is.
+    cpus: 1,
+    // Keep local compilation usable on machines with limited RAM.
+    webpackMemoryOptimizations: true,
   },
 };
 

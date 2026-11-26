@@ -15,9 +15,11 @@ export function localServiceUrl(value: string, hostname = typeof window === 'und
 }
 
 export const env = {
-  get apiUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'); },
-  get wsUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3000'); },
-  get frontendUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_FRONTEND_URL ?? 'http://localhost:5173'); },
+  get apiUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3002/api/v1'); },
+  get wsUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3002'); },
+  get frontendUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_FRONTEND_URL ?? 'http://localhost:3000'); },
+  /** Optional local Parlor sidecar (Apache-2.0, on-device voice + vision). */
+  get parlorUrl() { return localServiceUrl(process.env.NEXT_PUBLIC_PARLOR_URL ?? 'http://localhost:8001'); },
 } as const;
 
 export const IS_PROD = process.env.NODE_ENV === 'production';

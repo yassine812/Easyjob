@@ -111,6 +111,11 @@ export class CoachTurnDto {
   @IsString() @MaxLength(10000) code!: string;
 }
 
+export class RecruiterSimulationDto {
+  @IsInt() @Min(0) @Max(30) questionIndex!: number;
+  @IsString() @MinLength(5) @MaxLength(10000) answer!: string;
+}
+
 export class InterviewAutoTestDto {
   @IsIn(['strong', 'average', 'weak', 'inconsistent']) persona!: 'strong' | 'average' | 'weak' | 'inconsistent';
   @IsOptional() @Type(() => Number) @IsIn([1, 2, 4]) speed?: number;

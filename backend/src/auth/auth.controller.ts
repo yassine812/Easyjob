@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Req,
+  Query,
   Res,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -116,6 +117,12 @@ export class AuthController {
     const result = await this.authService.resetPassword(dto);
     this.clearRefreshCookie(res);
     return result;
+  }
+
+  @Public()
+  @Get('activation-preview')
+  async activationPreview(@Query('token') token: string) {
+    return this.authService.activationPreview(token);
   }
 
   @Get('me')

@@ -27,7 +27,7 @@ jobs:
       redis:
         image: redis:7-alpine
         ports:
-          - 6379:6379
+          - 6399:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -36,7 +36,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/startup_starter?schema=public
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/startup_starter_test?schema=public
-      REDIS_URL: redis://localhost:6379
+      REDIS_URL: redis://localhost:6399
       JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789abcdef
       JWT_REFRESH_SECRET: ci-refresh-secret-0123456789abcdef0123456789abcdef
       STORAGE_PROVIDER: local

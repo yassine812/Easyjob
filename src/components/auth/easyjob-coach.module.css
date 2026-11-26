@@ -1,7 +1,7 @@
 .scene { display: grid; grid-template-columns: minmax(230px, .9fr) minmax(0, 1.1fr); background: #0b1225; color: #edf2ff; border-radius: 24px; overflow: hidden; }
 .stage { position: relative; display: flex; align-items: center; min-width: 0; background: radial-gradient(ellipse at center, #233056, #0b1225 75%); }
 .portrait { width: 100%; aspect-ratio: 1; position: relative; overflow: hidden; }
-.pose { position: absolute; inset: 0; background-image: url('/images/coach/easyjob-human-poses.png'); background-size: 300% 100%; opacity: 0; transition: opacity .55s ease; }
+.pose { position: absolute; inset: 0; background-image: url('/images/coach/easyjob-human-poses.png?v=original-9146880'); background-size: 300% 100%; opacity: 0; transition: opacity .55s ease; }
 .active { opacity: 1; animation: breathe 5s ease-in-out infinite; }
 .badge { position: absolute; bottom: 18px; inset-inline: 20px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #c3d2ec; }
 .badge::before { content: ''; width: 7px; height: 7px; background: #5eead4; border-radius: 50%; }
@@ -28,7 +28,7 @@
 .compact .badge { display: none; }
 .stage.floating { background: transparent; height: auto; border-radius: 0; overflow: visible; }
 .floating .portrait { width: 100%; }
-.floating .pose { background-image: url('/images/coach/easyjob-human-transparent.png'); }
+.floating .pose { background-image: url('/images/coach/easyjob-human-transparent.png?v=original-9146880'); }
 .floating .badge { display: none; }
 @media (prefers-reduced-motion: reduce) { .preparingDots span { animation: none; } }
 @keyframes breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.008); } }

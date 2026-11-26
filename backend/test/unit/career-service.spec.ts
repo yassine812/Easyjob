@@ -72,11 +72,12 @@ describe('Candidate career ownership and consent', () => {
     await expect(service.regenerateSection('user', 'foreign', { content: 'Some professional content', sectionIndex: 0 })).rejects.toThrow(NotFoundException);
     expect(ai.tailorCv).not.toHaveBeenCalled();
   });
-  it('allows Free match sorting but queries only available verified jobs', async () => {
+  it('allows Free match sorting for active admin-managed companies without legacy verification', async () => {
     const { service, prisma } = setup();
     expect((await service.search('user', { sort: 'match' })).items).toEqual([]);
     const filter = prisma.job.findMany.mock.calls[0][0].where.AND[0];
-    expect(filter.company).toEqual(expect.objectContaining({ status: 'ACTIVE', verification: { status: 'VERIFIED' } }));
+    expect(filter.company).toEqual(expect.objectContaining({ status: 'ACTIVE' }));
+    expect(filter.company).not.toHaveProperty('verification');
     expect(filter.status).toBe('PUBLISHED');
     expect(filter.OR[1].expiresAt.gt).toBeInstanceOf(Date);
   });

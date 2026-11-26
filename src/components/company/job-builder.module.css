@@ -132,3 +132,12 @@
 }
 
 .formFields { min-width: 0; border: 0; padding: 0; margin: 0; }
+
+.builder { border-radius:24px; box-shadow:var(--product-elevation); }
+.toolbar { padding:24px 28px; background:linear-gradient(110deg,var(--card),color-mix(in srgb,var(--accent) 30%,var(--card))); border-radius:24px 24px 0 0; }
+.titleLine h1 { font-size:26px; font-weight:550; letter-spacing:-.04em; }
+.sectionNav { background:color-mix(in srgb,var(--muted) 40%,var(--card)); }
+.sectionNav button { border-radius:12px; min-height:44px; }
+.section { border-radius:18px; }
+.previewPanel { border-radius:20px; }
+@media(max-width:767px) { .toolbar { padding:20px; }.titleLine h1 { font-size:23px; } }

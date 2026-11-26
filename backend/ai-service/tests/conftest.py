@@ -8,6 +8,7 @@ def isolated_provider(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "rule_based")
     monkeypatch.delenv("AI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("FASTER_WHISPER_MODEL_PATH", raising=False)
     dependencies._active_provider = None
     yield
     dependencies._active_provider = None

@@ -19,11 +19,11 @@ import { useCareerText } from '@/lib/i18n/career';
 import { useEntitlement } from '@/hooks/use-entitlement';
 import { ApplyDialog } from '@/components/candidate/apply-dialog';
 
-export const panelClass = 'rounded-2xl border border-border bg-card p-5 sm:p-6';
+export const panelClass = 'motion-panel rounded-2xl border border-border bg-card p-5 sm:p-6';
 export const selectClass = 'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm';
 export function CareerFrame({ title, description, children, actions, showFindJob = true, wide = false }: { title: string; description?: string; children: ReactNode; actions?: ReactNode; showFindJob?: boolean; wide?: boolean }) {
   const t = useCareerText();
-  return <div className={`mx-auto ${wide ? 'w-full min-w-0 space-y-4' : 'max-w-7xl space-y-7'}`}><header className="flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300"><EasyJobFeatureMark size="sm" className="" />EasyJob · Career</p><h1 className="text-3xl font-semibold tracking-tight">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}</div><div className="flex flex-wrap gap-2">{actions}{showFindJob && <Button asChild><Link href="/candidate/jobs">{t('find')}<ArrowUpRight className="ms-2 size-4" /></Link></Button>}</div></header>{children}</div>;
+  return <div className={`mx-auto ${wide ? 'w-full min-w-0 space-y-4' : 'max-w-7xl space-y-7'}`}><header className="motion-page-header flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300"><EasyJobFeatureMark size="sm" className="" />EasyJob · Career</p><h1 className="text-3xl font-semibold tracking-tight">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}</div><div className="flex flex-wrap gap-2">{actions}{showFindJob && <Button asChild><Link href="/candidate/jobs">{t('find')}<ArrowUpRight className="ms-2 size-4" /></Link></Button>}</div></header>{children}</div>;
 }
 export function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="flex min-w-0 flex-col gap-2 text-sm font-medium">{label}{children}</label>; }
 export function Busy() { const t = useCareerText(); return <EasyJobLoading label={t('PROCESSING')} />; }
@@ -65,7 +65,7 @@ export function JobCard({ job, showMatchScore = true }: { job: CareerJob; showMa
     .filter(value => Boolean(value) && value !== 'UNKNOWN' && value !== 'N/A');
   const location = job.location || (job.workMode ? t(job.workMode) : job.remote ? t('REMOTE') : '');
   const salaryLabel = job.salaryText || ((job.salaryMin != null || job.salaryMax != null) ? `${job.salaryMin?.toLocaleString('fr-TN') ?? '—'} – ${job.salaryMax?.toLocaleString('fr-TN') ?? '—'} ${job.currency || ''} ${job.salaryPeriod || ''}` : t('salaryUndisclosed'));
-  return <article className="group rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300/70 hover:shadow-xl sm:p-5">
+  return <article data-motion-item className="opportunity-card group rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300/70 hover:shadow-xl sm:p-5">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className={`flex min-w-0 flex-1 gap-3 ${isDemoOffer ? 'blur-[6px] select-none' : ''}`}>
         <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl border bg-white text-indigo-600 dark:text-indigo-300">{logoUrl && !logoFailed ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={logoUrl} alt={`${company} ${t('companyLogo')}`} className="size-full object-contain p-1" onError={() => setLogoFailed(true)} /> : <span title={t('logoUnavailable')} aria-label={t('logoUnavailable')}><Building2 className="size-5" /></span>}</div>

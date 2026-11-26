@@ -1,6 +1,6 @@
 """Face embedding — OpenFace NN4 small2 (128-d, CPU-only).
 
-Model: nn4.small2.v1.t7 (BSD-3-Clause, CMU OpenFace project).
+Model: nn4.small2.v1.t7 (Apache-2.0, CMU OpenFace project).
 Embeddings are L2-normalized; cosine similarity in [0, 1] is used for
 matching (see matcher.py). The model runs entirely on CPU via OpenCV's DNN
 module — no GPU required, no runtime model download (file is shipped in

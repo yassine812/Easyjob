@@ -139,7 +139,27 @@ export function analyzeDeterministicInterview(job: { title?: string; description
 }
 
 export function selectDeterministicQuestions(analysis: ReturnType<typeof analyzeDeterministicInterview>, locale = 'en', number = 6, seed = '') {
-  const questions = analysis.topics.flatMap(topic => topic.questions.map((question, index) => ({ question, key: normalizeInterviewText(question), rank: hash(`${seed}:${topic.concept}:${index}`), topic: topic.concept })));
+  const topicQuestions = analysis.topics.flatMap(topic => topic.questions.map((question, index) => ({ question, key: normalizeInterviewText(question), rank: hash(`${seed}:${topic.concept}:${index}`), topic: topic.concept })));
+  // A strong CV can cover every extracted requirement, leaving no gap topics.
+  // The coach must still be usable: a real interview always needs an
+  // introduction, a behavioural example and closing questions. Keep these
+  // prompts deterministic and local so the feature does not depend on an AI
+  // provider or on a particular job taxonomy hit.
+  const fallback = [
+    localeText(locale,
+      'Introduce yourself in 90 seconds and connect your strongest experience to this role.',
+      'Présentez-vous en 90 secondes et reliez votre expérience la plus forte à ce poste.',
+      'قدّم نفسك خلال 90 ثانية واربط أقوى خبراتك بهذا المنصب.'),
+    localeText(locale,
+      'Describe a difficult project, your personal contribution and the measurable result.',
+      'Décrivez un projet difficile, votre contribution personnelle et le résultat mesurable.',
+      'صف مشروعاً صعباً ومساهمتك الشخصية والنتيجة القابلة للقياس.'),
+    localeText(locale,
+      'What questions would you ask the team about the objectives and success criteria for this role?',
+      'Quelles questions poseriez-vous à l’équipe sur les objectifs et les critères de réussite du poste ?',
+      'ما الأسئلة التي ستطرحها على الفريق حول أهداف المنصب ومعايير النجاح؟'),
+  ].map((question, index) => ({ question, key: normalizeInterviewText(question), rank: hash(`${seed}:fallback:${index}`), topic: 'fallback' }));
+  const questions = topicQuestions.length ? topicQuestions : fallback;
   const unique = [...new Map(questions.map(item => [item.key, item])).values()].sort((a, b) => a.rank - b.rank);
   return unique.slice(0, Math.max(1, number)).map(item => item.question);
 }

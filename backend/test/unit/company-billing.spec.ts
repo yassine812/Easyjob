@@ -159,13 +159,13 @@ describe("Company billing overview", () => {
   });
 });
 describe("End-of-period cancellation", () => {
-  it("keeps active access and its period, schedules once, and calls the correct provider", async () => {
+  it.each(['ACTIVE', 'PAST_DUE'])("preserves %s status and its period, schedules once, and calls the correct provider", async status => {
     const end = new Date("2027-10-05");
     const record = {
       id: "sub",
       ownerType: "COMPANY",
       companyId: "company",
-      status: "ACTIVE",
+      status,
       currentPeriodEnd: end,
       canceledAt: null as Date | null,
       provider: "STRIPE",
@@ -202,7 +202,7 @@ describe("End-of-period cancellation", () => {
       where: { id: "sub" },
       data: { canceledAt: expect.any(Date) },
     });
-    expect(record.status).toBe("ACTIVE");
+    expect(record.status).toBe(status);
     expect(record.currentPeriodEnd).toBe(end);
     await service.cancel("user", "sub");
     expect(provider.cancelSubscription).toHaveBeenCalledTimes(1);

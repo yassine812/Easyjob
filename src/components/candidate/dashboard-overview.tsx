@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { HumanCoach } from '@/components/ui/human-coach';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Send, Target, TrendingUp } from 'lucide-react';
 import type { CareerOverview } from '@/lib/api/career';
 import { useCareerText } from '@/lib/i18n/career';
+import { useReleaseText } from '@/lib/i18n/release';
 import { Button } from '@/components/ui/button';
 import { panelClass } from './career-shared';
 
@@ -39,7 +41,7 @@ function AnimatedNumber({ value, suffix = '' }: { value: number | null; suffix?:
 }
 
 function StatCard({ label, value, suffix, context, icon: Icon }: { label: string; value: number | null; suffix?: string; context?: string; icon: typeof Send }) {
-  return <div className="group rounded-xl border bg-card/80 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
+  return <div className="motion-stat-card motion-panel group rounded-xl border bg-card/80 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
     <div className="flex items-center justify-between gap-2"><p className="text-xs font-medium text-muted-foreground">{label}</p><Icon className="size-4 text-primary/70" aria-hidden="true" /></div>
     <p className="mt-2 text-2xl font-semibold tabular-nums"><AnimatedNumber value={value} suffix={suffix} /></p>
     {context && <p className="mt-1 text-xs text-muted-foreground">{context}</p>}
@@ -81,6 +83,7 @@ function dashboardFromResponse(data?: CareerOverview): CareerOverview['dashboard
 
 export function DashboardOverview({ data }: { data?: CareerOverview }) {
   const t = useCareerText();
+  const tr = useReleaseText();
   const reduced = useReducedMotion();
   const dashboard = dashboardFromResponse(data);
   if (!dashboard) return <section className={panelClass}><p className="font-medium">{t('noDataYet')}</p><p className="mt-1 text-sm text-muted-foreground">{t('startExploringJobs')}</p><Button asChild className="mt-4"><Link href="/candidate/jobs">{t('find')}</Link></Button></section>;
@@ -90,7 +93,12 @@ export function DashboardOverview({ data }: { data?: CareerOverview }) {
     ['APPLIED', pipeline.applied, 'bg-sky-500'], ['UNDER_REVIEW', pipeline.review, 'bg-violet-500'], ['INTERVIEW', pipeline.interview, 'bg-amber-500'], ['OFFER', pipeline.offer, 'bg-emerald-500'], ['HIRED', pipeline.hired, 'bg-teal-500'],
   ] as const;
   return <div className="space-y-5">
-    <div data-guide="dashboard" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+    <section data-motion-item className="workspace-next-step flex flex-wrap items-center gap-4 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card to-card px-4 py-3 sm:flex-nowrap sm:px-6">
+      <HumanCoach className="h-20 w-20 shrink-0" pose={1} />
+      <div className="min-w-[12rem] flex-1"><h2 className="font-semibold">{tr('Prépare ton prochain entretien', 'Prepare for your next interview', 'استعد لمقابلتك القادمة')}</h2><p className="mt-1 text-sm text-muted-foreground">{tr('Entraîne-toi avec le coach EasyJob, à ton rythme.', 'Practise with the EasyJob coach at your own pace.', 'تدرّب مع مدرب EasyJob على وتيرتك.')}</p></div>
+      <Button asChild variant="outline" className="shrink-0"><Link href="/candidate/interview-coach">{tr('Découvrir', 'Explore', 'اكتشف')}</Link></Button>
+    </section>
+    <div data-guide="dashboard" className="workspace-kpi-grid grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
       <StatCard label={t('applicationsSent')} value={stats.applicationsSent} context={stats.applicationsThisWeek > 0 ? `+${stats.applicationsThisWeek} ${t('thisWeek')}` : t('noDataYet')} icon={Send} />
       <StatCard label={t('inReview')} value={stats.inReview} icon={BriefcaseBusiness} />
       <StatCard label={t('interviews')} value={stats.interviews} icon={CalendarDays} />
@@ -101,8 +109,8 @@ export function DashboardOverview({ data }: { data?: CareerOverview }) {
       <section className={`${panelClass} min-w-0`} aria-labelledby="application-activity-title">
         <div className="mb-4 flex items-start justify-between gap-3"><div><h2 id="application-activity-title" className="font-semibold">{t('applicationActivity')}</h2><p className="mt-1 text-xs text-muted-foreground">{t('lastSevenDays')}</p></div><TrendingUp className="size-5 text-primary" aria-hidden="true" /></div>
         {activity.some(item => item.count > 0) ? <div className="h-56 min-h-0 w-full"><ResponsiveContainer width="100%" height="100%"><AreaChart data={activity} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-          <defs><linearGradient id="dashboardActivityFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.32} /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} /></linearGradient></defs>
-          <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={value => new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short' })} tickLine={false} axisLine={false} fontSize={11} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={11} /><Tooltip labelFormatter={value => new Date(`${value}T00:00:00Z`).toLocaleDateString()} contentStyle={{ borderRadius: 12, borderColor: 'hsl(var(--border))', background: 'hsl(var(--card))' }} /><Area type="monotone" dataKey="count" name={t('applications')} stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#dashboardActivityFill)" isAnimationActive={!reduced} animationDuration={500} />
+          <defs><linearGradient id="dashboardActivityFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--primary)" stopOpacity={0.32} /><stop offset="100%" stopColor="var(--primary)" stopOpacity={0.02} /></linearGradient></defs>
+          <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={(value: string | number) => new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short' })} tickLine={false} axisLine={false} fontSize={11} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={11} /><Tooltip labelFormatter={(value: string | number) => new Date(`${value}T00:00:00Z`).toLocaleDateString()} contentStyle={{ borderRadius: 12, borderColor: 'var(--border)', background: 'var(--card)' }} /><Area type="monotone" dataKey="count" name={t('applications')} stroke="var(--primary)" strokeWidth={2.5} fill="url(#dashboardActivityFill)" isAnimationActive={!reduced} animationDuration={500} />
         </AreaChart></ResponsiveContainer></div> : <div className="flex h-56 items-center justify-center rounded-xl border border-dashed text-center text-sm text-muted-foreground"><p>{t('noApplicationActivity')}</p></div>}
       </section>
       <section className={`${panelClass} space-y-4`} aria-labelledby="application-pipeline-title"><div className="flex items-center justify-between gap-3"><h2 id="application-pipeline-title" className="font-semibold">{t('applicationPipeline')}</h2><span className="text-xs text-muted-foreground">{totalPipeline} {t('applications')}</span></div><div className="flex h-3 overflow-hidden rounded-full bg-muted">{pipelineItems.map(([key, value, color]) => value > 0 && <span key={key} title={`${t(key)}: ${value}`} className={`${color} transition-[width] duration-500 motion-reduce:transition-none`} style={{ width: `${totalPipeline ? value / totalPipeline * 100 : 0}%` }} />)}</div><div className="space-y-2">{pipelineItems.map(([key, value, color]) => <div className="flex items-center justify-between gap-3 text-sm" key={key}><span className="flex items-center gap-2 text-muted-foreground"><span className={`size-2 rounded-full ${color}`} />{t(key)}</span><span className="font-semibold tabular-nums">{value}</span></div>)}</div></section>

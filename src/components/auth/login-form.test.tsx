@@ -152,7 +152,7 @@ describe('LoginForm', () => {
     await user.type(screen.getByLabelText('Password'), 'Password123');
     await user.click(screen.getByRole('button', { name: /^continue$|^log in$/i }));
 
-    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith('/admin/dashboard'));
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith('/platform-admin'));
   });
 
   it('shows a useful translated error on failed login', async () => {
@@ -204,7 +204,7 @@ describe('LoginForm', () => {
   it.each([
     [candidate, '/candidate/dashboard'],
     [makeUser({ roles: ['HR'], memberships: [{ companyId: 'acme', role: 'HR' }] }), '/company/acme/dashboard'],
-    [makeUser({ roles: ['PLATFORM_ADMIN'] }), '/admin/dashboard'],
+    [makeUser({ roles: ['PLATFORM_ADMIN'] }), '/platform-admin'],
     [makeUser({ roles: ['COMPANY_ADMIN'], mustChangePassword: true }), '/change-password'],
   ] as const)('resumes an authenticated account at its own workspace', async (account, route) => {
     renderForm();

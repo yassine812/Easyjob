@@ -71,11 +71,12 @@ async function ensure() {
     child.unref();
   }
   // Match the API (5 min) + model (3 min) cold-start windows on low-memory PCs.
-  const deadline = Date.now() + 600000;
+  const apiOnly = process.argv.includes('--api-only');
+  const deadline = Date.now() + (apiOnly ? 120000 : 600000);
   while (Date.now() < deadline) {
     const current = await status();
-    if (current?.status === 'ok' && (await Promise.all(endpoints.map(probe))).every(Boolean)) {
-      console.log('EasyJob API and face models are ready; automatic service recovery is active.');
+    if (apiOnly ? await probe(endpoints[0]) : current?.status === 'ok' && (await Promise.all(endpoints.map(probe))).every(Boolean)) {
+      console.log(apiOnly ? 'EasyJob API is ready on port 3002; other local services recover in the background.' : 'EasyJob API and face models are ready; automatic service recovery is active.');
       return;
     }
     await pause(1000);

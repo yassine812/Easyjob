@@ -44,7 +44,7 @@ it('keeps the participant connected after camera permission failure and offers r
   media.local.setCameraEnabled.mockRejectedValueOnce(new Error('permission denied'));
   const joined = vi.fn();
   render(<NativeMeetingRoom access={access} devices={{}} onLeave={vi.fn()} onMute={vi.fn()} onJoined={joined} />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Accès aux appareils impossible');
+  expect(await screen.findByRole('alert')).toHaveTextContent('deviceError');
   expect(joined).toHaveBeenCalled(); expect(media.disconnect).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Caméra' })).toBeEnabled();
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { HumanCoach } from '@/components/ui/human-coach';
 import { useAuthStore } from '@/store/auth-store';
 import { useReleaseText } from '@/lib/i18n/release';
 
@@ -40,7 +40,7 @@ export function CandidateGuide() {
 
   if (!visible || !key || loadedFor !== key) return null;
   return <div role="status" aria-live="polite" className="fixed bottom-24 end-4 z-40 flex max-w-[calc(100vw-2rem)] items-end gap-2 lg:bottom-6">
-    <Image src="/images/coach/easyjob-human-transparent.png" alt="" width={130} height={160} className="h-36 w-28 shrink-0 object-contain object-bottom" />
+    <HumanCoach className="h-28 w-28 shrink-0" />
     <div className="mb-3 max-w-56 rounded-2xl border border-primary/40 bg-card px-4 py-3 shadow-xl">
       <p className="font-semibold">{t('Bon retour', 'Welcome back', 'مرحباً بعودتك')}</p>
       <p className="mt-1 text-sm text-muted-foreground">{t('Ravi de te revoir sur EasyJob.', 'Good to see you again on EasyJob.', 'يسعدنا رؤيتك مجدداً على EasyJob.')}</p>

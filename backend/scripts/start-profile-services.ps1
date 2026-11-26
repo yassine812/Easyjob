@@ -21,6 +21,8 @@ function Test-Extractor {
 if (!(Test-Extractor)) {
   if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) { throw 'Port 8000 is occupied but the CV extractor is unhealthy.' }
   $aiRoot = Join-Path $profileRoot 'ai-service'
+  & python (Join-Path $aiRoot 'scripts/cache_face_models.py')
+  if ($LASTEXITCODE -ne 0) { throw 'Could not prepare the checksum-verified face models.' }
   $aiProcess = Start-Process -FilePath (Get-Command python).Source -ArgumentList @('-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000') -WorkingDirectory $aiRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $profileRuntime 'ai.log') -RedirectStandardError (Join-Path $profileRuntime 'ai.error.log') -PassThru
   Set-Content -LiteralPath (Join-Path $profileRuntime 'ai.pid') -Value $aiProcess.Id
   $deadline = (Get-Date).AddMinutes(3)

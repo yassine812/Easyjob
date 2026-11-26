@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { BillingInterval, CompanyStatus, JobStatus, PlanType, SubscriptionStatus, UserStatus, VerificationStatus } from '@prisma/client';
+import { BillingInterval, CompanyStatus, JobStatus, PlanType, SubscriptionStatus, UserStatus } from '@prisma/client';
 import { IsBoolean, IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -9,7 +9,6 @@ import { PLATFORM_ADMIN_ROLES } from '../common/constants/roles';
 import { AdminService } from './admin.service';
 import { CompanyProvisioningService } from './company-provisioning.service';
 import { ProvisionCompanyDto } from './provision-company.dto';
-import { CompanyVerificationService } from '../company-verification/company-verification.service';
 import { JobsService } from '../jobs/jobs.service';
 import { JobAggregationService } from '../jobs/job-aggregation.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -29,12 +28,6 @@ class PaginatedQuery {
   limit?: number;
 }
 
-class VerificationsQuery extends PaginatedQuery {
-  @IsOptional()
-  @IsEnum(VerificationStatus)
-  status?: VerificationStatus;
-}
-
 class CompaniesQuery extends PaginatedQuery {
   @IsOptional()
   @IsEnum(CompanyStatus)
@@ -43,6 +36,12 @@ class CompaniesQuery extends PaginatedQuery {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional() @IsString() planId?: string;
+  @IsOptional() @IsEnum(SubscriptionStatus) subscriptionStatus?: SubscriptionStatus;
+  @IsOptional() @IsIn(['7', '30']) expiring?: '7' | '30';
+  @IsOptional() @IsIn(['7', '30', '90']) registeredWithin?: '7' | '30' | '90';
+  @IsOptional() @IsIn(['7', '30', '90']) activeWithin?: '7' | '30' | '90';
 }
 
 class CandidatesQuery extends PaginatedQuery {
@@ -53,6 +52,12 @@ class CandidatesQuery extends PaginatedQuery {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional() @IsString() planId?: string;
+  @IsOptional() @IsEnum(SubscriptionStatus) subscriptionStatus?: SubscriptionStatus;
+  @IsOptional() @IsIn(['7', '30']) expiring?: '7' | '30';
+  @IsOptional() @IsIn(['7', '30', '90']) registeredWithin?: '7' | '30' | '90';
+  @IsOptional() @IsIn(['7', '30', '90']) activeWithin?: '7' | '30' | '90';
 }
 
 class AdminJobsQuery extends PaginatedQuery {
@@ -77,13 +82,6 @@ class AuditLogsQuery extends PaginatedQuery {
   @IsOptional()
   @IsString()
   actorId?: string;
-}
-
-class RejectDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  reason!: string;
 }
 
 class AdminRejectJobDto {
@@ -147,7 +145,6 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly provisioning: CompanyProvisioningService,
-    private readonly verificationService: CompanyVerificationService,
     private readonly jobsService: JobsService,
     private readonly jobAggregation: JobAggregationService,
     private readonly skills: EasyJobSkillsService,
@@ -157,41 +154,6 @@ export class AdminController {
   @Permissions('admin.jobs')
   jobSources() {
     return this.jobAggregation.sourceStatuses();
-  }
-
-  // ---------------- verifications ----------------
-
-  @Get('verifications')
-  @Permissions('admin.verifications')
-  async verifications(@Query() query: VerificationsQuery) {
-    return this.adminService.listVerifications(query);
-  }
-
-  @Get('verifications/:id')
-  @Permissions('admin.verifications')
-  async verification(@Param('id') id: string) {
-    return this.adminService.getVerification(id);
-  }
-
-  @Post('verifications/:id/approve')
-  @Permissions('admin.verifications')
-  async approveVerification(
-    @CurrentUser('userId') adminId: string,
-    @Param('id') id: string,
-    @Req() req: AuthRequest,
-  ) {
-    return this.verificationService.review(adminId, id, 'approve', undefined, requestMeta(req));
-  }
-
-  @Post('verifications/:id/reject')
-  @Permissions('admin.verifications')
-  async rejectVerification(
-    @CurrentUser('userId') adminId: string,
-    @Param('id') id: string,
-    @Body() dto: RejectDto,
-    @Req() req: AuthRequest,
-  ) {
-    return this.verificationService.review(adminId, id, 'reject', dto.reason, requestMeta(req));
   }
 
   // ---------------- companies ----------------
@@ -221,6 +183,12 @@ export class AdminController {
   @Post('company-deliveries/:id/retry')
   @Permissions('admin.company_manage')
   retryDelivery(@Param('id') id: string) { return this.provisioning.retry(id); }
+
+  @Post('companies/:id/invitation/resend')
+  @Permissions('admin.company_manage')
+  resendCompanyInvitation(@CurrentUser('userId') adminId: string, @Param('id') id: string) {
+    return this.provisioning.resend(adminId, id);
+  }
 
   @Get('companies')
   @Permissions('admin.companies')

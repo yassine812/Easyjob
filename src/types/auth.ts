@@ -21,7 +21,6 @@ export type Permission =
   | 'assessment.manage'
   | 'admin.users'
   | 'admin.companies'
-  | 'admin.verifications'
   | 'admin.jobs'
   | 'admin.analytics'
   | 'admin.subscriptions'

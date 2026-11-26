@@ -1,4 +1,6 @@
-import { companyFixture } from '../helpers';
+import { applicationPayload } from '../helpers';
+import { CompanyAccessWorker } from '../../src/queues/email/company-access.worker';
+import { ConsoleEmailProvider } from '../../src/queues/email/email.provider';
 import {
   authHeader,
   closeTestApp,
@@ -40,7 +42,7 @@ describe('Full recruitment flow (e2e)', () => {
     admin = { accessToken: adminLogin.accessToken, userId: adminUser!.id };
 
     candidate = await createVerifiedUser(ctx, 'Cara Candidate', 'cara@flow.test');
-    companyAdmin = await createVerifiedUser(ctx, 'Ali Admin', 'ali@flow.test');
+
   });
 
   afterAll(async () => {
@@ -124,59 +126,39 @@ describe('Full recruitment flow (e2e)', () => {
     expect(row.processingStatus).toBe('COMPLETED');
   });
 
-  it('3. company admin creates a company (onboarding) and submits verification documents', async () => {
-    const create = await companyFixture(ctx, companyAdmin.accessToken, {
-        legalName: 'Tenant One SARL',
-        commercialName: 'TenantOne',
-        website: 'https://tenantone.example.com',
-        industry: 'SaaS',
-        city: 'Tunis',
-        country: 'TN',
-        professionalEmail: 'contact@tenantone.example.com',
-      });
+  it('3. platform admin provisions the company and the invited owner activates it', async () => {
+    const create = await ctx.http.post('/api/v1/admin/companies').set(authHeader(admin.accessToken)).send({
+      legalName: 'Tenant One SARL', commercialName: 'TenantOne', industry: 'SaaS', city: 'Tunis', country: 'TN',
+      ownerName: 'Ali Admin', ownerEmail: 'ali@flow.test', planName: 'ENTERPRISE',
+    });
     expect(create.status).toBe(201);
-    companyId = (create.body as { id: string }).id;
-    expect((create.body as { status: string }).status).toBe('PENDING_VERIFICATION');
-
-    const doc = await ctx.http
-      .post(`/api/v1/companies/${companyId}/verification/documents`)
-      .set(authHeader(companyAdmin.accessToken))
-      .attach('file', Buffer.from('%PDF-1.4\nfictional registration document'), {
-        filename: 'registration.pdf',
-        contentType: 'application/pdf',
-      });
-    expect(doc.status).toBe(201);
-
-    const submit = await ctx.http
-      .post(`/api/v1/companies/${companyId}/verification/submit`)
-      .set(authHeader(companyAdmin.accessToken));
-    expect(submit.status).toBe(201);
-    expect((submit.body as { status: string }).status).toBe('UNDER_REVIEW');
-
-    // This legacy tenant fixture tests document review. New company access
-    // delivery is exercised through the real administrator API in provisioning.e2e.
+    companyId = create.body.company.id;
+    expect(create.body.company.status).toBe('ACTIVE');
+    expect(await ctx.prisma.companyVerification.findUnique({ where: { companyId } })).toBeNull();
+    await ctx.app.get(CompanyAccessWorker).deliver();
+    const email = await waitFor(() => ConsoleEmailProvider.sentEmails.find(message => message.to === 'ali@flow.test'));
+    const token = email!.html.match(/activate-company-account\?token=([a-f0-9]+)/)?.[1];
+    expect(token).toBeTruthy();
+    const preview = await ctx.http.get('/api/v1/auth/activation-preview').query({ token });
+    expect(preview.status).toBe(200);
+    expect(preview.body.companyName).toBe('TenantOne');
+    const activate = await ctx.http.post('/api/v1/auth/reset-password').send({ token, newPassword: 'Str0ngPass123' });
+    expect(activate.status).toBe(200);
+    const owner = await login(ctx.http, 'ali@flow.test');
+    const me = await ctx.http.get('/api/v1/auth/me').set(authHeader(owner.accessToken));
+    expect(me.body.mustChangePassword).toBe(false);
+    expect(me.body.memberships[0].companyId).toBe(companyId);
+    companyAdmin = { accessToken: owner.accessToken, userId: me.body.id };
   });
 
-  it('4. admin reviews and approves the company verification', async () => {
-    const verifications = await ctx.http
-      .get('/api/v1/admin/verifications')
-      .set(authHeader(admin.accessToken));
-    expect(verifications.status).toBe(200);
-    const pending = (verifications.body as { items: Array<{ id: string; status: string; companyId: string }> }).items.find(
-      (v) => v.companyId === companyId && v.status === 'UNDER_REVIEW',
-    );
-    expect(pending).toBeDefined();
-
-    const approve = await ctx.http
-      .post(`/api/v1/admin/verifications/${pending!.id}/approve`)
-      .set(authHeader(admin.accessToken));
-    expect(approve.status).toBe(201);
-    expect((approve.body as { status: string }).status).toBe('VERIFIED');
-
-    const company = await ctx.http.get(`/api/v1/companies/${companyId}`);
-    expect((company.body as { status: string }).status).toBe('ACTIVE');
-
-    await waitForNotification(ctx, companyAdmin.userId, 'company.verified');
+  it('4. admin manages the active company without a second verification workflow', async () => {
+    const detail = await ctx.http.get('/api/v1/admin/companies/' + companyId).set(authHeader(admin.accessToken));
+    expect(detail.status).toBe(200);
+    expect(detail.body.status).toBe('ACTIVE');
+    expect((await ctx.http.get('/api/v1/admin/verifications').set(authHeader(admin.accessToken))).status).toBe(404);
+    const company = await ctx.http.get('/api/v1/companies/' + companyId);
+    expect(company.status).toBe(200);
+    expect(company.body.status).toBe('ACTIVE');
   });
 
   it('5. company creates a job, submits for approval, admin approves, company publishes', async () => {
@@ -192,6 +174,7 @@ describe('Full recruitment flow (e2e)', () => {
         remote: true,
         employmentType: 'FULL_TIME',
         experienceLevel: 'SENIOR',
+        minimumYearsExperience: 5,
         salaryMin: 60000,
         salaryMax: 90000,
         currency: 'USD',
@@ -227,11 +210,13 @@ describe('Full recruitment flow (e2e)', () => {
     expect((saved.body as unknown[]).length).toBe(1);
   });
 
-  it('7. candidate applies to the published job with a CV', async () => {
+  it('7. candidate applies with a processed PDF, reviewed contact details and explicit consent', async () => {
+    const payload = await applicationPayload(ctx, candidate.accessToken, { motivation: 'I am very interested in this role.' });
+    resumeId = payload.resumeId;
     const apply = await ctx.http
       .post(`/api/v1/jobs/${jobId}/apply`)
       .set(authHeader(candidate.accessToken))
-      .send({ resumeId, motivation: 'I am very interested in this role.' });
+      .send(payload);
     expect(apply.status).toBe(201);
     applicationId = (apply.body as { id: string }).id;
 
@@ -239,7 +224,7 @@ describe('Full recruitment flow (e2e)', () => {
     const again = await ctx.http
       .post(`/api/v1/jobs/${jobId}/apply`)
       .set(authHeader(candidate.accessToken))
-      .send({ resumeId });
+      .send(payload);
     expect(again.status).toBe(400);
   });
 

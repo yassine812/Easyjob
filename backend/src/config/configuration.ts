@@ -69,6 +69,13 @@ export interface AppConfig {
     email: string;
   };
   ai: { baseUrl: string; timeoutMs: number; apiKey?: string };
+  mirofish?: {
+    enabled: boolean;
+    baseUrl: string;
+    timeoutMs: number;
+    simulationId?: string;
+    agentId: number;
+  };
   externalResearch?: ExternalResearchConfig;
   languageTool?: { url?: string; apiKey?: string; timeoutMs: number };
   skills?: {
@@ -198,6 +205,13 @@ export function loadConfig(): AppConfig {
       timeoutMs: int(process.env.AI_SERVICE_TIMEOUT_MS, 30000),
       apiKey: process.env.AI_API_KEY || undefined,
     },
+    mirofish: {
+      enabled: bool(process.env.MIROFISH_ENABLED, false),
+      baseUrl: (process.env.MIROFISH_URL ?? 'http://mirofish:5001').replace(/\/$/, ''),
+      timeoutMs: Math.min(120000, Math.max(3000, int(process.env.MIROFISH_TIMEOUT_MS, 30000))),
+      simulationId: process.env.MIROFISH_SIMULATION_ID || undefined,
+      agentId: Math.max(0, int(process.env.MIROFISH_AGENT_ID, 0)),
+    },
     externalResearch: {
       enabled: bool(process.env.EXTERNAL_RESEARCH_ENABLED, false),
       agentReachEnabled: bool(process.env.AGENT_REACH_ENABLED, false),
@@ -257,7 +271,7 @@ export function loadConfig(): AppConfig {
         apiKey: process.env.KONNECT_API_KEY ?? '',
         receiverWalletId: process.env.KONNECT_RECEIVER_WALLET_ID ?? '',
         mode: (process.env.KONNECT_MODE as 'sandbox' | 'live') ?? 'sandbox',
-        webhookSecret: process.env.KONNECT_WEBHOOK_SECRET ?? 'konnect-webhook-secret-dev',
+        webhookSecret: process.env.KONNECT_WEBHOOK_SECRET ?? '',
       },
       stripe: {
         secretKey: process.env.STRIPE_SECRET_KEY || undefined,

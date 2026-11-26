@@ -84,7 +84,6 @@ export const COMPANY_PERMISSION_MATRIX: Record<MemberRole, Permission[]> = {
 export const PLATFORM_PERMISSIONS: Permission[] = [
   'admin.users',
   'admin.companies',
-  'admin.verifications',
   'admin.jobs',
   'admin.analytics',
   'admin.subscriptions',
@@ -146,9 +145,7 @@ export function getDashboardRoute(user: MeUser | null | undefined): string {
   if (user?.mustChangePassword) return '/change-password';
   const accountType = resolveAccountType(user);
   if (accountType === 'admin') {
-    // Keep the canonical entry point used by the auth flow and legacy links.
-    // `/platform-admin` remains available as an alias for direct navigation.
-    return '/admin/dashboard';
+    return '/platform-admin';
   }
   if (accountType === 'company') {
     const companyId = user?.memberships[0]?.companyId;

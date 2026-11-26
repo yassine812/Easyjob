@@ -21,7 +21,8 @@ export class LoggingInterceptor implements NestInterceptor {
     const requestId = getRequestId() ?? (req.headers['x-request-id'] as string) ?? '-';
 
     const method = req.method;
-    const url = req.originalUrl ?? req.url;
+    // Activation/reset links and signed downloads carry credentials in queries.
+    const url = (req.originalUrl ?? req.url).split(/[?#]/, 1)[0];
     const userId = (req as unknown as { user?: { userId?: string } }).user?.userId ?? null;
 
     return next.handle().pipe(

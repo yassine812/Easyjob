@@ -1,2 +1,5 @@
 import { WorkspaceSettings } from '@/components/company/workspace-settings';
-export default WorkspaceSettings;
+
+export default function SettingsPage() {
+  return <WorkspaceSettings />;
+}

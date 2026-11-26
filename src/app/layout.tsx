@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
-import { Inter, Noto_Sans_Arabic, Geist_Mono } from 'next/font/google';
+import './fonts.css';
 import './globals.css';
 import './career-background.css';
+import './motion-system.css';
+import './workspace-design.css';
+import { MotionSystem } from '@/components/layout/motion-system';
 import { CareerBackground } from '@/components/layout/career-background';
 import { site } from '@/config/site';
 import { QueryProvider } from '@/providers/query-provider';
@@ -12,24 +15,6 @@ import { I18nProvider } from '@/lib/i18n';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RetireLegacyWorker } from '@/components/layout/retire-legacy-worker';
-
-const interSans = Inter({
-  variable: '--font-inter',
-  subsets: ['latin', 'latin-ext'],
-  display: 'swap',
-});
-
-const notoArabic = Noto_Sans_Arabic({
-  variable: '--font-arabic',
-  subsets: ['arabic'],
-  display: 'swap',
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: {
@@ -62,8 +47,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${interSans.variable} ${notoArabic.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full">
+        <MotionSystem />
         <RetireLegacyWorker />
         <CareerBackground />
         <ThemeProvider>

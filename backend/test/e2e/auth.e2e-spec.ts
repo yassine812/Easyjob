@@ -2,6 +2,8 @@ import {
   closeTestApp,
   createTestApp,
   extractTokenFromEmails,
+  extractVerificationCode,
+  refreshCookie,
   login,
   registerUser,
   waitFor,
@@ -25,13 +27,14 @@ describe('Authentication (e2e)', () => {
     expect(body.id).toBeDefined();
     expect(JSON.stringify(body)).not.toContain('password');
 
-    const token = await waitFor(() => extractTokenFromEmails('Verify your email', 'verify-email'));
-    const verify = await ctx.http.post('/api/v1/auth/verify-email').send({ token });
+    const code = await waitFor(() => extractVerificationCode('auth@test.com'));
+    const verify = await ctx.http.post('/api/v1/auth/verify-email').send({ email: 'auth@test.com', code });
     expect(verify.status).toBe(200);
-    expect(verify.body).toEqual({ verified: true });
+    expect(verify.body).toMatchObject({ verified: true });
+    expect(verify.body.accessToken).toEqual(expect.any(String));
 
     // Token is single-use.
-    const replay = await ctx.http.post('/api/v1/auth/verify-email').send({ token });
+    const replay = await ctx.http.post('/api/v1/auth/verify-email').send({ email: 'auth@test.com', code });
     expect(replay.status).toBe(400);
   });
 
@@ -40,8 +43,8 @@ describe('Authentication (e2e)', () => {
     expect(status).toBe(400);
   });
 
-  it('rejects invalid or expired verification tokens', async () => {
-    const response = await ctx.http.post('/api/v1/auth/verify-email').send({ token: 'invalid-token' });
+  it('rejects invalid or expired verification codes', async () => {
+    const response = await ctx.http.post('/api/v1/auth/verify-email').send({ email: 'auth@test.com', code: '000000' });
     expect(response.status).toBe(400);
   });
 
@@ -64,7 +67,7 @@ describe('Authentication (e2e)', () => {
 
     const refresh1 = await ctx.http.post('/api/v1/auth/refresh').send({ refreshToken: auth.refreshToken });
     expect(refresh1.status).toBe(200);
-    const newRefresh = (refresh1.body as { refreshToken: string }).refreshToken;
+    const newRefresh = refreshCookie(refresh1);
 
     const replay = await ctx.http.post('/api/v1/auth/refresh').send({ refreshToken: auth.refreshToken });
     expect(replay.status).toBe(401);

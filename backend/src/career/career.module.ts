@@ -11,6 +11,7 @@ import { CvStudioService } from './cv-studio.service';
 import { CvStudioController } from './cv-studio.controller';
 import { WritingQualityService } from './writing-quality.service';
 import { CareerOpsService } from './career-ops.service';
+import { MiroFishClient } from './mirofish.client';
 
-@Module({ imports: [ApplicationsModule, JobAggregationModule], controllers: [CareerController, CvStudioController], providers: [CareerService, CareerOpsService, CvStudioService, WritingQualityService, JobMarketplaceService, ApplicationRequirementsService, ...(RUN_WORKERS ? [CareerScheduler] : [])] })
+@Module({ imports: [ApplicationsModule, JobAggregationModule], controllers: [CareerController, CvStudioController], providers: [CareerService, CareerOpsService, CvStudioService, WritingQualityService, JobMarketplaceService, ApplicationRequirementsService, MiroFishClient, ...(RUN_WORKERS ? [CareerScheduler] : [])] })
 export class CareerModule {}

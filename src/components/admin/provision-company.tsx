@@ -1,43 +1,55 @@
 'use client';
+
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, ChevronLeft, ChevronRight, Mail, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { useReleaseText } from '@/lib/i18n/release';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-type Delivery = { id: string; companyName: string; email: string; status: string };
-export function ProvisionCompany({ compact = false }: { compact?: boolean }) {
-  const t = useReleaseText(), qc = useQueryClient();
-  const [open, setOpen] = useState(false), [success, setSuccess] = useState(false);
-  const deliveries = useQuery({ queryKey: ['company-deliveries'], queryFn: () => api.get<Delivery[]>('/platform-admin/company-deliveries'), refetchInterval: q => q.state.data?.some(d => ['PENDING', 'SENDING'].includes(d.status)) ? 5000 : false });
-  const create = useMutation({ mutationFn: (data: Record<string, string>) => api.post('/platform-admin/companies', data), onSuccess: async () => {
-    setOpen(false); setSuccess(true); await qc.invalidateQueries({ queryKey: ['admin-companies'] }); await deliveries.refetch();
-  } });
+
+type Delivery = { id: string; companyName: string; email: string; status: string; expiresAt: string };
+type FormState = {
+  commercialName: string; legalName: string; professionalEmail: string; phone: string; website: string; country: string; city: string; address: string; timezone: string; currency: string;
+  ownerFirstName: string; ownerLastName: string; ownerEmail: string; ownerPhone: string; planName: string;
+};
+const initialForm: FormState = { commercialName: '', legalName: '', professionalEmail: '', phone: '', website: '', country: 'Tunisie', city: '', address: '', timezone: 'Africa/Tunis', currency: 'TND', ownerFirstName: '', ownerLastName: '', ownerEmail: '', ownerPhone: '', planName: 'TRIAL' };
+const plans = [
+  { value: 'TRIAL', label: 'EasyJob Starter', price: '0 TND', duration: '30 jours', renewal: 'Sans renouvellement', entitlements: 'Espace essentiel' },
+  { value: 'BUSINESS', label: 'EasyJob Business', price: '149 TND / mois', duration: 'Mensuel', renewal: 'Renouvellement automatique', entitlements: '20 postes · 20 membres' },
+  { value: 'PRO', label: 'EasyJob Pro', price: '299 TND / mois', duration: 'Mensuel', renewal: 'Renouvellement automatique', entitlements: '50 postes · IA avancée' },
+  { value: 'ENTERPRISE', label: 'EasyJob Enterprise', price: '499 TND / mois', duration: 'Mensuel', renewal: 'Renouvellement automatique', entitlements: '200 postes · 1 000 membres' },
+];
+
+export function ProvisionCompany({ compact = false, onCreated }: { compact?: boolean; onCreated?: () => void }) {
+  const t = useReleaseText();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState<FormState>(initialForm);
+  const [success, setSuccess] = useState(false);
+  const deliveries = useQuery({ queryKey: ['company-deliveries'], queryFn: () => api.get<Delivery[]>('/platform-admin/company-deliveries'), refetchInterval: query => query.state.data?.some(delivery => ['PENDING', 'SENDING'].includes(delivery.status)) ? 5000 : false });
+  const create = useMutation({ mutationFn: (data: Record<string, string>) => api.post('/platform-admin/companies', data), onSuccess: async () => { setOpen(false); setStep(1); setForm(initialForm); setSuccess(true); await qc.invalidateQueries({ queryKey: ['platform-admin-companies'] }); await qc.invalidateQueries({ queryKey: ['platform-admin-companies-count'] }); await deliveries.refetch(); onCreated?.(); } });
   const retry = useMutation({ mutationFn: (id: string) => api.post(`/platform-admin/company-deliveries/${id}/retry`, {}), onSuccess: () => deliveries.refetch() });
-  const labels: Record<string, string> = {
-    PENDING: t('En attente d’envoi', 'Queued for delivery', 'بانتظار الإرسال'), SENDING: t('Envoi en cours', 'Sending', 'جارٍ الإرسال'),
-    SENT: t('Accepté par le serveur e-mail', 'Accepted by mail server', 'قبله خادم البريد'), FAILED: t('Échec de l’envoi', 'Delivery failed', 'فشل الإرسال'),
-    EXPIRED: t('Invitation expirée — renvoyer une invitation', 'Invitation expired — resend required', 'انتهت الدعوة — يلزم إعادة الإرسال'),
-    SIMULATED: t('Mode test — aucun e-mail envoyé', 'Test mode — no email delivered', 'وضع الاختبار — لم يُرسل بريد'), CANCELLED: t('Accès déjà personnalisé', 'Password already changed', 'تم تغيير كلمة المرور'),
-  };
+  const setField = (field: keyof FormState, value: string) => setForm(current => ({ ...current, [field]: value }));
+  const submit = () => create.mutate({ commercialName: form.commercialName, legalName: form.legalName, professionalEmail: form.professionalEmail, phone: form.phone, website: form.website, country: form.country, city: form.city, address: form.address, timezone: form.timezone, currency: form.currency, ownerName: `${form.ownerFirstName} ${form.ownerLastName}`.trim(), ownerEmail: form.ownerEmail, planName: form.planName });
+  const selectedPlan = plans.find(plan => plan.value === form.planName) ?? plans[0];
+  const labels: Record<string, string> = { PENDING: 'Invitation en attente', SENDING: 'Envoi en cours', SENT: 'Invitation envoyée', FAILED: 'Échec de l’envoi', EXPIRED: 'Invitation expirée', SIMULATED: 'Mode test — aucun e-mail envoyé', CANCELLED: 'Compte déjà activé' };
+  const field = (name: keyof FormState, label: string, type = 'text', required = false) => <label className="space-y-1.5 text-sm"><span className="font-medium">{label}{required && ' *'}</span><Input required={required} type={type} value={form[name]} onChange={event => setField(name, event.target.value)} /></label>;
   return <section className={compact ? 'relative my-0 space-y-3' : 'my-6 space-y-4 rounded-2xl border bg-card p-5'}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><div className={compact ? 'sr-only' : undefined}><h2 className="font-semibold">{t('Créer un espace entreprise', 'Create a company workspace', 'إنشاء مساحة شركة')}</h2><p className="mt-1 text-sm text-muted-foreground">{t('Un compte responsable et une invitation sécurisée pour choisir son mot de passe.', 'An owner account and a secure invitation to choose a password.', 'حساب مسؤول ودعوة آمنة لاختيار كلمة المرور.')}</p></div><Button onClick={() => { setOpen(!open); setSuccess(false); create.reset(); }}>{open ? t('Fermer', 'Close', 'إغلاق') : t('Nouvelle entreprise', 'New company', 'شركة جديدة')}</Button></div>
-    {success && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{t('Entreprise créée. Le statut d’envoi apparaît ci-dessous.', 'Company created. Delivery status appears below.', 'تم إنشاء الشركة. تظهر حالة الإرسال أدناه.')}</p>}
-    {open && <form className={compact ? 'mt-3 grid gap-4 rounded-xl border bg-card p-4 shadow-lg sm:grid-cols-2' : 'grid gap-4 sm:grid-cols-2'} onSubmit={e => { e.preventDefault(); create.mutate(Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>); }}>
-      {[
-        ['commercialName', t('Nom commercial', 'Company name', 'الاسم التجاري'), 'text', 120],
-        ['legalName', t('Raison sociale', 'Legal name', 'الاسم القانوني'), 'text', 200],
-        ['ownerName', t('Nom du responsable RH', 'HR owner name', 'اسم مسؤول الموارد البشرية'), 'text', 120],
-        ['ownerEmail', t('E-mail professionnel du responsable', 'Owner work email', 'البريد المهني للمسؤول'), 'email', 254],
-      ].map(([name, label, type, max]) => <label key={name} className="space-y-2 text-sm"><span>{label}</span><Input name={String(name)} type={String(type)} required maxLength={Number(max)} /></label>)}
-      <label className="space-y-2 text-sm"><span>{t('Plan initial', 'Initial plan', 'الخطة الأولية')}</span><select name="planName" defaultValue="TRIAL" className="h-10 w-full rounded-md border bg-background px-3"><option value="TRIAL">EasyJob Starter · 0 TND</option><option value="BUSINESS">EasyJob Business · 149 TND</option><option value="PRO">EasyJob Pro · 299 TND</option><option value="ENTERPRISE">EasyJob Enterprise · 499 TND</option></select></label>
-      <p className="text-xs text-muted-foreground sm:col-span-2">{t('Le responsable reçoit un lien à usage unique pour choisir son mot de passe sous 24 heures. L’entreprise sera activée par votre création.', 'The owner receives a single-use link to choose a password within 24 hours. Creating the company activates it.', 'يتلقى المسؤول رابطاً لمرة واحدة لاختيار كلمة المرور خلال 24 ساعة. إنشاء الشركة يفعّلها.')}</p>
-      {create.isError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{create.error.message}</p>}
-      <Button type="submit" disabled={create.isPending}>{create.isPending ? '…' : t('Créer et envoyer les accès', 'Create and send access', 'إنشاء وإرسال بيانات الدخول')}</Button>
-    </form>}
-    {deliveries.isError && <Button variant="outline" onClick={() => deliveries.refetch()}>{t('Recharger les envois', 'Reload deliveries', 'إعادة تحميل الإرسال')}</Button>}
-    {!!deliveries.data?.length && (!compact || open) && <div className="space-y-3 border-t pt-4">{deliveries.data.slice(0, 10).map(d => <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><div><p className="font-medium">{d.companyName}</p><p className="text-xs text-muted-foreground">{d.email}</p></div><p role="status">{labels[d.status] || d.status}</p>{d.status === 'FAILED' && <Button size="sm" variant="outline" disabled={retry.isPending} onClick={() => retry.mutate(d.id)}>{t('Réessayer', 'Retry', 'إعادة المحاولة')}</Button>}</div>)}</div>}
+    <div className="flex flex-wrap items-center justify-between gap-3"><div className={compact ? 'sr-only' : undefined}><h2 className="font-semibold">{t('Créer un espace entreprise', 'Create a company workspace', 'إنشاء مساحة شركة')}</h2><p className="mt-1 text-sm text-muted-foreground">Créez l’entreprise, son owner et son abonnement depuis un seul flux sécurisé.</p></div><Button onClick={() => { setOpen(current => !current); setSuccess(false); create.reset(); }}>{open ? 'Fermer' : 'Nouvelle entreprise'}</Button></div>
+    {success && <p role="status" className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300"><Check className="size-4" />Entreprise créée. L’invitation sécurisée est en cours d’envoi.</p>}
+    {open && <div className={compact ? 'mt-3 space-y-4 rounded-xl border bg-card p-4 shadow-lg' : 'space-y-4'}>
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.08em] text-muted-foreground">{['Entreprise', 'Responsable', 'Plan', 'Confirmation'].map((label, index) => <div key={label} className="flex min-w-0 flex-1 items-center gap-2"><span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${step > index + 1 ? 'bg-emerald-500 text-white' : step === index + 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>{step > index + 1 ? <Check className="size-3.5" /> : index + 1}</span><span className="hidden truncate sm:inline">{label}</span>{index < 3 && <span className="h-px flex-1 bg-border" />}</div>)}</div>
+      {step === 1 && <div className="grid gap-4 sm:grid-cols-2">{field('commercialName', 'Nom de l’entreprise', 'text', true)}{field('legalName', 'Raison sociale', 'text', true)}{field('professionalEmail', 'E-mail entreprise', 'email', true)}{field('phone', 'Téléphone')}{field('website', 'Site web (optionnel)', 'url')}{field('country', 'Pays', 'text', true)}{field('city', 'Ville', 'text', true)}{field('address', 'Adresse', 'text', true)}<label className="space-y-1.5 text-sm"><span className="font-medium">Fuseau horaire</span><select className="h-10 w-full rounded-md border bg-background px-3" value={form.timezone} onChange={event => setField('timezone', event.target.value)}><option>Africa/Tunis</option><option>Europe/Paris</option><option>UTC</option></select></label><label className="space-y-1.5 text-sm"><span className="font-medium">Devise</span><select className="h-10 w-full rounded-md border bg-background px-3" value={form.currency} onChange={event => setField('currency', event.target.value)}><option>TND</option><option>EUR</option><option>USD</option></select></label></div>}
+      {step === 2 && <div className="grid gap-4 sm:grid-cols-2">{field('ownerFirstName', 'Prénom du responsable', 'text', true)}{field('ownerLastName', 'Nom du responsable', 'text', true)}{field('ownerEmail', 'E-mail de connexion', 'email', true)}{field('ownerPhone', 'Téléphone (optionnel)')}<div className="sm:col-span-2 rounded-xl bg-primary/5 p-4 text-sm text-muted-foreground"><ShieldCheck className="mb-2 size-5 text-primary" /><p>Le responsable sera créé comme <strong className="text-foreground">COMPANY_ADMIN propriétaire</strong>. Aucun mot de passe ne sera envoyé : il choisira le sien depuis un lien à usage unique.</p></div></div>}
+      {step === 3 && <div className="grid gap-3 sm:grid-cols-2">{plans.map(plan => <button type="button" key={plan.value} onClick={() => setField('planName', plan.value)} className={`rounded-xl border p-4 text-left transition-colors ${form.planName === plan.value ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'hover:bg-muted/50'}`}><p className="font-semibold">{plan.label}</p><p className="mt-1 text-sm text-muted-foreground">{plan.price} · {plan.duration}</p><p className="mt-2 text-xs font-medium text-foreground">{plan.renewal}</p><p className="mt-1 text-xs text-muted-foreground">{plan.entitlements}</p></button>)}</div>}
+      {step === 4 && <div className="space-y-4 rounded-xl bg-muted/30 p-4 text-sm"><h3 className="font-semibold">Vérifiez avant de créer</h3><dl className="grid gap-3 sm:grid-cols-2"><div><dt className="text-muted-foreground">Entreprise</dt><dd className="font-medium">{form.commercialName}<br />{form.legalName}</dd></div><div><dt className="text-muted-foreground">Responsable</dt><dd className="font-medium">{form.ownerFirstName} {form.ownerLastName}<br />{form.ownerEmail}</dd></div><div><dt className="text-muted-foreground">Plan</dt><dd className="font-medium">{selectedPlan.label} · {selectedPlan.price}</dd></div><div><dt className="text-muted-foreground">Activation</dt><dd className="font-medium">Lien sécurisé valable 24 heures</dd></div></dl><p className="flex items-start gap-2 border-t pt-3 text-xs text-muted-foreground"><Mail className="mt-0.5 size-4 shrink-0" />L’e-mail contiendra le nom de l’entreprise, le plan et le bouton d’activation. Aucun mot de passe ni token ne sera affiché.</p></div>}
+      {create.isError && <p role="alert" className="text-sm text-destructive">{create.error.message}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4"><Button variant="ghost" disabled={step === 1 || create.isPending} onClick={() => setStep(current => current - 1)}><ChevronLeft className="size-4" />Précédent</Button>{step < 4 ? <Button onClick={() => setStep(current => current + 1)} disabled={step === 1 && (!form.commercialName || !form.legalName || !form.professionalEmail || !form.country || !form.city || !form.address) || step === 2 && (!form.ownerFirstName || !form.ownerLastName || !form.ownerEmail)}>Suivant<ChevronRight className="size-4" /></Button> : <Button onClick={submit} disabled={create.isPending}><Check className="size-4" />{create.isPending ? 'Création…' : 'Créer et envoyer l’invitation'}</Button>}</div>
+    </div>}
+    {deliveries.isError && <Button variant="outline" onClick={() => deliveries.refetch()}>Recharger les invitations</Button>}
+    {!!deliveries.data?.length && (!compact || open) && <div className="space-y-3 border-t pt-4">{deliveries.data.slice(0, 10).map(delivery => <div key={delivery.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><div><p className="font-medium">{delivery.companyName}</p><p className="text-xs text-muted-foreground">{delivery.email}</p></div><p role="status">{labels[delivery.status] || delivery.status}</p>{delivery.status === 'FAILED' && <Button size="sm" variant="outline" disabled={retry.isPending} onClick={() => retry.mutate(delivery.id)}>Réessayer</Button>}</div>)}</div>}
     {retry.isError && <p role="alert" className="text-sm text-destructive">{retry.error.message}</p>}
   </section>;
 }
-

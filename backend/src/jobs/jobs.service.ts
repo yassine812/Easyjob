@@ -385,7 +385,7 @@ export class JobsService {
       select: JOB_SELECT,
     });
     if (!job) throw new NotFoundException('Job not found');
-    const publicCompany = await this.prisma.company.findFirst({ where: { id: job.companyId, status: 'ACTIVE', verification: { status: 'VERIFIED' } }, select: { id: true } });
+    const publicCompany = await this.prisma.company.findFirst({ where: { id: job.companyId, status: 'ACTIVE' }, select: { id: true } });
     const publiclyAvailable = await this.prisma.job.findFirst({ where: { id: jobId, ...availableJobWhere() }, select: { id: true } });
     if (!publiclyAvailable || !publicCompany) {
       if (!userId) throw new NotFoundException('Job not found');

@@ -94,7 +94,7 @@ describe('RequireCandidate', () => {
     });
     render(<RequireCandidate>candidate-area</RequireCandidate>);
     expect(screen.queryByText('candidate-area')).not.toBeInTheDocument();
-    expect(routerReplace).toHaveBeenCalledWith('/admin/dashboard');
+    expect(routerReplace).toHaveBeenCalledWith('/platform-admin');
   });
 });
 

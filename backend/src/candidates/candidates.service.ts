@@ -1,3 +1,4 @@
+import { availableJobWhere } from '../jobs/job-availability';
 import { publicJobSalary } from '../jobs/job-content';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CandidateVisibility, EmploymentType, Prisma, SkillLevel } from '@prisma/client';
@@ -215,7 +216,7 @@ export class CandidatesService {
 
   async saveJob(userId: string, dto: SaveJobDto) {
     const profile = await this.ensureProfile(userId);
-    const job = await this.prisma.job.findFirst({ where: { id: dto.jobId, status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
+    const job = await this.prisma.job.findFirst({ where: { id: dto.jobId, ...availableJobWhere() } });
     if (!job || job.status !== 'PUBLISHED') {
       throw new NotFoundException('Job not found');
     }
@@ -236,7 +237,7 @@ export class CandidatesService {
   async listSavedJobs(userId: string) {
     const profile = await this.ensureProfile(userId);
     const saved = await this.prisma.savedJob.findMany({
-      where: { candidateId: profile.id, job: { status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } },
+      where: { candidateId: profile.id, job: availableJobWhere() },
       include: { job: { include: { skills: { include: { skill: true } }, applications: { where: { candidateId: profile.id }, select: { id: true } }, company: { select: { id: true, commercialName: true, slug: true } } } } },
       orderBy: { createdAt: 'desc' },
     });

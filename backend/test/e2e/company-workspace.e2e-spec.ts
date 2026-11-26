@@ -1,3 +1,4 @@
+import { applicationPayload } from '../helpers';
 import { companyFixture } from '../helpers';
 import { authHeader, closeTestApp, createTestApp, createVerifiedUser } from '../helpers';
 
@@ -15,7 +16,6 @@ describe('Company workspace lifecycle (isolated database)', () => {
     stranger = await createVerifiedUser(ctx, 'Workspace Stranger', 'stranger@workspace.test');
     const company = await companyFixture(ctx, owner.accessToken, { legalName: 'Workspace Company', commercialName: 'Workspace Company' });
     expect(company.status).toBe(201); companyId = company.body.id;
-    await ctx.prisma.company.update({ where: { id: companyId }, data: { status: 'ACTIVE', verification: { update: { status: 'VERIFIED' } } } });
     const findUser = (email: string) => ctx.prisma.user.findUniqueOrThrow({ where: { email } });
     const interviewerUser = await findUser('interviewer@workspace.test'), managerUser = await findUser('manager@workspace.test');
     interviewerId = (await ctx.prisma.companyMember.create({ data: { companyId, userId: interviewerUser.id, role: 'INTERVIEWER', status: 'ACTIVE' } })).id;
@@ -24,7 +24,7 @@ describe('Company workspace lifecycle (isolated database)', () => {
     expect(job.status).toBe(201); jobId = job.body.id;
     expect(job.body).toMatchObject({ department: 'Engineering', benefits: ['Flexible hours'], positions: 2 });
     await ctx.prisma.job.update({ where: { id: jobId }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
-    const application = await ctx.http.post(`/api/v1/jobs/${jobId}/apply`).set(authHeader(candidate.accessToken)).send({});
+    const application = await ctx.http.post(`/api/v1/jobs/${jobId}/apply`).set(authHeader(candidate.accessToken)).send(await applicationPayload(ctx, candidate.accessToken));
     expect(application.status).toBe(201); applicationId = application.body.id;
   });
   afterAll(async () => { if (ctx) await closeTestApp(ctx); });
@@ -66,6 +66,9 @@ describe('Company workspace lifecycle (isolated database)', () => {
   it('stores structured feedback only from authorized participants', async () => {
     const feedback = { technical: 85, communication: 80, problemSolving: 90, roleKnowledge: 80, summary: 'Explained the API design with examples.' };
     expect((await ctx.http.post(`${root()}/interviews/${otherInterviewId}/feedback`).set(authHeader(interviewer.accessToken)).send(feedback)).status).toBe(403);
+    expect((await ctx.http.post(`${root()}/interviews/${interviewId}/feedback`).set(authHeader(interviewer.accessToken)).send(feedback)).status).toBe(400);
+    const completed = await ctx.http.patch(`/api/v1/interviews/${interviewId}`).set(authHeader(owner.accessToken)).send({ status: 'COMPLETED' });
+    expect(completed.status).toBe(200);
     const response = await ctx.http.post(`${root()}/interviews/${interviewId}/feedback`).set(authHeader(interviewer.accessToken)).send(feedback); expect(response.status).toBe(201); expect(response.body.technical).toBe(85);
   });
   it('deduplicates reviewed candidate messages using the request id', async () => {
@@ -76,7 +79,7 @@ describe('Company workspace lifecycle (isolated database)', () => {
     expect(await ctx.prisma.candidateCommunication.count({ where: { applicationId } })).toBe(1);
   });
   it('keeps draft offers private and records acceptance as an HR-approved hire', async () => {
-    const offer = await ctx.http.post(`${root()}/applications/${applicationId}/offers`).set(authHeader(owner.accessToken)).send({ title: 'API Engineer offer', terms: 'Full-time role. Terms reviewed by the recruiter.' }); expect(offer.status).toBe(201);
+    const offer = await ctx.http.post(`${root()}/applications/${applicationId}/offers`).set(authHeader(owner.accessToken)).send({ title: 'API Engineer offer', contractType: 'CDI', salaryAmount: 4500, salaryCurrency: 'TND', salaryPeriod: 'MONTH', workMode: 'HYBRID', location: 'Tunis', benefits: ['Flexible hours'], terms: 'Full-time role. Terms reviewed by the recruiter.', expiresAt: new Date(Date.now() + 7 * 86400000).toISOString() }); expect(offer.status).toBe(201);
     const id = offer.body.id;
     expect((await ctx.http.get(`/api/v1/recruitment-offers/${id}`).set(authHeader(candidate.accessToken))).status).toBe(404);
     const sent = await ctx.http.post(`${root()}/offers/${id}/send`).set(authHeader(owner.accessToken)).send({}); expect(sent.status).toBe(201);

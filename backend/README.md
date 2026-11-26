@@ -135,13 +135,16 @@ generated from the live backend OpenAPI (`/docs-json` via `openapi-typescript`).
 ## Running tests
 
 ```bash
-# Unit tests (49) — no external services required
+# Unit tests — no external services required
 npm run test:unit
 
-# E2E tests (59) — requires Postgres + Redis on localhost (e.g. the compose services)
-npm run test:e2e            # uses startup_starter_test, applies migrations, runs full journey
+# E2E tests — use a dedicated disposable database and Redis, never live data.
+# Example: PostgreSQL on 5549; Redis published as 6399:6379.
+export TEST_DATABASE_URL='postgresql://postgres:postgres@localhost:5549/startup_starter_test?schema=public'
+export REDIS_URL='redis://localhost:6399'
+npm run test:e2e            # builds dist, applies migrations, then tests the compiled API
 
-# AI service tests (12)
+# AI service tests
 cd ai-service && AI_PROVIDER=rule_based python -m pytest
 
 # Quality gates
@@ -150,6 +153,12 @@ npm run typecheck           # tsc --noEmit
 npx prisma validate
 npm run build               # production build → dist/
 ```
+
+PowerShell uses `$env:TEST_DATABASE_URL='...'` and `$env:REDIS_URL='...'` for the
+same variables. E2E refuses a database name that does not end in `_test` (or
+`_test_<number>`) and requires dedicated Redis on port 6399. The test database is
+truncated between suites. AI dependencies and email delivery are isolated test
+contracts; no real merchant payment or external email is sent by the E2E suite.
 
 ## Authentication & RBAC
 
@@ -228,7 +237,7 @@ THROTTLE_ENABLED, AUTH_THROTTLE_LIMIT
 
 ## Deployment
 
-- **Production VPS**: [`docs/PRODUCTION_DEPLOYMENT.md`](docs/PRODUCTION_DEPLOYMENT.md) — exact commands for DNS, Docker, Caddy HTTPS, migrations, backups, Stripe, SMTP, S3, AI.
+- **Production VPS**: [`../deploy/PRODUCTION_DEPLOYMENT.md`](../deploy/PRODUCTION_DEPLOYMENT.md) — exact commands for DNS, Docker, Caddy HTTPS, migrations, backups, Stripe, SMTP, S3, AI.
 - **Staging simulation**: [`docs/STAGING_DEPLOYMENT.md`](docs/STAGING_DEPLOYMENT.md) — the verified production-compose runbook.
 - **Backup/restore**: [`docs/BACKUP_RESTORE.md`](docs/BACKUP_RESTORE.md).
 - **Architecture**: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -239,6 +248,21 @@ THROTTLE_ENABLED, AUTH_THROTTLE_LIMIT
 The seed refuses to run when `NODE_ENV=production` unless `SEED_FORCE=true` — demo data never lands on a production database automatically.
 
 ## External credentials still required for production
+
+For Konnect, set `PAYMENT_PROVIDER=konnect`, `KONNECT_ENABLED=true`,
+`KONNECT_MODE=live`, the merchant API key and receiver wallet ID. Set
+`KONNECT_WEBHOOK_URL=https://YOUR_DOMAIN/api/v1/payments/webhook/konnect` without
+query parameters, then run the deployment preflight. The standard GET callback
+is confirmed by retrieving the payment from Konnect; a browser return URL never
+activates a subscription by itself. No real payment is validated by the local
+DEV-provider E2E suite.
+
+Local service ports are frontend 3000, API 3002, CV/face 8000 and Parlor 8001.
+Docker uses distinct internal containers, so AI and Parlor can both listen on
+8000 internally. `ai-service/scripts/cache_face_models.py` prepares pinned face
+models during Docker build or local service setup. Runtime inference needs no
+model download. The OpenFace model comes from the CMU OpenFace download service;
+YuNet comes from a pinned OpenCV Zoo revision, with SHA-256 checks for both.
 
 - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` — strong random values (min 16 chars)
 - S3 keys + endpoint/bucket (or keep `local` with a persistent volume)

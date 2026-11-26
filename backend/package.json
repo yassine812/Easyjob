@@ -6,6 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "jobs:sync:freehire": "node scripts/sync-freehire.cjs",
+    "jobs:sync:companies": "node scripts/sync-company-careers.cjs",
     "build": "nest build",
     "dev": "nest start --watch",
     "dev:api": "powershell -NoProfile -File scripts/start-local-api.ps1",
@@ -25,6 +27,7 @@
     "prisma:seed:system": "ts-node prisma/seed-system.ts",
     "test": "jest --runInBand",
     "test:unit": "jest --config jest.config.js --runInBand",
+    "pretest:e2e": "npm run build",
     "test:e2e": "jest --config jest-e2e.json --runInBand",
     "test:cov": "jest --coverage --runInBand",
     "test:watch": "jest --watch",
@@ -40,7 +43,8 @@
     "repair:job-text": "ts-node scripts/repair-job-text-encoding.ts",
     "pricing:candidates": "node scripts/update-candidate-pricing.cjs",
     "pricing:companies": "node scripts/update-company-pricing.cjs",
-    "external-research:doctor": "node scripts/agent-reach-doctor.cjs"
+    "external-research:doctor": "node scripts/agent-reach-doctor.cjs",
+    "deploy:check": "node scripts/preflight-deploy.cjs --env-file .env.staging"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -77,6 +81,7 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.35.4",
     "slugify": "^1.6.6",
+    "socket.io": "^4.8.4",
     "stripe": "^16.12.0"
   },
   "devDependencies": {
@@ -101,7 +106,10 @@
     "typescript": "^5.5.4"
   },
   "overrides": {
-    "multer": "2.3.0"
+    "multer": "2.3.0",
+    "@nestjs/cli": {
+      "schema-utils": "4.3.2"
+    }
   },
   "engines": {
     "node": ">=22.0.0"

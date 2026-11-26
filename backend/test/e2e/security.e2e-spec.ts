@@ -1,3 +1,4 @@
+import { applicationPayload } from '../helpers';
 import { companyFixture } from '../helpers';
 import {
   authHeader,
@@ -77,7 +78,7 @@ describe('Security & multi-tenancy (e2e)', () => {
     const apply = await ctx.http
       .post(`/api/v1/jobs/${jobB}/apply`)
       .set(authHeader(candidateB.accessToken))
-      .send({ motivation: 'Applying to B' });
+      .send(await applicationPayload(ctx, candidateB.accessToken, { motivation: 'Applying to B' }));
     expect(apply.status).toBe(201);
 
     const listA = await ctx.http
@@ -133,7 +134,7 @@ describe('Security & multi-tenancy (e2e)', () => {
     const applyA = await ctx.http
       .post(`/api/v1/jobs/${jobA}/apply`)
       .set(authHeader(candidateA.accessToken))
-      .send({ motivation: 'Applying to A' });
+      .send(await applicationPayload(ctx, candidateA.accessToken, { motivation: 'Applying to A' }));
     const appAId = (applyA.body as { id: string }).id;
 
     const attempt = await ctx.http
@@ -187,7 +188,9 @@ describe('Security & multi-tenancy (e2e)', () => {
       .send({
         title: 'HR Draft Job',
         description: 'A job created by HR with a sufficiently long description for validation.',
-        employmentType: 'FULL_TIME',
+        responsibilities: ['Build and maintain production APIs'],
+      requirements: ['TypeScript and API development'],
+      employmentType: 'FULL_TIME',
         experienceLevel: 'MID',
       });
     expect(draftJob.status).toBe(201);
@@ -259,17 +262,10 @@ async function verifyCompany(
   companyId: string,
   companyAdminToken: string,
 ): Promise<void> {
-  await ctx.http
-    .post(`/api/v1/companies/${companyId}/verification/documents`)
-    .set(authHeader(companyAdminToken))
-    .attach('file', Buffer.from('%PDF-1.4\nverification doc'), { filename: 'doc.pdf', contentType: 'application/pdf' });
-  await ctx.http.post(`/api/v1/companies/${companyId}/verification/submit`).set(authHeader(companyAdminToken));
-
-  const verifications = await ctx.http.get('/api/v1/admin/verifications').set(authHeader(adminToken));
-  const pending = (verifications.body as { items: Array<{ id: string; companyId: string }> }).items.find(
-    (v) => v.companyId === companyId,
-  );
-  await ctx.http.post(`/api/v1/admin/verifications/${pending!.id}/approve`).set(authHeader(adminToken));
+  const response = await ctx.http.patch('/api/v1/admin/companies/' + companyId + '/status')
+    .set(authHeader(adminToken)).send({ status: 'ACTIVE' });
+  expect(response.status).toBe(200);
+  expect((await ctx.http.get('/api/v1/companies/' + companyId).set(authHeader(companyAdminToken))).status).toBe(200);
 }
 
 async function createPublishedJob(
@@ -284,16 +280,19 @@ async function createPublishedJob(
     .send({
       title,
       description: `${title} — a sufficiently long description for the published job used in security tests.`,
+      responsibilities: ['Build and maintain production APIs'],
+      requirements: ['TypeScript and API development'],
       employmentType: 'FULL_TIME',
       experienceLevel: 'MID',
       location: 'Remote',
       remote: true,
     });
+  expect(created.status).toBe(201);
   const jobId = (created.body as { id: string }).id;
-  await ctx.http.post(`/api/v1/jobs/${jobId}/submit`).set(authHeader(token));
+  expect((await ctx.http.post(`/api/v1/jobs/${jobId}/submit`).set(authHeader(token))).status).toBe(201);
   const adminLogin = await login(ctx.http, 'secadmin@test.com');
   const adminToken = adminLogin.accessToken;
-  await ctx.http.post(`/api/v1/admin/jobs/${jobId}/approve`).set(authHeader(adminToken));
-  await ctx.http.post(`/api/v1/jobs/${jobId}/publish`).set(authHeader(token));
+  expect((await ctx.http.post(`/api/v1/admin/jobs/${jobId}/approve`).set(authHeader(adminToken))).status).toBe(201);
+  expect((await ctx.http.post(`/api/v1/jobs/${jobId}/publish`).set(authHeader(token))).status).toBe(201);
   return jobId;
 }

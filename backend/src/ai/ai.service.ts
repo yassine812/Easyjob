@@ -1,3 +1,4 @@
+import { availableJobWhere } from '../jobs/job-availability';
 import { InjectQueue } from '@nestjs/bullmq';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -39,7 +40,7 @@ export class AiService {
   async matchJob(userId: string, jobId: string): Promise<{ analysisId: string }> {
     const profile = await this.prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('Candidate profile not found');
-    const job = await this.prisma.job.findFirst({ where: { id: jobId, status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
+    const job = await this.prisma.job.findFirst({ where: { id: jobId, ...availableJobWhere() } });
     if (!job) throw new NotFoundException('Job not found');
     return this.enqueue(userId, AiAnalysisType.MATCH, { candidateId: profile.id, jobId });
   }
@@ -47,7 +48,7 @@ export class AiService {
   async coverLetter(userId: string, jobId: string): Promise<{ analysisId: string }> {
     const profile = await this.prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('Candidate profile not found');
-    const job = await this.prisma.job.findFirst({ where: { id: jobId, status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
+    const job = await this.prisma.job.findFirst({ where: { id: jobId, ...availableJobWhere() } });
     if (!job) throw new NotFoundException('Job not found');
     return this.enqueue(userId, AiAnalysisType.COVER_LETTER, { candidateId: profile.id, jobId });
   }
@@ -55,7 +56,7 @@ export class AiService {
   async interviewPrep(userId: string, jobId: string): Promise<{ analysisId: string }> {
     const profile = await this.prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('Candidate profile not found');
-    const job = await this.prisma.job.findFirst({ where: { id: jobId, status: 'PUBLISHED', company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
+    const job = await this.prisma.job.findFirst({ where: { id: jobId, ...availableJobWhere() } });
     if (!job) throw new NotFoundException('Job not found');
     return this.enqueue(userId, AiAnalysisType.INTERVIEW, { candidateId: profile.id, jobId });
   }

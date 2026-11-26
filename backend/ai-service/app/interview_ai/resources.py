@@ -77,6 +77,14 @@ def preload(allow_download: bool = False) -> dict[str, Any]:
             _embedding_model = None
             _state["embedding_error"] = str(exc)
             logger.warning("Semantic model unavailable; using TF-IDF and deterministic rules: %s", exc)
+        if os.getenv('FASTER_WHISPER_MODEL_PATH'):
+            try:
+                from app.interview_ai.transcription import preload_model
+                _state['stt'] = preload_model()
+                _state['vad'] = _state['stt'] and os.getenv('INTERVIEW_VAD_ENABLED', 'true').lower() in ('true', '1')
+            except Exception as exc:
+                logger.warning('Offline speech model unavailable: %s', type(exc).__name__)
+                _state['stt'] = False
         _state["startup_ms"] = round((time.perf_counter() - started) * 1000, 1)
         _state["initialized"] = True
         _state["loading"] = False
@@ -88,5 +96,6 @@ def embedding_model() -> Any | None:
 
 
 def readiness() -> dict[str, Any]:
-    with _lock:
-        return {**_state, "model_instance_count": _model_instance_count}
+    # CPython snapshots this dict while holding the GIL. Do not wait for the
+    # preload lock here: readiness must report loading while inference boots.
+    return {**_state, "model_instance_count": _model_instance_count}

@@ -23,7 +23,19 @@ if __name__ == "__main__":
         from huggingface_hub import snapshot_download
         # This is the explicit image/setup-time download. Runtime loading uses
         # only this fully materialized directory and is offline by default.
-        snapshot_download(MODEL_NAME, local_dir=str(MODEL_PATH))
+        snapshot_download(
+            MODEL_NAME,
+            local_dir=str(MODEL_PATH),
+            max_workers=16,
+            allow_patterns=[
+                "*.json",
+                "*.safetensors",
+                "*.txt",
+                "*.model",
+                "*.py",
+                "*.bin",
+            ],
+        )
     state = preload(allow_download=True)
     if not state["embeddings"]:
         raise SystemExit(f"Could not cache {MODEL_NAME}: {state['embedding_error']}")

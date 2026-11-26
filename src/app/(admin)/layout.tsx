@@ -7,7 +7,6 @@ import {
   Database,
   FileClock,
   LayoutDashboard,
-  ShieldCheck,
   Users,
   LifeBuoy,
 } from 'lucide-react';
@@ -25,7 +24,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           { href: '/admin/dashboard', label: t('dashboard'), icon: LayoutDashboard },
           { group: 'manage', href: '/admin/users', label: ux('users'), icon: Users },
           { group: 'manage', href: '/admin/companies', label: ux('companies'), icon: Building2 },
-          { group: 'manage', href: '/admin/verifications', label: ux('verifications'), icon: ShieldCheck },
           { group: 'manage', href: '/admin/jobs', label: t('jobs'), icon: Briefcase },
           { group: 'manage', href: '/admin/job-sources', label: t('jobSourceDashboard'), icon: Database },
           { group: 'manage', href: '/admin/support', label: 'Support inbox', icon: LifeBuoy },

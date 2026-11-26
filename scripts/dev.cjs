@@ -68,7 +68,8 @@ function findProjectFrontendPid() {
   for (const pid of pids) {
     const inspected = spawnSync('powershell.exe', ['-NoProfile', '-Command', `(Get-CimInstance Win32_Process -Filter \"ProcessId=${pid}\").CommandLine`], { encoding: 'utf8', windowsHide: true });
     const commandLine = inspected.stdout ?? '';
-    if (/node_modules[\\/]next[\\/]dist[\\/](server|bin)[\\/]/i.test(commandLine)) return pid;
+    const workspace = path.resolve(__dirname, '..').toLowerCase() + path.sep;
+    if (commandLine.toLowerCase().includes(workspace) && /node_modules[\\/]next[\\/]dist[\\/](server|bin)[\\/]/i.test(commandLine)) return pid;
   }
   return null;
 }
@@ -85,6 +86,19 @@ function releaseStaleProjectFrontend() {
 }
 
 async function main() {
+  // The frontend now lives at the repo root; its API still lives in backend/.
+  // Password login must not wait for the optional face models to initialize.
+  if (process.platform === 'win32') {
+    const serviceScript = path.join(__dirname, '..', 'backend', 'scripts', 'local-services.cjs');
+    const services = spawnSync(process.execPath, [serviceScript, '--api-only'], {
+      stdio: 'inherit', windowsHide: true,
+    });
+    if (services.error || services.status !== 0) {
+      console.error('The local API could not start. See backend/.runtime/local-services-recovery.log.');
+      process.exitCode = 1;
+      return;
+    }
+  }
   const current = await probe();
   if (current.occupied && current.easyjob) {
     console.log(`EasyJob frontend is already running at http://localhost:${port}.`);
@@ -96,9 +110,12 @@ async function main() {
     const freed = await probe();
     if (!freed.occupied) return main();
   }
-  if (current.occupied && releaseStaleProjectFrontend()) {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return main();
+  if (current.occupied && findProjectFrontendPid()) {
+    // Slow first compilation is not proof of a stale server. Killing it here
+    // caused repeated npm launches to interrupt the page the user was opening.
+    console.log(`EasyJob frontend is already running at http://localhost:${port}; it may still be compiling.`);
+    console.log('Keep the existing server running and reload the browser when compilation finishes.');
+    return;
   }
   if (current.occupied) {
     console.error(`Port ${port} is already occupied by another service (HTTP ${current.status || 'unavailable'}). Stop that service or choose a different port.`);

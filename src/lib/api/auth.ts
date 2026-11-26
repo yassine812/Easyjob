@@ -50,6 +50,8 @@ export const authApi = {
     api.post<{ sent: boolean }>('/auth/forgot-password', { email }, { auth: false }),
   resetPassword: (dto: ResetPasswordDto) =>
     api.post<{ success: boolean }>('/auth/reset-password', dto, { auth: false }),
+  activationPreview: (token: string) =>
+    api.get<{ email: string; companyName: string | null; planName: string | null; expiresAt: string }>(`/auth/activation-preview?token=${encodeURIComponent(token)}`, { auth: false }),
   me: async (): Promise<MeUser> => {
     const user = await api.get<MeUserResponse>('/auth/me');
     const { avatar_url, ...rest } = user;

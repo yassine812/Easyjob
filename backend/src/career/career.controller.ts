@@ -6,7 +6,7 @@ import { CareerService } from './career.service';
 import { JobMarketplaceService } from './job-marketplace.service';
 import { ApplicationRequirementsService } from './application-requirements.service';
 import { ApplyDto } from '../applications/dto/application.dto';
-import { BuildDraftDto, CareerSearchDto, CareerSettingsDto, CoachAnswerDto, CoachTurnDto, CreateCoachDto, InterviewAutoTestDto, ProfessionalDataDto, SaveDraftDto, RegenerateSectionDto } from './career.dto';
+import { BuildDraftDto, CareerSearchDto, CareerSettingsDto, CoachAnswerDto, CoachTurnDto, CreateCoachDto, InterviewAutoTestDto, ProfessionalDataDto, SaveDraftDto, RegenerateSectionDto, RecruiterSimulationDto } from './career.dto';
 import { CareerOpsService } from './career-ops.service';
 
 @ApiTags('candidate-career')
@@ -60,6 +60,7 @@ export class CareerController {
   @Get('company-suggestions') companySuggestions(@CurrentUser('userId') uid: string, @Query('q') query = '') { return this.career.companySuggestions(uid, query); }
   @Post('coach') createCoach(@CurrentUser('userId') uid: string, @Body() dto: CreateCoachDto) { return this.career.createCoach(uid, dto); }
   @Post('coach/:id/answers') answer(@CurrentUser('userId') uid: string, @Param('id') id: string, @Body() dto: CoachAnswerDto) { return this.career.answerCoach(uid, id, dto); }
+  @Post('coach/:id/recruiter-simulation') recruiterSimulation(@CurrentUser('userId') uid: string, @Param('id') id: string, @Body() dto: RecruiterSimulationDto) { return this.career.recruiterSimulation(uid, id, dto); }
   @Patch('coach/:id/turn') saveTurn(@CurrentUser('userId') uid: string, @Param('id') id: string, @Body() dto: CoachTurnDto) { return this.career.saveCoachTurn(uid, id, dto); }
   @Post('coach/:id/autotest') startAutoTest(@CurrentUser('userId') uid: string, @Param('id') id: string, @Body() dto: InterviewAutoTestDto) { return this.career.startCoachAutoTest(uid, id, dto); }
   @Post('coach/:id/autotest/answer') autoTestAnswer(@CurrentUser('userId') uid: string, @Param('id') id: string) { return this.career.answerCoachAutoTest(uid, id); }

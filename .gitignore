@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+node_modules.*-backup/
+.next/
+*.tsbuildinfo
 dist/
 coverage/
 public/pdfjs/
@@ -43,6 +46,7 @@ __pycache__/
 venv/
 .pytest_cache/
 ai-service/.env
+backend/ai-service/app/face/models/
 .env.staging
 
 # Keep all EasyJob project assets and local demo files in the repository.

@@ -20,7 +20,7 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="motion-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
@@ -50,7 +50,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center',
+        'workspace-empty flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center',
         className,
       )}
     >
@@ -104,7 +104,7 @@ export function ErrorState({
 
 export function SkeletonRows({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="space-y-3">
+    <div className="workspace-loading-rows space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex gap-3">
           {Array.from({ length: cols }).map((_, j) => (
@@ -138,7 +138,7 @@ export function StatCard({
   icon?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm">
+    <div data-motion-item className="motion-stat-card motion-panel rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         {icon}
@@ -153,37 +153,58 @@ export function PaginationControls({
   page,
   totalPages,
   total,
+  pageSize,
+  onPageSizeChange,
   onPageChange,
 }: {
   page: number;
   totalPages: number;
   total: number;
+  pageSize?: number;
+  onPageSizeChange?: (pageSize: number) => void;
   onPageChange: (page: number) => void;
 }) {
   const ux = useUxText();
-  if (totalPages <= 1) return null;
+  if (total === 0 || (totalPages <= 1 && !pageSize)) return null;
+  const first = Math.min((page - 1) * (pageSize ?? total) + 1, total);
+  const last = Math.min(page * (pageSize ?? total), total);
   return (
-    <div className="flex items-center justify-between gap-4 border-t pt-4">
-      <p className="text-sm text-muted-foreground">
-        {ux('page')} {page} {ux('of')} {totalPages} · {total} {ux('results')}
-      </p>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <p className="tabular-nums">{first}–{last} sur {total}</p>
+        {pageSize && onPageSizeChange ? (
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Résultats par page</span>
+            <select
+              aria-label="Résultats par page"
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+              value={pageSize}
+              onChange={event => onPageSizeChange(Number(event.target.value))}
+            >
+              {[20, 25, 50].map(size => <option key={size} value={size}>{size} / page</option>)}
+            </select>
+          </label>
+        ) : null}
+      </div>
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
-          size="icon"
+          size="sm"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
           aria-label={ux('previous')}
         >
           <ChevronLeft className="size-4 rtl:rotate-180" />
+          <span className="hidden sm:inline">{ux('previous')}</span>
         </Button>
         <Button
           variant="outline"
-          size="icon"
+          size="sm"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           aria-label={ux('next')}
         >
+          <span className="hidden sm:inline">{ux('next')}</span>
           <ChevronRight className="size-4 rtl:rotate-180" />
         </Button>
       </div>

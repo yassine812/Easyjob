@@ -180,7 +180,7 @@ export function RequireCandidate({ children }: { children: ReactNode }) {
         const first = user.memberships[0];
         router.replace(first ? `/company/${first.companyId}/dashboard` : '/companies/new');
       } else if (accountType === 'admin') {
-        router.replace('/admin/dashboard');
+        router.replace('/platform-admin');
       }
     }
   }, [status, user, accountType, router]);

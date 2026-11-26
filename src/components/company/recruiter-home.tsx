@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Activity, ArrowRight, ArrowUpRight, Briefcase, CalendarDays, ChevronRight, ClipboardList, Clock3, Eye, Flag, Handshake, Layers3, Plus, TriangleAlert, Users, Zap } from 'lucide-react';
+import { Activity, ArrowRight, ArrowUpRight, Briefcase, CalendarDays, ChevronRight, ClipboardList, Clock3, Eye, Handshake, Layers3, Plus, TriangleAlert, Users, Zap } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { WorkspaceOverview } from '@/lib/api/company-workspace';
 import { recruiterJobApplicationsRoute } from '@/lib/job-display';
@@ -10,6 +10,7 @@ import { useDashboardText } from '@/lib/i18n/recruiter-dashboard';
 import { useRole } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { EasyJobFeatureMark } from '@/components/ui/easyjob-feature-mark';
+import { HumanCoach } from '@/components/ui/human-coach';
 import { AnimatedNumber, ApplicationsChart, Avatar, DashboardPanel, DashboardSkeleton, KpiCard, RelativeDate, Trend } from './dashboard-widgets';
 import styles from './recruiter-dashboard.module.css';
 
@@ -24,7 +25,7 @@ export function RecruiterHome({ companyId, data, controls, error }: { companyId:
   const t = useCompanyText(), copy = useDashboardText(), { locale } = useI18n(), { can } = useRole();
   const href = (path: string) => `/company/${encodeURIComponent(companyId)}/${path}`;
   const number = (value: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value);
-  const header = <header className={styles.hero}><div className={styles.heroText}><p className={styles.eyebrow}>EasyJob · {copy('workspace')}</p><h1>{copy('title')}</h1><p className={styles.subtitle}>{copy('subtitle')}</p></div><div className={styles.heroActions}>{controls}{can(companyId, 'job.create') && <Button asChild className={styles.createButton}><Link href={href('jobs/new')}><Plus size={17} />{t('postJob')}</Link></Button>}</div></header>;
+  const header = <header className={`${styles.hero} motion-page-header`}><div className={styles.heroText}><p className={styles.eyebrow}>EasyJob · {copy('workspace')}</p><h1>{copy('title')}</h1><p className={styles.subtitle}>{copy('subtitle')}</p></div><div className={styles.heroActions}>{controls}{can(companyId, 'job.create') && <Button asChild className={styles.createButton}><Link href={href('jobs/new')}><Plus size={17} />{t('postJob')}</Link></Button>}</div></header>;
   if (!data) return <div className={styles.dashboard}>{header}{error ?? <DashboardSkeleton />}</div>;
   const intelligence = data.advancedAnalysisAvailable === true;
   const period = `&from=${encodeURIComponent(data.from)}&to=${encodeURIComponent(data.to)}&includeLowAlignment=true`;
@@ -48,7 +49,7 @@ export function RecruiterHome({ companyId, data, controls, error }: { companyId:
     </section>
     <div className={styles.priorityGrid}>
       <DashboardPanel title={t('attentionToday')} icon={Zap} description={t('attentionHelpLive')} href={href('pipeline?includeLowAlignment=true')} action={copy('tasks')}><div className={styles.tasks}>{tasks.map(({ label, value, path, icon: Icon }, i) => <Link key={path} href={href(path)} className={styles.task} style={accent(colors[i])}><span className={styles.smallIcon}><Icon size={18} /></span><span><strong><AnimatedNumber value={value} /></strong><small>{label}</small></span><ChevronRight size={15} /></Link>)}</div></DashboardPanel>
-      <aside className={styles.brand}><div><p className={styles.eyebrow}>EasyJob</p><h2>{copy('brand')}</h2><p>{copy('brandSub')}</p><span className={styles.brandRule} /></div><div className={styles.summit} aria-hidden="true"><div className={styles.planet} /><div className={styles.mountainBack} /><div className={styles.mountain} /><Flag className={styles.flag} /></div></aside>
+      <aside data-motion-item className={styles.brand}><div><p className={styles.eyebrow}>EasyJob</p><h2>{copy('brand')}</h2><p>{copy('brandSub')}</p><span className={styles.brandRule} /></div><HumanCoach className={styles.brandCoach} pose={1} /></aside>
     </div>
     <div className={styles.chartGrid}>
       <DashboardPanel title={t('applicationsOverTime')} icon={Activity} description={copy('activityHelp')}><div className={styles.chartStats}><strong>{number(data.totalApplications)}</strong><span>{t('applications')}</span><Trend value={data.comparison?.applicationsPercent} /></div><ApplicationsChart daily={data.daily} /></DashboardPanel>

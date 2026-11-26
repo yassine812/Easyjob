@@ -2,12 +2,13 @@
 import { EasyJobFeatureLabel } from '@/components/ui/easyjob-feature-mark';
 
 import { useState } from 'react';
+import { HumanCoach } from '@/components/ui/human-coach';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useRecruitmentText } from '@/lib/i18n/recruitment';
 import { useEntitlement } from '@/hooks/use-entitlement';
 
-export function EasyJobAvatar() { return <span role="img" aria-label="EasyJob" className="size-11 shrink-0 rounded-xl border bg-primary/5" style={{ backgroundImage: "url('/images/coach/easyjob-human-transparent.png')", backgroundSize: '660% 220%', backgroundPosition: '50% 0%', backgroundRepeat: 'no-repeat' }} />; }
+export function EasyJobAvatar() { return <HumanCoach label="EasyJob" className="size-11 shrink-0 rounded-xl border bg-primary/5" pose={1} />; }
 export function AnalysisInfo({ label, help }: { label: string; help: string }) {
   return <span className="inline-flex items-center gap-1.5">{label}<Tooltip><TooltipTrigger asChild><button type="button" aria-label={help} className="inline-flex rounded p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Info className="size-3.5" /></button></TooltipTrigger><TooltipContent>{help}</TooltipContent></Tooltip></span>;
 }

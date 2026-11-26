@@ -113,6 +113,7 @@ export interface PreparationWorkspace {
 export interface CandidateJobFit { alignment: 'STRONG_ALIGNMENT' | 'PARTIAL_ALIGNMENT' | 'NEEDS_REVIEW'; score: number | null; strengths: { skill: string; evidence: string[] }[]; matchingSkills: string[]; missingEvidence: string[]; gaps: { skill: string; status: string; evidence: string[] }[]; method: string; hiringDecision: false }
 export interface CandidateTailoring { suggestions: { type: string; label: string; evidence: string[]; action: string; requiresConfirmation: true }[]; missingEvidence: { label: string; reason: string }[]; applyAutomatically: false; inventedFacts: false; method: string }
 export interface CandidateInterviewPrep { likelyThemes: { label: string; priority: number; status: string; reason: string }[]; technicalQuestions: string[]; behavioralQuestions: string[]; projectDeepDives: string[]; gapsToPrepare: string[]; suggestedExamples: string[]; linkedStarStories?: { id: string; title: string }[]; method: string }
+export interface RecruiterSimulation { source: 'mirofish' | 'local_fallback'; enabled: boolean; available: boolean; response: string; signals: string[]; recommendation: 'ADVANCE' | 'REVIEW' | 'REJECT_RISK'; simulationId?: string; questionIndex: number; evaluatedAt: string }
 export interface CandidateFollowUp { status: string; daysWaiting: number; nextAction: string; followUpSuggested: boolean; reminderAfterDays: number | null; source: string }
 export interface StarStory { id: string; title: string; situation: string; task: string; action: string; result: string; relatedSkills: string[]; relatedRoles: string[]; createdAt: string; updatedAt: string }
 export const careerApi = {
@@ -159,6 +160,7 @@ export const careerApi = {
   analyzeCoachJob: (id: string) => api.get<InterviewJobSummary>(`/career/coach/analyze/${id}`),
   createSession: (data: object) => api.post<CoachSession>('/career/coach', data),
   answer: (id: string, data: object) => api.post<CoachSession>(`/career/coach/${id}/answers`, data),
+  recruiterSimulation: (id: string, data: { questionIndex: number; answer: string }) => api.post<RecruiterSimulation>(`/career/coach/${id}/recruiter-simulation`, data),
   saveTurn: (id: string, data: object) => api.patch<{ saved: boolean }>(`/career/coach/${id}/turn`, data),
   startAutoTest: (id: string, data: { persona: TestCandidatePersona; speed: number; disableTts: boolean; seed: number; maxTopics?: number }) => api.post<CoachSession>(`/career/coach/${id}/autotest`, data),
   autoTestAnswer: (id: string) => api.post<CoachSession>(`/career/coach/${id}/autotest/answer`, {}),

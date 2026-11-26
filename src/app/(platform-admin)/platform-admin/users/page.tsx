@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
+import { UsersCenter } from '@/components/platform-admin/users-center';
 
-/** Legacy compatibility URL: account management now starts at Candidats. */
-export default function LegacyPlatformAdminUsersPage() {
-  redirect('/platform-admin/candidates');
+export default function PlatformAdminUsersPage() {
+  return <UsersCenter />;
 }

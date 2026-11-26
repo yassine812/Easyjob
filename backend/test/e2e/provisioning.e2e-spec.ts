@@ -21,28 +21,30 @@ describe('Admin provisioning, password recovery and CV prefill', () => {
     expect(await ctx.prisma.user.count({ where: { email: 'blocked@workspace.test' } })).toBe(0);
   });
 
-  it('provisions credentials privately, sends them, forces replacement, and invalidates old tokens', async () => {
+  it('provisions a private invitation and activates the owner with a single-use token', async () => {
     const dto = { legalName: 'Release SARL', commercialName: 'Release Studio', ownerName: 'Release Owner', ownerEmail: 'release-owner@workspace.test' };
     const created = await ctx.http.post('/api/v1/admin/companies').set(authHeader(admin.accessToken)).send(dto);
     expect(created.status).toBe(201); expect(created.body.company.status).toBe('ACTIVE');
     expect(JSON.stringify(created.body)).not.toMatch(/passwordHash|encryptedBody/);
     const delivery = await ctx.prisma.companyAccessDelivery.findUniqueOrThrow({ where: { companyId: created.body.company.id } });
-    expect(delivery.encryptedBody).not.toContain('Votre espace');
+    expect(delivery.encryptedBody).not.toContain('activate-company-account');
     await ctx.app.get(CompanyAccessWorker).deliver();
     const email = await waitFor(() => ConsoleEmailProvider.sentEmails.find(e => e.to === dto.ownerEmail));
-    const password = email!.html.match(/<strong>([^<]+)<\/strong>/)?.[1];
-    expect(password).toBeTruthy();
-    const owner = await login(ctx.http, dto.ownerEmail, password!);
-    const me = await ctx.http.get('/api/v1/auth/me').set(authHeader(owner.accessToken));
-    expect(me.body.mustChangePassword).toBe(true);
-    expect((await ctx.http.get('/api/v1/users/me').set(authHeader(owner.accessToken))).status).toBe(403);
-    const changed = await ctx.http.post('/api/v1/auth/change-password').set(authHeader(owner.accessToken)).send({ currentPassword: password, newPassword: 'MyOwnNewPassw0rd!' });
-    expect(changed.status).toBe(200);
-    expect((await ctx.http.get('/api/v1/auth/me').set(authHeader(owner.accessToken))).status).toBe(401);
-    const newSession = await login(ctx.http, dto.ownerEmail, 'MyOwnNewPassw0rd!');
-    const newMe = await ctx.http.get('/api/v1/auth/me').set(authHeader(newSession.accessToken));
-    expect(newMe.body.mustChangePassword).toBe(false);
-    expect(newMe.body.memberships[0].companyId).toBe(created.body.company.id);
+    const token = email!.html.match(/activate-company-account\?token=([a-f0-9]+)/)?.[1];
+    expect(token).toBeTruthy();
+    const preview = await ctx.http.get('/api/v1/auth/activation-preview').query({ token });
+    expect(preview.status).toBe(200);
+    expect(preview.body).toMatchObject({ email: dto.ownerEmail, companyName: dto.commercialName });
+    expect((await ctx.http.post('/api/v1/auth/login').send({ email: dto.ownerEmail, password: 'MyOwnNewPassw0rd!' })).status).toBe(401);
+    const activate = () => ctx.http.post('/api/v1/auth/reset-password').send({ token, newPassword: 'MyOwnNewPassw0rd!' });
+    expect((await activate()).status).toBe(200);
+    expect((await activate()).status).toBe(400);
+    expect((await ctx.http.get('/api/v1/auth/activation-preview').query({ token })).status).toBe(400);
+    const session = await login(ctx.http, dto.ownerEmail, 'MyOwnNewPassw0rd!');
+    const me = await ctx.http.get('/api/v1/auth/me').set(authHeader(session.accessToken));
+    expect(me.body.mustChangePassword).toBe(false);
+    expect(me.body.memberships[0].companyId).toBe(created.body.company.id);
+    expect((await ctx.prisma.companyInvitation.findFirstOrThrow({ where: { companyId: created.body.company.id } })).status).toBe('ACCEPTED');
     expect((await ctx.prisma.companyAccessDelivery.findUniqueOrThrow({ where: { id: delivery.id } })).encryptedBody).toBeNull();
     expect((await ctx.http.post('/api/v1/admin/companies').set(authHeader(admin.accessToken)).send(dto)).status).toBe(409);
   });

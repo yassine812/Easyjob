@@ -12,8 +12,9 @@ export function ProfilePhoto({ onValidityChange }: { onValidityChange?: (valid: 
   const user = useAuthStore(state => state.user);
   const setUser = useAuthStore(state => state.setUser);
   const imageUrl = user?.avatarUrl ?? null;
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
   useEffect(() => { setImageLoaded(false); if (!imageUrl) setError(''); }, [imageUrl]);
-  const ready = Boolean(previewUrl || (imageUrl && imageLoaded));
+  const ready = Boolean(!previewUrl && imageUrl && imageLoaded);
   useEffect(() => onValidityChange?.(ready), [onValidityChange, ready]);
   const refreshCurrentUser = async () => { if (user) setUser(await authApi.me()); };
   const save = useMutation({ mutationFn: async (file: File) => { const body = new FormData(); body.append('file', file); return api.post<{ avatar_url: string }>('/candidates/me/photo', body); }, onSuccess: async () => { await refreshCurrentUser(); setError(''); setPreviewUrl(null); }, onError: () => setError(t('Impossible d’enregistrer la photo. Réessaie.', 'Unable to save the photo. Try again.', 'تعذّر حفظ الصورة. حاول مجددًا.')) });

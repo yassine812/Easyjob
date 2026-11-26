@@ -41,10 +41,10 @@ describe('public job source adapters', () => {
 
   it('reports unavailable integrations without making unauthorised source requests', async () => {
     const fetch = jest.spyOn(globalThis, 'fetch');
-    const adapters = [new TanitJobsAdapter(new ConfigService({})), new LinkedInAdapter(new ConfigService({}))];
+    const adapters = [new TanitJobsAdapter(new ConfigService({ JOB_SOURCE_TANITJOBS_ENABLED: 'false' })), new LinkedInAdapter(new ConfigService({}))];
 
     expect(adapters.map(adapter => adapter.type)).toEqual([JobSourceType.TANITJOBS, JobSourceType.LINKEDIN]);
-    await expect(adapters[0].healthCheck()).resolves.toEqual(expect.objectContaining({ status: 'PARTNER_REQUIRED' }));
+    await expect(adapters[0].healthCheck()).resolves.toEqual(expect.objectContaining({ status: 'DISABLED' }));
     await expect(adapters[1].healthCheck()).resolves.toEqual(expect.objectContaining({ status: 'PARTNER_REQUIRED' }));
     await Promise.all(adapters.map(adapter => expect(adapter.fetchJobs()).rejects.toThrow('SOURCE_NOT_CONFIGURED')));
     expect(fetch).not.toHaveBeenCalled();

@@ -11,7 +11,6 @@ automated tests). Set OPENAI_API_KEY to use an OpenAI-compatible chat model.
 """
 import logging
 import os
-from pathlib import Path
 from threading import Thread, Timer
 
 from fastapi import FastAPI, HTTPException
@@ -95,14 +94,14 @@ def liveness():
 def interview_readiness():
     from app.interview_ai.resources import readiness
     state = readiness()
-    whisper_configured = bool(os.getenv('FASTER_WHISPER_MODEL_PATH')) and Path(os.getenv('FASTER_WHISPER_MODEL_PATH', '')).exists()
+    whisper_configured = bool(os.getenv('FASTER_WHISPER_MODEL_PATH'))
     vad_enabled = os.getenv('INTERVIEW_VAD_ENABLED', 'true').lower() in ('true', '1')
-    public = {"tfidf": state["tfidf"], "embeddings": state["embeddings"], "stt": whisper_configured, "vad": vad_enabled,
+    public = {"tfidf": state["tfidf"], "embeddings": state["embeddings"], "stt": state['stt'], "stt_configured": whisper_configured, "vad": vad_enabled and state['stt'],
               "model_instance_count": state["model_instance_count"],
               "analysis_engine": "local_hybrid" if state["embeddings"] else "local_deterministic_fallback"}
     if state["loading"]:
         return JSONResponse(status_code=503, content={"status": "loading", **public})
-    if not state["initialized"] or not state["tfidf"] or not state["embeddings"]:
+    if not state["initialized"] or not state["tfidf"] or not state["embeddings"] or (whisper_configured and not state['stt']):
         return JSONResponse(status_code=503, content={"status": "degraded", **public})
     return {"status": "ready", **public}
 

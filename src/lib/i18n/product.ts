@@ -19,7 +19,7 @@ export const productCopy: Record<string, [string, string, string]> = {
   menu: ['Menu', 'Menu', 'القائمة'],
   eyebrow: ['Your next chapter, thoughtfully matched.', 'Ton prochain chapitre, bien accompagné.', 'خطوتك القادمة، بمرافقة ذكية.'],
   hero: ['Find your next job.', 'Trouve ton prochain emploi.', 'اعثر على وظيفتك القادمة.'],
-  heroAccent: ['Let AI do the hard work.', 'Laisse l’IA t’accompagner.', 'دع الذكاء الاصطناعي يساعدك.'],
+  heroAccent: ['With a clear next step.', 'Un parcours plus clair.', 'مع خطوة تالية واضحة.'],
   heroBody: ['One CV. A clearer direction. Discover relevant opportunities, understand your strengths, and walk into your next interview prepared.', 'Un CV. Une direction claire. Découvre les bonnes opportunités, comprends tes points forts et prépare ton prochain entretien.', 'سيرة ذاتية واحدة واتجاه أوضح. اكتشف الفرص المناسبة وافهم نقاط قوتك واستعد لمقابلتك القادمة.'],
   start: ['Start my career journey', 'Commencer mon parcours', 'ابدأ مساري المهني'],
   how: ['How it works', 'Comment ça marche', 'كيف تعمل المنصة'],

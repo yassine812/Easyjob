@@ -39,7 +39,7 @@ import { recruiterJobEditRoute, recruiterJobPreviewRoute, toJobDisplayStatus, wo
 
 export function RecruitmentHeader({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   const t = useRecruitmentText();
-  return <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-300"><EasyJobFeatureMark size="sm" className="" />{t('workspace')}</p><h1 className="text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p></div>{children}</header>;
+  return <header className="motion-page-header flex flex-wrap items-center justify-between gap-4"><div><p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-300"><EasyJobFeatureMark size="sm" className="" />{t('workspace')}</p><h1 className="text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p></div>{children}</header>;
 }
 export function PageControls({ page, total, limit, change }: { page: number; total: number; limit: number; change: (page: number) => void }) {
   const t = useRecruitmentText();

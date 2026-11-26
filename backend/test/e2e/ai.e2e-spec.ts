@@ -119,11 +119,14 @@ describe('AI pipeline (e2e)', () => {
           .set(authHeader(candidate.accessToken));
         if (result.status !== 200) return undefined;
         const body = result.body as { status: string; output?: { overall_score?: number } };
-        return body.status === 'COMPLETED' && body.output?.overall_score === 82 ? body : undefined;
+        return body.status === 'COMPLETED' ? body : undefined;
       },
       { description: 'AI CV analysis to complete' },
     );
-    expect(completed!.output?.overall_score).toBe(82);
+    // This deliberately incomplete eight-word CV must not inherit the stub's
+    // invented 82/100: the application's reproducible ATS audit scores it zero.
+    expect(completed!.output?.overall_score).toBe(0);
+    expect(completed!.output).toMatchObject({ estimated: true, method: 'text_readiness_v1' });
   });
 
   it('runs job matching and exposes the score', async () => {
@@ -131,13 +134,8 @@ describe('AI pipeline (e2e)', () => {
     const companyAdmin = await createVerifiedUser(ctx, 'AI Company', 'aicompany@test.com');
     const company = await companyFixture(ctx, companyAdmin.accessToken, { legalName: 'AI Co', commercialName: 'AICo' });
     const companyId = (company.body as { id: string }).id;
-    await ctx.http
-      .post(`/api/v1/companies/${companyId}/verification/documents`)
-      .set(authHeader(companyAdmin.accessToken))
-      .attach('file', Buffer.from('%PDF-1.4\ndoc'), { filename: 'd.pdf', contentType: 'application/pdf' });
-    await ctx.http.post(`/api/v1/companies/${companyId}/verification/submit`).set(authHeader(companyAdmin.accessToken));
-    const verifications = await ctx.http.get('/api/v1/admin/verifications').set(authHeader(companyAdmin.accessToken));
-    expect(verifications.status).toBe(403); // not admin
+    const companies = await ctx.http.get('/api/v1/admin/companies').set(authHeader(companyAdmin.accessToken));
+    expect(companies.status).toBe(403);
 
     const job = await ctx.http
       .post('/api/v1/jobs')
@@ -147,14 +145,15 @@ describe('AI pipeline (e2e)', () => {
         description: 'A job description for the AI matching test with enough length.',
         employmentType: 'FULL_TIME',
         experienceLevel: 'SENIOR',
+        minimumYearsExperience: 5,
+        responsibilities: ['Build and maintain TypeScript APIs'],
         remote: true,
         skills: [{ name: 'TypeScript', required: true }, { name: 'Node.js', required: true }],
       });
     expect(job.status).toBe(201);
     const jobId = (job.body as { id: string }).id;
 
-    // Matching must only expose published jobs from verified, active companies.
-    await ctx.prisma.company.update({ where: { id: companyId }, data: { status: 'ACTIVE', verification: { update: { status: 'VERIFIED' } } } });
+    // Matching exposes published jobs from active admin-managed companies.
     await ctx.prisma.job.update({ where: { id: jobId }, data: { status: 'APPROVED', approvedAt: new Date() } });
     expect((await ctx.http.post(`/api/v1/jobs/${jobId}/publish`).set(authHeader(companyAdmin.accessToken))).status).toBe(201);
 
@@ -175,7 +174,8 @@ describe('AI pipeline (e2e)', () => {
       },
       { description: 'AI job matching to complete' },
     );
-    expect(completed!.scores?.overall).toBe(87);
+    // The production evidence matcher, rather than the remote stub's 87, wins.
+    expect(completed!.scores?.overall).toBe(67);
   });
 
   it('rejects AI operations on other users analysis results', async () => {

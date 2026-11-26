@@ -113,3 +113,9 @@
   .document [data-cv-section] { outline: none !important; }
   @page { size: A4; margin: 0; }
 }
+
+/* Editor chrome follows the product system; the printable document is unchanged. */
+.editorTools { border-radius:22px; background:var(--card); border-color:var(--product-edge); box-shadow:var(--product-elevation); }
+.canvasShell { border-radius:22px; border-color:var(--product-edge); background:color-mix(in srgb,var(--muted) 70%,var(--card)); }
+.canvasToolbar { border-radius:22px 22px 0 0; padding:16px 20px; background:var(--card); }
+.editSection { border-radius:16px; }

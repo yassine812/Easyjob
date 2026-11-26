@@ -99,6 +99,8 @@ enum JobStatus {
 }
 
 enum JobSourceType {
+  FREEHIRE
+  JOBOPS
   APEC
   GLASSDOOR
   WELCOME_TO_THE_JUNGLE

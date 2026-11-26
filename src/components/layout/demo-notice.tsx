@@ -16,5 +16,5 @@ export function DemoNotice() {
   // Platform Admin reports current database state.  It must not be framed as
   // a demo, even when the local database contains seeded development rows.
   if (currentWorkspace === 'admin') return null;
-  return <aside aria-label={copy[0]} className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"><p className="font-semibold">{copy[0]}</p><p className="mt-1 text-xs leading-5 opacity-85">{copy[1]}</p></aside>;
+  return <aside aria-label={copy[0]} className="workspace-demo-notice mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"><p className="font-semibold">{copy[0]}</p><p className="mt-1 text-xs leading-5 opacity-85">{copy[1]}</p></aside>;
 }

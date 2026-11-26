@@ -5,4 +5,5 @@ __pycache__/
 venv/
 .runtime/
 tests/
+app/face/models/
 *.log

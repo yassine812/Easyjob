@@ -76,8 +76,8 @@ describe('Billing (e2e)', () => {
         data: {
           providerSubscriptionId: subscription!.providerSubscriptionId,
           providerPaymentId: 'pay_test_1',
-          amountCents: 999,
-          currency: 'USD',
+          amountCents: 4900,
+          currency: 'TND',
           periodStart: String(periodStart),
           periodEnd: String(periodEnd),
         },
@@ -132,8 +132,8 @@ describe('Billing (e2e)', () => {
       data: {
         providerSubscriptionId: subscription!.providerSubscriptionId,
         providerPaymentId: 'pay_idem_1',
-        amountCents: 999,
-        currency: 'USD',
+        amountCents: 4900,
+        currency: 'TND',
         periodStart: String(Math.floor(Date.now() / 1000)),
         periodEnd: String(Math.floor(Date.now() / 1000) + 30 * 86400),
       },
@@ -190,7 +190,7 @@ describe('Billing (e2e)', () => {
       .set('x-webhook-secret', DEV_WEBHOOK_SECRET)
       .send({
         event: 'invoice.payment_failed',
-        data: { providerSubscriptionId: subscription!.providerSubscriptionId, providerPaymentId: 'invoice_failed_renewal', amountCents: 999, currency: 'USD' },
+        data: { providerSubscriptionId: subscription!.providerSubscriptionId, providerPaymentId: 'invoice_failed_renewal', amountCents: 4900, currency: 'TND' },
       });
     expect(webhook.status).toBe(201);
 

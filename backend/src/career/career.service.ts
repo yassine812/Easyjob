@@ -1,5 +1,5 @@
 import { publicJobSalary } from '../jobs/job-content';
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { prefillFromCv } from './cv-prefill';
 import { guidedCoach } from './coach-fallback';
@@ -14,12 +14,14 @@ import { EntitlementService } from '../entitlements/entitlement.service';
 import { AiClient } from '../ai/ai-client';
 import { StorageService } from '../files/storage.service';
 import { atsReport, extractProfile, matchCandidate, matchesPreferences, normalize, renderProfile, unique } from './career-engine';
-import { BuildDraftDto, CareerSearchDto, CareerSettingsDto, CoachAnswerDto, CreateCoachDto, ProfessionalDataDto, SaveDraftDto, RegenerateSectionDto } from './career.dto';
+import { BuildDraftDto, CareerSearchDto, CareerSettingsDto, CoachAnswerDto, CreateCoachDto, ProfessionalDataDto, SaveDraftDto, RegenerateSectionDto, RecruiterSimulationDto } from './career.dto';
+import { MiroFishClient } from './mirofish.client';
 
 import { availableJobWhere } from '../jobs/job-availability';
 import { analyzeInterviewJob, type InterviewJobAnalysis } from './interview-intelligence';
 import { speechMetrics } from './interview-coaching-metrics';
 import { buildAutoApplyDefaultsFromCv } from './auto-apply-prefill';
+import { externalCatalogEnabled } from '../jobs/external-catalog-mode';
 import { analyzeDeterministicInterview, selectDeterministicQuestions } from './deterministic-interview';
 export { availableJobWhere } from '../jobs/job-availability';
 export const careerJobInclude = { company: { select: { id: true, commercialName: true, industry: true, slug: true, website: true, logoKey: true } }, skills: { include: { skill: true } } } satisfies Prisma.JobInclude;
@@ -36,7 +38,7 @@ function withTestTrace(preparation: CoachPreparation, event: string, stateBefore
 @Injectable()
 export class CareerService {
   constructor(private readonly prisma: PrismaService, private readonly entitlements: EntitlementService,
-    private readonly ai: AiClient, private readonly storage: StorageService) {}
+    private readonly ai: AiClient, private readonly storage: StorageService, @Optional() private readonly mirofish?: MiroFishClient) {}
 
   async profile(userId: string) {
     const p = await this.prisma.candidateProfile.findUnique({ where: { userId }, include: {
@@ -191,7 +193,7 @@ export class CareerService {
   }
   async job(id: string) {
     const job = await this.prisma.job.findFirst({ where: { AND: [{ id }, availableJobWhere()] }, include: careerJobInclude });
-    if (!job) throw new NotFoundException('Published job from a verified company not found');
+    if (!job) throw new NotFoundException('Published job from an active company not found');
     return publicJobSalary(job);
   }
   async drafts(userId: string) {
@@ -209,6 +211,7 @@ export class CareerService {
   async targetJob(id: string) {
     const native = await this.prisma.job.findFirst({ where: { AND: [{ id }, availableJobWhere()] }, include: careerJobInclude });
     if (native) return publicJobSalary(native);
+    if (!externalCatalogEnabled()) throw new NotFoundException('Only published EasyJob offers are available');
     const external = await this.prisma.aggregatedJob.findFirst({ where: { id, status: 'OPEN', OR: [{ closingAt: null }, { closingAt: { gt: new Date() } }] } });
     if (!external) throw new NotFoundException('Target job unavailable');
     return { ...external, company: { commercialName: external.companyName || '' }, skills: external.skills.map(name => ({ skill: { name }, required: false })) };
@@ -618,6 +621,25 @@ export class CareerService {
     if (!updated.count) throw new BadRequestException('Session changed; reload before answering');
     const updatedSession = await this.prisma.coachSession.findUnique({ where: { id } });
     return updatedSession ? this.candidateCoachSession(updatedSession) : updatedSession;
+  }
+
+  async recruiterSimulation(userId: string, id: string, dto: RecruiterSimulationDto) {
+    const p = await this.profile(userId); await this.requireFeature(p.id, 'interview_preparation');
+    const session = await this.prisma.coachSession.findFirst({ where: { id, candidateId: p.id } });
+    if (!session) throw new NotFoundException('Session not found');
+    const questions = session.questions as string[];
+    const preparation = session.preparation as CoachPreparation;
+    const job = session.jobId ? await this.prisma.job.findUnique({ where: { id: session.jobId }, select: { description: true, company: { select: { commercialName: true } } } }) : null;
+    const result = this.mirofish ? await this.mirofish.simulateRecruiter({
+      question: questions[dto.questionIndex] || questions[0] || 'Présente ton expérience.',
+      answer: dto.answer,
+      jobTitle: session.jobTitle,
+      company: session.company || job?.company.commercialName,
+      jobDescription: job?.description || String(preparation.jobDescription || ''),
+      candidateText: preparation.cvTextSnapshot,
+      locale: session.locale,
+    }) : { source: 'local_fallback' as const, enabled: false, available: false, response: 'Ajoute une réponse plus précise avec une action et un résultat mesurable.', signals: ['Simulation locale disponible'], recommendation: 'REVIEW' as const };
+    return { ...result, questionIndex: dto.questionIndex, evaluatedAt: new Date().toISOString() };
   }
   async targetedCoach(userId: string, id: string) {
     const p = await this.profile(userId); await this.requireFeature(p.id, 'interview_preparation');

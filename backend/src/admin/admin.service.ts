@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CompanyStatus, JobStatus, PaymentStatus, PlanType, SubscriptionStatus, UserStatus, VerificationStatus, BillingInterval, Prisma } from '@prisma/client';
+import { CompanyStatus, JobStatus, PaymentStatus, PlanType, SubscriptionStatus, UserStatus, BillingInterval, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { paginate, resolvePagination } from '../common/utils/pagination';
@@ -21,86 +21,80 @@ export class AdminService {
     @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
-  async listVerifications(query: { page?: number; limit?: number; status?: VerificationStatus }) {
+  async listCompanies(query: { page?: number; limit?: number; status?: CompanyStatus; search?: string; planId?: string; subscriptionStatus?: SubscriptionStatus; expiring?: '7' | '30'; registeredWithin?: '7' | '30' | '90'; activeWithin?: '7' | '30' | '90' }) {
     const { page, limit, skip, take } = resolvePagination(query);
-    const where = query.status ? { status: query.status } : {};
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.companyVerification.findMany({
-        where,
-        include: {
-          company: { select: { id: true, commercialName: true, legalName: true, slug: true, status: true } },
-          documents: { select: { id: true, filename: true, mimeType: true, fileSize: true, createdAt: true } },
-          reviewedBy: { select: { id: true, name: true } },
-        },
-        orderBy: { createdAt: 'asc' },
-        skip,
-        take,
-      }),
-      this.prisma.companyVerification.count({ where }),
-    ]);
-    return paginate(items, total, page, limit);
-  }
-
-  async getVerification(verificationId: string) {
-    const verification = await this.prisma.companyVerification.findUnique({
-      where: { id: verificationId },
-      include: {
-        company: {
-          select: {
-            id: true,
-            commercialName: true,
-            legalName: true,
-            slug: true,
-            status: true,
-            registrationIdentifier: true,
-            professionalEmail: true,
-            city: true,
-            country: true,
-          },
-        },
-        documents: { select: { id: true, filename: true, mimeType: true, fileSize: true, createdAt: true } },
-        reviewedBy: { select: { id: true, name: true } },
-      },
-    });
-    if (!verification) throw new NotFoundException('Verification not found');
-    return verification;
-  }
-
-  async listCompanies(query: { page?: number; limit?: number; status?: CompanyStatus; search?: string }) {
-    const { page, limit, skip, take } = resolvePagination(query);
-    const where = {
+    const nowDate = new Date();
+    const registeredSince = query.registeredWithin ? new Date(nowDate.getTime() - Number(query.registeredWithin) * 86400000) : null;
+    const activeSince = query.activeWithin ? new Date(nowDate.getTime() - Number(query.activeWithin) * 86400000) : null;
+    const subscriptionWhere: Prisma.SubscriptionWhereInput = {
+      ...(query.planId ? { planId: query.planId } : {}),
+      ...(query.subscriptionStatus ? { status: query.subscriptionStatus } : {}),
+      ...(query.expiring ? { currentPeriodEnd: { gte: nowDate, lte: new Date(nowDate.getTime() + Number(query.expiring) * 86400000) } } : {}),
+    };
+    const where: Prisma.CompanyWhereInput = {
       ...(query.status ? { status: query.status } : {}),
-      ...(query.search
-        ? {
-            OR: [
+      ...(registeredSince ? { createdAt: { gte: registeredSince } } : {}),
+      ...((query.planId || query.subscriptionStatus || query.expiring) ? { subscriptions: { some: subscriptionWhere } } : {}),
+      AND: [
+        ...(query.search ? [{ OR: [
               { commercialName: { contains: query.search, mode: 'insensitive' as const } },
               { legalName: { contains: query.search, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
+              { members: { some: { isOwner: true, user: { OR: [
+                { name: { contains: query.search, mode: 'insensitive' as const } },
+                { email: { contains: query.search, mode: 'insensitive' as const } },
+              ] } } } },
+            ] }] : []),
+        ...(activeSince ? [{ OR: [
+          { updatedAt: { gte: activeSince } },
+          { members: { some: { user: { lastLoginAt: { gte: activeSince } } } } },
+        ] }] : []),
+      ],
     };
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, starterPlan] = await Promise.all([
       this.prisma.company.findMany({
         where,
-        include: { _count: { select: { members: true, jobs: true } }, subscriptions: { where: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING, SubscriptionStatus.PAST_DUE] } }, orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { id: true, name: true, type: true, priceCents: true, currency: true, billingInterval: true } } } } },
+        include: { _count: { select: { members: true, jobs: true } }, members: { where: { isOwner: true }, take: 1, select: { user: { select: { id: true, name: true, email: true, lastLoginAt: true, mustChangePassword: true } } } }, subscriptions: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { id: true, name: true, type: true, priceCents: true, currency: true, billingInterval: true } } } } },
         orderBy: { createdAt: 'desc' },
         skip,
         take,
       }),
       this.prisma.company.count({ where }),
+      this.prisma.plan.findFirst({ where: { type: PlanType.COMPANY, active: true }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, type: true, priceCents: true, currency: true, billingInterval: true } }),
     ]);
     const now = Date.now();
-    return paginate(items.map((company) => ({ ...company, subscription: company.subscriptions[0] ? { ...company.subscriptions[0], remainingDays: company.subscriptions[0].currentPeriodEnd ? Math.max(0, Math.ceil((company.subscriptions[0].currentPeriodEnd.getTime() - now) / 86400000)) : null } : null })), total, page, limit);
+    return paginate(items.map((company) => {
+      const subscription = company.subscriptions[0] ? { ...company.subscriptions[0], remainingDays: company.subscriptions[0].currentPeriodEnd ? Math.max(0, Math.ceil((company.subscriptions[0].currentPeriodEnd.getTime() - now) / 86400000)) : null } : null;
+      const owner = company.members[0]?.user ?? null;
+      return { ...company, members: undefined, subscriptions: undefined, owner, plan: subscription?.plan ?? starterPlan, subscriptionStatus: subscription?.status ?? 'FREE', lastActivityAt: owner?.lastLoginAt ?? company.updatedAt, subscription };
+    }), total, page, limit);
   }
 
-  async listCandidates(query: { page?: number; limit?: number; status?: UserStatus; search?: string }) {
+  async listCandidates(query: { page?: number; limit?: number; status?: UserStatus; search?: string; planId?: string; subscriptionStatus?: SubscriptionStatus; expiring?: '7' | '30'; registeredWithin?: '7' | '30' | '90'; activeWithin?: '7' | '30' | '90' }) {
     const { page, limit, skip, take } = resolvePagination(query);
-    const where = {
+    const nowDate = new Date();
+    const registeredSince = query.registeredWithin ? new Date(nowDate.getTime() - Number(query.registeredWithin) * 86400000) : null;
+    const activeSince = query.activeWithin ? new Date(nowDate.getTime() - Number(query.activeWithin) * 86400000) : null;
+    const subscriptionWhere: Prisma.SubscriptionWhereInput = {
+      ...(query.planId ? { planId: query.planId } : {}),
+      ...(query.subscriptionStatus ? { status: query.subscriptionStatus } : {}),
+      ...(query.expiring ? { currentPeriodEnd: { gte: nowDate, lte: new Date(nowDate.getTime() + Number(query.expiring) * 86400000) } } : {}),
+    };
+    const where: Prisma.UserWhereInput = {
       ...(query.status ? { status: query.status } : {}),
-      candidateProfile: { isNot: null },
+      ...(registeredSince ? { createdAt: { gte: registeredSince } } : {}),
+      ...(activeSince ? { lastLoginAt: { gte: activeSince } } : {}),
+      // Company owners and recruiters are managed from their company detail,
+      // never as top-level candidate accounts.
+      companyMemberships: { none: {} },
+      // The recruiter workspace fixtures use candidate profiles to populate a
+      // pipeline. They are internal demo records, not platform candidate accounts.
+      email: { not: { startsWith: 'recruiter-demo-' } },
+      candidateProfile: (query.planId || query.subscriptionStatus || query.expiring)
+        ? { is: { subscriptions: { some: subscriptionWhere } } }
+        : { isNot: null },
       ...(query.search ? { OR: [{ name: { contains: query.search, mode: 'insensitive' as const } }, { email: { contains: query.search, mode: 'insensitive' as const } }] } : {}),
     };
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, startPlan] = await Promise.all([
       this.prisma.user.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -132,13 +126,14 @@ export class AdminService {
         },
       }),
       this.prisma.user.count({ where }),
+      this.prisma.plan.findFirst({ where: { type: PlanType.CANDIDATE, active: true }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, type: true, priceCents: true, currency: true, billingInterval: true } }),
     ]);
     const now = Date.now();
     return paginate(items.map((user) => {
       const subscription = user.candidateProfile?.subscriptions[0] ?? null;
       return {
-        id: user.id, name: user.name, email: user.email, plan: subscription?.plan ?? null,
-        subscriptionStatus: subscription?.status ?? null,
+        id: user.id, name: user.name, email: user.email, plan: subscription?.plan ?? startPlan,
+        subscriptionStatus: subscription?.status ?? 'FREE',
         renewalAt: subscription?.currentPeriodEnd ?? null,
         expiresAt: subscription?.currentPeriodEnd ?? null,
         daysRemaining: subscription?.currentPeriodEnd ? Math.max(0, Math.ceil((subscription.currentPeriodEnd.getTime() - now) / 86400000)) : null,

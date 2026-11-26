@@ -30,8 +30,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     const tables = await this.$queryRawUnsafe<Array<{ tablename: string }>>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations')`,
     );
-    for (const { tablename } of tables) {
-      await this.$executeRawUnsafe(`TRUNCATE TABLE "public"."${tablename}" CASCADE`);
+    // One statement avoids repeatedly cascading over the same related tables.
+    // Names come from pg_tables and are quoted as identifiers, never user input.
+    if (tables.length) {
+      const names = tables.map(({ tablename }) => `"public"."${tablename.replace(/"/g, '""')}"`).join(', ');
+      await this.$executeRawUnsafe(`TRUNCATE TABLE ${names} CASCADE`);
     }
   }
 }

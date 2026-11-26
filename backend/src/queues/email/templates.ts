@@ -45,10 +45,10 @@ export const emailTemplates = {
     ),
     text: `We received a request to reset your EasyJob password. This link is valid for 60 minutes. Open this link to continue: ${url}`,
   }),
-  companyOwnerInvitation: (url: string, companyName: string, ownerName: string): RenderedEmail => ({
+  companyOwnerInvitation: (url: string, companyName: string, ownerName: string, planName = 'EasyJob Starter', loginEmail?: string): RenderedEmail => ({
     subject: `Votre compte entreprise ${companyName} a été créé — EasyJob`,
-    html: shell('Votre espace entreprise EasyJob est prêt', `Bonjour ${escapeHtml(ownerName)},<p>Votre compte administrateur pour <strong>${escapeHtml(companyName)}</strong> a été créé. Choisissez votre mot de passe pour activer votre accès. Ce lien expire dans 24 heures.</p>`, { label: 'Activer mon compte', url }),
-    text: `Bonjour ${ownerName}. Votre compte administrateur pour ${companyName} a été créé. Activez votre compte et choisissez votre mot de passe : ${url}. Le lien expire dans 24 heures.`,
+    html: shell('Votre espace entreprise EasyJob est prêt', `Bonjour ${escapeHtml(ownerName)},<p>Votre compte administrateur pour <strong>${escapeHtml(companyName)}</strong> a été créé.</p>${loginEmail ? `<p>Identifiant : <strong>${escapeHtml(loginEmail)}</strong></p>` : ''}<p>Plan : <strong>${escapeHtml(planName)}</strong></p><p>Choisissez votre mot de passe pour activer votre accès. Ce lien expire dans 24 heures.</p>`, { label: 'Activer mon compte', url }),
+    text: `Bonjour ${ownerName}. Votre compte administrateur pour ${companyName} a été créé. ${loginEmail ? `Identifiant : ${loginEmail}. ` : ''}Plan : ${planName}. Activez votre compte et choisissez votre mot de passe : ${url}. Le lien expire dans 24 heures.`,
   }),
   companyInvitation: (url: string, companyName: string, role: string): RenderedEmail => ({
     subject: `You've been invited to ${companyName} — EasyJob`,

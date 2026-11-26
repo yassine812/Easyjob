@@ -30,7 +30,7 @@ export function MarketingNav() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+    <header className="marketing-header sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Logo href={workspace.home} size="lg" />
         <nav className="hidden items-center gap-8 md:flex" aria-label={copy('menu')}>

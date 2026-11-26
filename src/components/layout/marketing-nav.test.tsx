@@ -27,7 +27,7 @@ describe('Marketing navigation session', () => {
   it.each([
     [makeUser({ roles: ['CANDIDATE'] }), '/candidate/dashboard'],
     [makeUser({ roles: ['HR'], memberships: [{ companyId: 'acme', role: 'HR' }] }), '/company/acme/dashboard'],
-    [makeUser({ roles: ['PLATFORM_ADMIN'] }), '/admin/dashboard'],
+    [makeUser({ roles: ['PLATFORM_ADMIN'] }), '/platform-admin'],
   ] as const)('links directly to the restored account workspace on desktop and mobile', async (account, route) => {
     render(<I18nProvider><MarketingNav /></I18nProvider>);
     await act(async () => { useAuthStore.getState().setSession('restored', account); });

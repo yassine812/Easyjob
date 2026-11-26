@@ -41,10 +41,12 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [faceMode, setFaceMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [clientReady, setClientReady] = useState(false);
   const navigationCancelled = useRef(false);
   const [navigationWasCancelled, setNavigationWasCancelled] = useState(false);
   const navigationStarted = useRef(false);
   useEffect(() => {
+    setClientReady(true);
     navigationCancelled.current = false;
     return () => { navigationCancelled.current = true; };
   }, []);
@@ -111,7 +113,7 @@ export function LoginForm() {
   return (
     <div className="space-y-4">
       <Form {...form}>
-        <form onSubmit={event => { void form.handleSubmit(onSubmit)(event); }} className="space-y-3" noValidate>
+        <form method="post" onSubmit={event => { void form.handleSubmit(onSubmit)(event); }} className="space-y-3" noValidate>
           {error ? (
             <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
               <p>{error}</p>
@@ -196,7 +198,7 @@ export function LoginForm() {
           {/* Primary Action Button */}
           <button
             type="submit"
-            disabled={form.formState.isSubmitting}
+            disabled={!clientReady || form.formState.isSubmitting}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#3F5FDE] hover:bg-[#3252c8] text-white py-2.5 px-4 text-xs font-semibold transition-all shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50"
           >
             {form.formState.isSubmitting ? (

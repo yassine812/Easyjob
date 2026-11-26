@@ -6,3 +6,17 @@ out
 !.env.example
 *.log
 .git
+.runtime
+storage
+storage-test
+dist
+.pitch-build
+.freebuff
+livraison-pitch
+permis-tn
+backend
+ai-service
+deploy
+web
+test
+qa

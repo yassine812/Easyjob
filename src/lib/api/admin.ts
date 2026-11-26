@@ -4,7 +4,6 @@ import type {
   AdminCompany,
   AdminJob,
   AdminSubscription,
-  AdminVerification,
   AuditLog,
   Paginated,
 } from '@/types/api';
@@ -74,6 +73,7 @@ export interface AdminCompanyDetail {
   _count?: { members: number; jobs: number };
   applications?: number; interviews?: number;
   members: Array<{ id: string; isOwner: boolean; role: string; user: { name: string; email: string } }>;
+  lastActivity: { createdAt: string; action: string } | null;
   subscriptions: Array<{ id: string; provider: string; status: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; canceledAt: string | null; remainingDays: number | null; autoRenew: boolean; plan: { id: string; name: string; priceCents: number; currency: string; billingInterval: string } | null; payments: Array<{ id: string; provider: string; providerPaymentId: string | null; amountCents: number; currency: string; status: string; createdAt: string; paidAt: string | null; invoiceUrl: string | null; docxUrl: string | null; invoiceNumber: string | null }> }>;
 }
 
@@ -84,6 +84,13 @@ export interface PlatformAdminCandidate {
   subscription?: { id: string; status: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; canceledAt: string | null; plan: PlatformAdminCandidate['plan'] } | null;
 }
 
+export interface PlatformAdminCompany extends AdminCompany {
+  owner: { id: string; name: string; email: string; lastLoginAt: string | null; mustChangePassword?: boolean } | null;
+  plan: { id: string; name: string; type: 'COMPANY'; priceCents: number; currency: string; billingInterval: string } | null;
+  subscriptionStatus: string;
+  lastActivityAt: string | null;
+}
+
 export interface PlatformAdminCandidateDetail extends PlatformAdminCandidate {
   phone: string | null;
   candidateProfile: { headline: string | null; bio: string | null; location: string | null; yearsExperience: number | null; applications: number; resumes: number } | null;
@@ -92,24 +99,17 @@ export interface PlatformAdminCandidateDetail extends PlatformAdminCandidate {
 }
 
 export const adminApi = {
-  candidates: (params: { page?: number; limit?: number; status?: string; search?: string } = {}) =>
+  candidates: (params: { page?: number; limit?: number; status?: string; search?: string; planId?: string; subscriptionStatus?: string; expiring?: '7' | '30'; registeredWithin?: '7' | '30' | '90'; activeWithin?: '7' | '30' | '90' } = {}) =>
     api.get<Paginated<PlatformAdminCandidate>>(`/platform-admin/candidates${qs(params)}`),
   candidate: (id: string) => api.get<PlatformAdminCandidateDetail>(`/platform-admin/candidates/${id}`),
-  companies: (params: { page?: number; limit?: number; status?: string; search?: string } = {}) =>
-    api.get<Paginated<AdminCompany>>(`/platform-admin/companies${qs(params)}`),
+  companies: (params: { page?: number; limit?: number; status?: string; search?: string; planId?: string; subscriptionStatus?: string; expiring?: '7' | '30'; registeredWithin?: '7' | '30' | '90'; activeWithin?: '7' | '30' | '90' } = {}) =>
+    api.get<Paginated<PlatformAdminCompany>>(`/platform-admin/companies${qs(params)}`),
   jobs: (params: { page?: number; limit?: number; status?: string; search?: string } = {}) =>
     api.get<Paginated<AdminJob>>(`/platform-admin/jobs${qs(params)}`),
   jobSources: () => api.get<AdminJobSource[]>('/platform-admin/job-sources'),
   approveJob: (id: string) => api.post<{ id: string; status: string }>(`/platform-admin/jobs/${id}/approve`, {}),
   rejectJob: (id: string, reason: string) =>
     api.post<{ id: string; status: string }>(`/platform-admin/jobs/${id}/reject`, { reason }),
-  verifications: (params: { page?: number; limit?: number; status?: string } = {}) =>
-    api.get<Paginated<AdminVerification>>(`/platform-admin/verifications${qs(params)}`),
-  verification: (id: string) => api.get<AdminVerification>(`/platform-admin/verifications/${id}`),
-  approveVerification: (id: string) =>
-    api.post<{ success: boolean }>(`/platform-admin/verifications/${id}/approve`, {}),
-  rejectVerification: (id: string, reason: string) =>
-    api.post<{ success: boolean }>(`/platform-admin/verifications/${id}/reject`, { reason }),
   subscriptions: (params: { page?: number; limit?: number; ownerType?: 'COMPANY' | 'CANDIDATE'; status?: string; expiring?: '7' | '30' } = {}) =>
     api.get<Paginated<AdminSubscription>>(`/platform-admin/subscriptions${qs(params)}`),
   extendSubscription: (id: string, days: number, reason: string) => api.post(`/platform-admin/subscriptions/${id}/extend`, { days, reason }),
@@ -119,6 +119,7 @@ export const adminApi = {
   dashboard: () => api.get<PlatformAdminDashboard>('/platform-admin/dashboard'),
   company: (id: string) => api.get<AdminCompanyDetail>(`/platform-admin/companies/${id}`),
   updateCompanyStatus: (id: string, status: string) => api.patch(`/platform-admin/companies/${id}/status`, { status }),
+  resendCompanyInvitation: (id: string) => api.post<{ queued: boolean; expiresAt: string }>(`/platform-admin/companies/${id}/invitation/resend`, {}),
   invoices: (params: { page?: number; limit?: number } = {}) =>
     api.get<Paginated<PlatformAdminInvoice>>(`/platform-admin/invoices${qs(params)}`),
   plans: (type?: 'COMPANY' | 'CANDIDATE') => api.get<PlatformAdminPlan[]>(`/platform-admin/plans${qs(type ? { type } : {})}`),

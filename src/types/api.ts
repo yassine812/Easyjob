@@ -633,16 +633,6 @@ export interface AdminJob extends Job {
   _count?: { applications: number };
 }
 
-export interface AdminVerification {
-  id: ID;
-  companyId: ID;
-  status: VerificationStatus;
-  submittedAt: string | null;
-  reviewedAt: string | null;
-  rejectionReason: string | null;
-  company?: { id: ID; legalName: string; commercialName: string; slug: string; registrationIdentifier: string | null };
-  documents?: VerificationDocument[];
-}
 
 export interface AdminSubscription {
   id: ID;

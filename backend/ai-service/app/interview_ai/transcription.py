@@ -9,10 +9,23 @@ def _model(path):
     from faster_whisper import WhisperModel
     return WhisperModel(path, device="cpu", compute_type="int8", local_files_only=True)
 
+
+def preload_model() -> bool:
+    """Warm the reusable model before accepting the first interview recording."""
+    path = os.getenv('FASTER_WHISPER_MODEL_PATH')
+    if not path:
+        return False
+    with _lock:
+        _model(path)
+    return True
+
 def transcribe(audio_path: str, language: str | None = None, max_seconds: int | None = None) -> dict:
     model_path = os.getenv('FASTER_WHISPER_MODEL_PATH')
     if not model_path:
         return {'available': False, 'reason': 'Set FASTER_WHISPER_MODEL_PATH to a local model directory.', 'text': ''}
+    from app.interview_ai.resources import readiness
+    if readiness()['loading']:
+        return {'available': False, 'reason': 'Local interview models are warming up.', 'text': ''}
     try:
         with _lock:
             model = _model(model_path)

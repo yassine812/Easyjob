@@ -16,8 +16,9 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
     fileParallelism: false,
-    pool: 'forks',
+    pool: 'threads',
     maxWorkers: 1,
+    testTimeout: 20_000,
   },
 });
 

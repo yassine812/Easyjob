@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { localServiceUrl } from './env';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { env, localServiceUrl } from './env';
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('Local service addresses', () => {
+  it('keeps Parlor separate from the CV and face service on port 8000', () => {
+    vi.stubEnv('NEXT_PUBLIC_PARLOR_URL', undefined);
+    expect(new URL(env.parlorUrl).port).toBe('8001');
+    vi.stubEnv('NEXT_PUBLIC_PARLOR_URL', 'https://practice.example.test');
+    expect(env.parlorUrl).toBe('https://practice.example.test');
+  });
   it('keeps the API port and path when using the numeric loopback address', () => {
     expect(localServiceUrl('http://localhost:3002/api/v1', '127.0.0.1')).toBe('http://127.0.0.1:3002/api/v1');
   });

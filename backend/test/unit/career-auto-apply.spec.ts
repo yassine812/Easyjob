@@ -7,7 +7,7 @@ describe('Auto Apply final authorization boundary', () => {
     const settings = { autoApply: true, autoConsentAt: date, updatedAt: date, approvedDraftId: 'draft', approvalRequired: false, unattendedConsentAt: date, preferredResumeId: 'cv', maxPerWeek: 10,
       autoMinimumScore: 80, maxPerDay: 3, domains: [], locations: [], workModes: [], excludedCompanies: [] as string[], excludedJobTypes: [] };
     const job = { applicationFields: [], id: 'job', companyId: 'co', title: 'Engineer', description: 'APIs', status: 'PUBLISHED', expiresAt: null,
-      company: { status: 'ACTIVE', verification: { status: 'VERIFIED' } },
+      company: { status: 'ACTIVE', verification: null },
       remote: true, location: null, requirements: [], employmentType: 'FULL_TIME', experienceLevel: 'MID',
       skills: [{ skill: { name: 'React' }, required: true }] };
     const draft = { content: 'Reviewed React project', approvedAt: date };
@@ -50,7 +50,7 @@ describe('Auto Apply final authorization boundary', () => {
       expect(s.storage.put).not.toHaveBeenCalled();
     },
   );
-  it('checks consent under a database lock before writing', async () => {
+  it('accepts an active admin-managed company without legacy verification and checks consent under a database lock', async () => {
     const s = setup();
     jest.spyOn(s.service, 'getById').mockResolvedValue({ id: 'application' } as never);
     jest.spyOn(s.service as unknown as { notifyCompanyOfApplication: () => Promise<void> }, 'notifyCompanyOfApplication').mockResolvedValue(undefined);

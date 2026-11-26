@@ -15,6 +15,7 @@ import { searchIntent } from './search-intent';
 import type { CareerSearchDto } from './career.dto';
 import type { ExternalJobSearchInput } from '../jobs/sources/job-source.types';
 import type { ApplyDto } from '../applications/dto/application.dto';
+import { externalCatalogEnabled } from '../jobs/external-catalog-mode';
 
 const normalized = (value: string | null | undefined) => (value || '').normalize('NFKD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const textIncludes = (text: string | null | undefined, term: string) => normalized(text).includes(normalized(term));
@@ -46,9 +47,7 @@ export class JobMarketplaceService {
       ? { items: [], total: 0, page: 1, limit: scanLimit, advanced: false }
       : await this.career.search(userId, { ...query, page: 1, limit: scanLimit, source: undefined }, recommended);
 
-    const externalSearch: AggregatedSearch = query.source === 'COMPANY_DIRECT'
-      ? { items: [], total: 0, configured: false, lastSyncedAt: null }
-      : await this.searchExternal(query, scanLimit);
+    const externalSearch: AggregatedSearch = await this.searchExternal(query, scanLimit);
     const externalJobs = externalSearch.items.filter(job => this.externalMatches(job, query));
     const localItems = localResult.items.map(job => ({
       ...job,
@@ -109,6 +108,7 @@ export class JobMarketplaceService {
       };
     }
 
+    if (!externalCatalogEnabled()) throw new NotFoundException('Only published EasyJob offers are available');
     const external = await this.aggregation.getJob(id);
     const saved = await this.prisma.externalJobSave.findUnique({ where: { candidateId_aggregatedJobId: { candidateId: profile.id, aggregatedJobId: id } } });
     const result = this.toExternalCareerJob(external, profile, advanced);
@@ -285,7 +285,7 @@ export class JobMarketplaceService {
   }
 
   private async searchExternal(query: CareerSearchDto, limit: number): Promise<AggregatedSearch> {
-    if (query.companyId) return { items: [], total: 0, configured: false, lastSyncedAt: null };
+    if (query.companyId || !externalCatalogEnabled()) return { items: [], total: 0, configured: false, lastSyncedAt: null };
     const input: ExternalJobSearchInput = {
       keyword: query.keyword,
       location: query.location,
@@ -300,7 +300,7 @@ export class JobMarketplaceService {
       salaryMax: query.salaryMax,
       currency: query.currency,
       skills: query.skills,
-      sourceType: query.source && query.source !== 'COMPANY_DIRECT' ? query.source as NonNullable<ExternalJobSearchInput['sourceType']> : undefined,
+      sourceType: query.source ? query.source as NonNullable<ExternalJobSearchInput['sourceType']> : undefined,
       sort: query.sort,
       page: 1,
       limit: 500,
@@ -403,7 +403,14 @@ export class JobMarketplaceService {
     for (const remote of external) {
       const key = this.dedupeKey(remote);
       const description = (remote as unknown as { description?: string }).description;
-      const existing = remote.company?.commercialName && description && description.length >= 120 ? combined.find(item => this.dedupeKey(item) === key && normalized((item as unknown as { description?: string }).description) === normalized(description)) : undefined;
+      const reference = (remote as unknown as { reference?: string | null }).reference;
+      const existing = remote.company?.commercialName && description && description.length >= 120 ? combined.find(item => {
+        const candidate = item as unknown as { reference?: string | null; description?: string };
+        // Distinct employer requisitions remain distinct even when their public
+        // descriptions/titles are identical (including restricted attachments).
+        if (reference && candidate.reference && reference !== candidate.reference) return false;
+        return this.dedupeKey(item) === key && normalized(candidate.description) === normalized(description);
+      }) : undefined;
       if (existing) {
         (existing.sourceReferences as unknown[]).push(...remote.sourceReferences);
       } else {
@@ -449,8 +456,8 @@ export class JobMarketplaceService {
   private async sources() {
     const external = await this.aggregation.sourceStatuses(false);
     return [
-      { type: 'COMPANY_DIRECT', name: 'EasyJob', enabled: true, syncStatus: 'ACTIVE', applicationMethod: 'NATIVE_EASYJOB' },
-      ...external.map(({ type, name, enabled, status, lastSyncAt, listingCount, activeJobs }) => ({ type, name, enabled, syncStatus: status, lastSyncAt, listingCount, activeJobs })),
+      { type: 'COMPANY_DIRECT', name: 'Entreprises · EasyJob et sites carrières', enabled: true, syncStatus: 'ACTIVE' },
+      ...external.filter(source => source.type !== 'COMPANY_DIRECT').map(({ type, name, enabled, status, lastSyncAt, listingCount, activeJobs }) => ({ type, name, enabled, syncStatus: status, lastSyncAt, listingCount, activeJobs })),
     ];
   }
 

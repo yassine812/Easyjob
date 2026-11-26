@@ -11,9 +11,12 @@ import { JobReviewAdapter } from './jobreview.adapter';
 import { EmploitunisieAdapter } from './emploitunisie.adapter';
 import { OptioncarriereAdapter } from './optioncarriere.adapter';
 import { KeejobAdapter } from './keejob.adapter';
+import { FreehireAdapter } from './freehire.adapter';
+import { JobOpsAdapter } from './jobops.adapter';
+import { CompanyCareersAdapter } from './company-careers.adapter';
 export const PARTNER_ADAPTERS = [ApecAdapter, GlassdoorAdapter, WelcomeToTheJungleAdapter, TanitJobsAdapter, IndeedAdapter, LinkedInAdapter, FabskillAdapter, JobReviewAdapter, EmploitunisieAdapter, OptioncarriereAdapter, KeejobAdapter];
 @Injectable()
 export class PartnerSourceRegistry {
   readonly adapters;
-  constructor(config: ConfigService) { this.adapters = PARTNER_ADAPTERS.map(Adapter => new Adapter(config)); }
+  constructor(config: ConfigService) { this.adapters = [...PARTNER_ADAPTERS.map(Adapter => new Adapter(config)), new FreehireAdapter(config), new JobOpsAdapter(config), new CompanyCareersAdapter(config)]; }
 }

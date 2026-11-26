@@ -22,7 +22,7 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const requestId = getRequestId() ?? (request.headers['x-request-id'] as string) ?? '-';
-    const path = request.originalUrl ?? request.url;
+    const path = (request.originalUrl ?? request.url).split(/[?#]/, 1)[0];
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';

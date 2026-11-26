@@ -11,6 +11,7 @@ import { PartnerSourceRegistry } from './sources/partner-source.registry';
 import { SourceRequestError, httpsUrl } from './sources/licensed-feed.adapter';
 import { sameVacancy } from './job-identity';
 import { repairKnownCorruption } from './sources/public-html';
+import { externalCatalogEnabled } from './external-catalog-mode';
 import type { ExternalJobListing, ExternalJobSearchInput, JobSourceAdapter, JobSourceStatus } from './sources/job-source.types';
 
 const normalizePart = (value: string) => value.normalize('NFKD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -39,6 +40,7 @@ export class JobAggregationService {
 
   /** Candidate searches are read-only and use only the centrally stored catalogue. */
   async search(input: ExternalJobSearchInput): Promise<AggregatedSearch> {
+    if (!externalCatalogEnabled()) return { items: [], total: 0, configured: false, lastSyncedAt: null };
     const now = new Date();
     // The marketplace merges external listings with EasyJob company jobs after querying each store.
     // Read only the requested result prefix; source status/counts are handled separately.
@@ -61,6 +63,7 @@ export class JobAggregationService {
 
   /** Run by the BullMQ worker only. A source error is recorded without stopping other sources. */
   async syncSource(type: JobSourceType): Promise<SourceSyncResult> {
+    if (!externalCatalogEnabled()) return { type, status: 'DISABLED', imported: 0, duplicatesMerged: 0, total: 0 };
     const adapter = this.adapters.find(item => item.type === type);
     if (!adapter) return { type, status: 'ERROR', imported: 0, duplicatesMerged: 0, total: 0 };
     const source = await this.ensureSource(adapter);
@@ -76,9 +79,23 @@ export class JobAggregationService {
       const result = await adapter.fetchJobs();
       const syncedAt = new Date();
       const stored = await this.storeListings(source.id, result.jobs, syncedAt);
+      if (adapter.revalidationBatchSize && adapter.fetchJobDetails) {
+        await this.revalidateListings(source.id, adapter, syncedAt);
+      }
       let expired = 0;
       // Reconcile source references independently; another source can still have an active copy.
-      if (result.complete === true && !result.rejected && !stored.rejected) {
+      if (result.completedScopes && !stored.rejected) {
+        // Employer feeds are independent: remove confirmed absences on this daily run,
+        // but never reconcile an employer whose listing was truncated or unavailable.
+        for (const scope of result.completedScopes) {
+          if (!scope.prefix || scope.presentIds.some(id => !id.startsWith(scope.prefix))) continue;
+          await this.prisma.aggregatedJobSource.updateMany({
+            where: { sourceId: source.id, status: 'OPEN', lastSyncedAt: { lt: syncedAt },
+              sourceJobId: { startsWith: scope.prefix, notIn: scope.presentIds } },
+            data: { status: 'REMOVED', missingSince: syncedAt },
+          });
+        }
+      } else if (!result.completedScopes && result.complete === true && !result.rejected && !stored.rejected) {
         await this.prisma.aggregatedJobSource.updateMany({
           where: { sourceId: source.id, status: 'OPEN', lastSyncedAt: { lt: syncedAt }, missingSince: null },
           data: { missingSince: syncedAt },
@@ -99,14 +116,15 @@ export class JobAggregationService {
       })).count;
       const durationMs = Date.now() - started;
       const rejected = stored.rejected + (result.rejected || 0);
+      const warning = result.warnings?.length ? `PARTIAL: ${result.warnings.join('; ').slice(0, 1500)}` : null;
       await this.prisma.jobSource.update({ where: { id: source.id }, data: {
         enabled: true, syncStatus: 'ACTIVE', lastSyncAt: syncedAt, lastDurationMs: durationMs,
-        lastErrorCode: null, lastHttpStatus: null, lastImported: stored.imported, lastUpdated: stored.updated,
+        lastErrorCode: warning, lastHttpStatus: null, lastImported: stored.imported, lastUpdated: stored.updated,
         lastRejected: rejected, lastExpired: expired, lastDuplicates: stored.duplicatesMerged,
       } });
       await this.prisma.jobSourceSyncRun.update({ where: { id: run.id }, data: {
         status: 'ACTIVE', finishedAt: syncedAt, durationMs, imported: stored.imported, updated: stored.updated,
-        rejected, expired, duplicates: stored.duplicatesMerged,
+        rejected, expired, duplicates: stored.duplicatesMerged, errorCode: warning,
       } });
       return { type, status: 'ACTIVE', imported: stored.imported, duplicatesMerged: stored.duplicatesMerged, total: result.total };
     } catch (error) {
@@ -155,6 +173,7 @@ export class JobAggregationService {
   }
 
   async findOpenJob(id: string) {
+    if (!externalCatalogEnabled()) throw new NotFoundException('External catalogue is disabled; choose a published EasyJob offer');
     const job = await this.prisma.aggregatedJob.findFirst({
       where: { id, sources: { some: { status: 'OPEN', source: { type: { in: this.adapters.filter(a => a.isConfigured()).map(a => a.type) } } } }, status: AggregatedJobStatus.OPEN, OR: [{ closingAt: null }, { closingAt: { gt: new Date() } }] },
       include: JOB_INCLUDE,
@@ -164,6 +183,7 @@ export class JobAggregationService {
   }
 
   async getJob(id: string) {
+    if (!externalCatalogEnabled()) throw new NotFoundException('External catalogue is disabled; choose a published EasyJob offer');
     const job = await this.prisma.aggregatedJob.findUnique({ where: { id }, include: JOB_INCLUDE });
     if (!job || !job.sources.some(reference => this.adapters.some(adapter => adapter.type === reference.source.type && adapter.isConfigured()))) throw new NotFoundException('External job is unavailable from an authorized source');
     if (job.closingAt && job.closingAt <= new Date() && job.status === AggregatedJobStatus.OPEN) {
@@ -206,6 +226,22 @@ export class JobAggregationService {
     if (sort === 'salaryHigh') return [{ salaryMax: 'desc' }, { publishedAt: 'desc' }];
     if (sort === 'salaryLow') return [{ salaryMin: 'asc' }, { publishedAt: 'desc' }];
     return [{ publishedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
+  }
+
+  private async revalidateListings(sourceId: string, adapter: JobSourceAdapter, syncedAt: Date) {
+    const refs = await this.prisma.aggregatedJobSource.findMany({
+      where: { sourceId, status: 'OPEN', lastSyncedAt: { lt: syncedAt } },
+      orderBy: [{ lastSyncedAt: 'asc' }, { id: 'asc' }],
+      take: Math.min(1000, adapter.revalidationBatchSize!),
+      select: { id: true, sourceJobId: true },
+    });
+    // Sequential requests keep the upstream rate bounded. Any outage aborts the sync;
+    // it never becomes evidence that unverified jobs have disappeared.
+    for (const ref of refs) {
+      const listing = await adapter.fetchJobDetails!(ref.sourceJobId);
+      if (listing) await this.storeListings(sourceId, [listing], syncedAt);
+      else await this.prisma.aggregatedJobSource.update({ where: { id: ref.id }, data: { status: 'REMOVED', lastSyncedAt: syncedAt } });
+    }
   }
 
   private async ensureSource(adapter: JobSourceAdapter) {
@@ -272,7 +308,8 @@ export class JobAggregationService {
             salaryMin: listing.salaryMin == null ? undefined : Math.round(listing.salaryMin),
             salaryMax: listing.salaryMax == null ? undefined : Math.round(listing.salaryMax),
             salaryText: listing.salaryText || undefined, currency: listing.currency || undefined,
-            publishedAt: listing.publishedAt ?? undefined, closingAt: listing.closingAt ?? undefined,
+            publishedAt: listing.publishedAt ?? undefined,
+            closingAt: ref && listing.status === 'OPEN' && listing.closingAt === null ? null : listing.closingAt ?? undefined,
             companyWebsite: httpsUrl(listing.companyWebsite) || undefined, companyIndustry: listing.companyIndustry || undefined,
             companyLocation: listing.companyLocation || undefined, reference: listing.reference || undefined,
             niceToHave: clean(listing.niceToHave).length ? clean(listing.niceToHave) : existing?.niceToHave || [], benefits: clean(listing.benefits).length ? clean(listing.benefits) : existing?.benefits || [], languages: clean(listing.languages).length ? clean(listing.languages) : existing?.languages || [], education: clean(listing.education).length ? clean(listing.education) : existing?.education || [],

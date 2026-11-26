@@ -1,13 +1,14 @@
 'use client';
 
-import { Bell, Building2, FileClock, LayoutDashboard, LifeBuoy, Settings, UserRound, ReceiptText, PackageCheck, Activity } from 'lucide-react';
+import { Bell, BriefcaseBusiness, FileClock, LayoutDashboard, LifeBuoy, Settings, Users, ReceiptText, PackageCheck, Activity } from 'lucide-react';
+import { Logo } from '@/components/layout/logo';
 import { AppShell } from '@/components/layout/app-shell';
 import { RequireAdmin } from '@/components/shared/guards';
 
-const nav = [
+export const platformAdminNav = [
   { href: '/platform-admin', label: 'Vue d’ensemble', icon: LayoutDashboard },
-  { group: 'Gestion des comptes', href: '/platform-admin/candidates', label: 'Candidats', icon: UserRound },
-  { group: 'Gestion des comptes', href: '/platform-admin/companies', label: 'Entreprises', icon: Building2 },
+  { group: 'Gestion', href: '/platform-admin/users', label: 'Utilisateurs', icon: Users, activePaths: ['/platform-admin/candidates', '/platform-admin/companies'] },
+  { group: 'Gestion', href: '/platform-admin/jobs', label: 'Offres d’emploi', icon: BriefcaseBusiness },
   { group: 'Facturation', href: '/platform-admin/plans', label: 'Plans', icon: PackageCheck },
   { group: 'Facturation', href: '/platform-admin/invoices', label: 'Factures', icon: ReceiptText },
   { group: 'Opérations', href: '/platform-admin/notifications', label: 'Notifications', icon: Bell },
@@ -18,5 +19,5 @@ const nav = [
 ];
 
 export function PlatformAdminShell({ children }: { children: React.ReactNode }) {
-  return <RequireAdmin><AppShell compactSidebar nav={nav} supportHref="/platform-admin/support" sidebarHeader={<div className="px-3"><p className="text-sm font-semibold tracking-tight">EasyJob</p><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-primary">Administration plateforme</p></div>}>{children}</AppShell></RequireAdmin>;
+  return <RequireAdmin><AppShell compactSidebar nav={platformAdminNav} supportHref="/platform-admin/support" sidebarHeader={<div className="px-3"><Logo href="/platform-admin" size="sm" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-primary">Administration plateforme</p></div>}>{children}</AppShell></RequireAdmin>;
 }

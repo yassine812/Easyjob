@@ -295,11 +295,12 @@ export function ExperienceSection({ experiences }: { experiences: Experience[] }
                     <FormLabel>{t('experienceCompanyName')}</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                        <Search className="pointer-events-none absolute start-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                         <Input
                           {...field}
                           ref={(node) => { field.ref(node); companyInputRef.current = node; }}
-                          className="pl-11 pr-10"
+                          className="ps-11 pe-10"
+                          style={{ paddingInlineStart: '2.75rem', paddingInlineEnd: '2.5rem' }}
                           placeholder={t('experienceCompanySearch')}
                           autoComplete="organization"
                           role="combobox"

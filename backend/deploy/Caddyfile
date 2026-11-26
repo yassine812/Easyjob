@@ -38,7 +38,17 @@
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		X-Frame-Options DENY
-		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Permissions-Policy "camera=(self \"https://{$PARLOR_DOMAIN}\"), microphone=(self \"https://{$PARLOR_DOMAIN}\"), geolocation=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}
+
+{$PARLOR_DOMAIN} {
+	encode gzip
+	reverse_proxy parlor:8000
+	header {
+		X-Content-Type-Options nosniff
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	}
 }

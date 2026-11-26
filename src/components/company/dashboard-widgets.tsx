@@ -43,12 +43,12 @@ export function Trend({ value }: { value?: number | null }) {
 }
 
 export function DashboardPanel({ title, icon: Icon, href, action, description, children, className = '' }: { title: ReactNode; icon?: LucideIcon; href?: string; action?: string; description?: string; children: ReactNode; className?: string }) {
-  return <section className={`${styles.panel} ${className}`}><div className={styles.panelHeader}><div className={styles.minWidth}><h2>{Icon && <Icon size={18} aria-hidden="true" />}{title}</h2>{description && <p>{description}</p>}</div>{href && <Link href={href} className={styles.textLink}>{action}<ArrowRight size={13} aria-hidden="true" /></Link>}</div>{children}</section>;
+  return <section className={`${styles.panel} motion-panel ${className}`}><div className={styles.panelHeader}><div className={styles.minWidth}><h2>{Icon && <Icon size={18} aria-hidden="true" />}{title}</h2>{description && <p>{description}</p>}</div>{href && <Link href={href} className={styles.textLink}>{action}<ArrowRight size={13} aria-hidden="true" /></Link>}</div>{children}</section>;
 }
 
 export function KpiCard({ label, value, href, icon: Icon, color, trend, caption }: { label: string; value: number; href: string; icon: LucideIcon; color: string; trend?: number | null; caption: string }) {
   const t = useDashboardText();
-  return <Link href={href} className={styles.kpi} style={{ '--accent': color } as CSSProperties}><span className={styles.kpiIcon}><Icon size={25} strokeWidth={1.6} /></span><div className={styles.minWidth}><p>{label}</p><div className={styles.kpiValue}><strong><AnimatedNumber value={value} /></strong><Trend value={trend} /></div><small>{trend == null ? caption : t('comparison')}</small></div><ArrowRight size={16} className={styles.kpiArrow} /></Link>;
+  return <Link href={href} data-motion-item className={styles.kpi} style={{ '--accent': color } as CSSProperties}><span className={styles.kpiIcon}><Icon size={25} strokeWidth={1.6} /></span><div className={styles.minWidth}><p>{label}</p><div className={styles.kpiValue}><strong><AnimatedNumber value={value} /></strong><Trend value={trend} /></div><small>{trend == null ? caption : t('comparison')}</small></div><ArrowRight size={16} className={styles.kpiArrow} /></Link>;
 }
 
 export function ApplicationsChart({ daily }: { daily: { date: string; count: number }[] }) {
@@ -63,7 +63,7 @@ export function ApplicationsChart({ daily }: { daily: { date: string; count: num
         <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" />
         <XAxis dataKey="date" tickFormatter={format} minTickGap={36} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} tickLine={false} axisLine={false} />
         <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} tickLine={false} axisLine={false} width={45} />
-        <Tooltip cursor={{ fill: 'var(--muted)', opacity: 0.3 }} content={({ active, payload, label }) => active && payload?.length ? <div className={styles.chartTooltip}><time>{format(String(label))}</time><strong>{payload[0].value} {t('progress').toLocaleLowerCase(locale)}</strong></div> : null} />
+        <Tooltip cursor={{ fill: 'var(--muted)', opacity: 0.3 }} content={({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: string | number }>; label?: string | number }) => active && payload?.length ? <div className={styles.chartTooltip}><time>{format(String(label))}</time><strong>{payload[0].value} {t('progress').toLocaleLowerCase(locale)}</strong></div> : null} />
         <Bar dataKey="count" fill="#7975f6" radius={[4, 4, 0, 0]} maxBarSize={28} fillOpacity={0.85} isAnimationActive={!reduced} animationDuration={650} />
         <Line dataKey="count" type="monotone" stroke="#b5b2ff" strokeWidth={2} dot={false} activeDot={{ r: 4 }} tooltipType="none" isAnimationActive={!reduced} animationDuration={750} />
       </ComposedChart>

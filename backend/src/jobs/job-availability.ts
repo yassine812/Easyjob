@@ -12,6 +12,6 @@ export const availableJobWhere = (): Prisma.JobWhereInput => ({
   ] }],
   // Reserved example.com domains identify the old fixture companies. Keep their
   // records for admin/company testing, but never expose their jobs to candidates.
-  company: { status: 'ACTIVE', verification: { status: 'VERIFIED' }, OR: [{ website: null }, { NOT: { website: { contains: '.example.com', mode: 'insensitive' } } }] },
+  company: { status: 'ACTIVE', OR: [{ website: null }, { NOT: { website: { contains: '.example.com', mode: 'insensitive' } } }] },
   OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
 });

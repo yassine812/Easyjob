@@ -275,6 +275,7 @@ export class AuthService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ success: boolean }> {
     const record = await this.prisma.passwordResetToken.findUnique({
       where: { tokenHash: hashToken(dto.token) },
+      include: { user: { select: { email: true, mustChangePassword: true } } },
     });
     if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
       throw new BadRequestException('Invalid or expired reset token');
@@ -284,17 +285,57 @@ export class AuthService {
       const claimed = await tx.passwordResetToken.updateMany({ where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
       if (claimed.count !== 1) throw new BadRequestException('Invalid or expired reset token');
       await tx.user.update({ where: { id: record.userId }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, emailVerifiedAt: new Date(), sessionVersion: { increment: 1 } } });
+      if (record.user.mustChangePassword) {
+        const ownerMembership = await tx.companyMember.findFirst({ where: { userId: record.userId, isOwner: true }, select: { companyId: true } });
+        if (ownerMembership) {
+          await tx.companyInvitation.updateMany({ where: { companyId: ownerMembership.companyId, email: record.user.email, status: 'PENDING' }, data: { status: 'ACCEPTED', acceptedAt: new Date(), acceptedByUserId: record.userId } });
+        }
+      }
       await tx.passwordResetToken.updateMany({ where: { userId: record.userId, usedAt: null }, data: { usedAt: new Date() } });
       await tx.refreshToken.updateMany({ where: { userId: record.userId, revokedAt: null }, data: { revokedAt: new Date() } });
     });
     await this.audit.log({
       actorId: record.userId,
-      action: 'auth.password_reset',
+      action: record.user.mustChangePassword ? 'account_activated' : 'auth.password_reset',
       entityType: 'User',
       entityId: record.userId,
     });
     this.realtime?.disconnectUser(record.userId);
     return { success: true };
+  }
+
+  async activationPreview(rawToken: string) {
+    if (!rawToken) throw new BadRequestException('Invalid or expired activation token');
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash: hashToken(rawToken) },
+      include: {
+        user: {
+          select: {
+            email: true,
+            mustChangePassword: true,
+            companyMemberships: {
+              where: { isOwner: true },
+              take: 1,
+              include: {
+                company: {
+                  select: {
+                    commercialName: true,
+                    subscriptions: {
+                      orderBy: { createdAt: 'desc' },
+                      take: 1,
+                      include: { plan: { select: { name: true } } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now() || !record.user.mustChangePassword) throw new BadRequestException('Invalid or expired activation token');
+    const company = record.user.companyMemberships[0]?.company;
+    return { email: record.user.email, companyName: company?.commercialName ?? null, planName: company?.subscriptions[0]?.plan.name ?? null, expiresAt: record.expiresAt };
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {

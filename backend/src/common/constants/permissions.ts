@@ -33,7 +33,6 @@ export const PERMISSIONS = [
   // platform admin
   'admin.users',
   'admin.companies',
-  'admin.verifications',
   'admin.jobs',
   'admin.dashboard',
   'admin.subscriptions',

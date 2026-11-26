@@ -19,9 +19,14 @@ spacy>=3.8,<4
 scikit-learn>=1.5,<2
 sentence-transformers>=3.3,<4
 torch>=2.5
-faster-whisper>=1.1,<2
+faster-whisper==1.2.1
+# PyAV 19 removed metadata_errors, still used by faster-whisper's audio decoder.
+av==16.1.0
 silero-vad>=5,<6
 mediapipe>=0.10,<1
 
 # Face authentication (CPU-only)
-opencv-python-headless>=4.10,<5
+# Keep both packages on one 4.x ABI: MediaPipe otherwise installs contrib 5.x,
+# whose cv2 namespace removes the OpenFace Torch loader used by face login.
+opencv-python-headless==4.14.0.94
+opencv-contrib-python==4.14.0.94

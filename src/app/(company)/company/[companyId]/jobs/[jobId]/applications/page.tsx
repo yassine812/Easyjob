@@ -1,1 +1,5 @@
-export { JobApplicationsPage as default } from '@/components/company/recruitment-workspace';
+import { JobApplicationsPage } from '@/components/company/recruitment-workspace';
+
+export default function ApplicationsPage() {
+  return <JobApplicationsPage />;
+}
